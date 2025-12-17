@@ -24,19 +24,25 @@ interface ReceiveStockDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: InventoryItem | null;
+  items?: InventoryItem[];
   onReceive: (itemId: string, warehouseId: string, quantity: number, bolNumber: string) => void;
 }
 
-export function ReceiveStockDialog({ open, onOpenChange, item, onReceive }: ReceiveStockDialogProps) {
+export function ReceiveStockDialog({ open, onOpenChange, item, items = [], onReceive }: ReceiveStockDialogProps) {
+  const [selectedItemId, setSelectedItemId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
   const [quantity, setQuantity] = useState(0);
   const [bolNumber, setBolNumber] = useState('');
 
+  // Use passed item or find from items list
+  const activeItem = item || items.find((i) => i.id === selectedItemId) || null;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (item && warehouseId && quantity > 0 && bolNumber.trim()) {
-      onReceive(item.id, warehouseId, quantity, bolNumber.trim());
+    if (activeItem && warehouseId && quantity > 0 && bolNumber.trim()) {
+      onReceive(activeItem.id, warehouseId, quantity, bolNumber.trim());
       onOpenChange(false);
+      setSelectedItemId('');
       setWarehouseId('');
       setQuantity(0);
       setBolNumber('');
@@ -44,7 +50,7 @@ export function ReceiveStockDialog({ open, onOpenChange, item, onReceive }: Rece
   };
 
   const selectedWarehouse = warehouses.find((wh) => wh.id === warehouseId);
-  const currentStock = item?.stock.find((s) => s.warehouseId === warehouseId)?.quantity || 0;
+  const currentStock = activeItem?.stock.find((s) => s.warehouseId === warehouseId)?.quantity || 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -59,14 +65,35 @@ export function ReceiveStockDialog({ open, onOpenChange, item, onReceive }: Rece
           </DialogDescription>
         </DialogHeader>
         
-        {item && (
-          <div className="bg-muted/50 rounded-lg p-4 mt-2">
-            <p className="font-semibold text-foreground">{item.name}</p>
-            <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          {!item && items.length > 0 && (
+            <div>
+              <Label htmlFor="item">Select Product</Label>
+              <Select value={selectedItemId} onValueChange={setSelectedItemId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose product" />
+                </SelectTrigger>
+                <SelectContent>
+                  {items.map((i) => (
+                    <SelectItem key={i.id} value={i.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground text-xs">{i.sku}</span>
+                        <span>{i.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {activeItem && (
+            <div className="bg-muted/50 rounded-lg p-4">
+              <p className="font-semibold text-foreground">{activeItem.name}</p>
+              <p className="text-sm text-muted-foreground">SKU: {activeItem.sku}</p>
+            </div>
+          )}
+
           <div>
             <Label htmlFor="warehouse">Select Warehouse</Label>
             <Select value={warehouseId} onValueChange={setWarehouseId}>
@@ -74,8 +101,8 @@ export function ReceiveStockDialog({ open, onOpenChange, item, onReceive }: Rece
                 <SelectValue placeholder="Choose warehouse" />
               </SelectTrigger>
               <SelectContent>
-                {warehouses.map((wh) => {
-                  const stock = item?.stock.find((s) => s.warehouseId === wh.id);
+              {warehouses.map((wh) => {
+                  const stock = activeItem?.stock.find((s) => s.warehouseId === wh.id);
                   return (
                     <SelectItem key={wh.id} value={wh.id}>
                       <div className="flex items-center justify-between w-full gap-4">
@@ -137,7 +164,7 @@ export function ReceiveStockDialog({ open, onOpenChange, item, onReceive }: Rece
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!warehouseId || quantity <= 0 || !bolNumber.trim()}>
+            <Button type="submit" disabled={!activeItem || !warehouseId || quantity <= 0 || !bolNumber.trim()}>
               Receive Stock
             </Button>
           </div>
