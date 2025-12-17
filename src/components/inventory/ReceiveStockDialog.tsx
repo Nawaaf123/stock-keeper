@@ -18,7 +18,12 @@ import {
 } from '@/components/ui/select';
 import { InventoryItem } from '@/types/inventory';
 import { warehouses } from '@/data/mockData';
-import { Package } from 'lucide-react';
+import { Package, Plus, Trash2 } from 'lucide-react';
+
+interface ProductEntry {
+  itemId: string;
+  quantity: number;
+}
 
 interface ReceiveStockDialogProps {
   open: boolean;
@@ -29,104 +34,85 @@ interface ReceiveStockDialogProps {
 }
 
 export function ReceiveStockDialog({ open, onOpenChange, item, items = [], onReceive }: ReceiveStockDialogProps) {
-  const [selectedItemId, setSelectedItemId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
-  const [quantity, setQuantity] = useState(0);
   const [bolNumber, setBolNumber] = useState('');
+  const [productEntries, setProductEntries] = useState<ProductEntry[]>([]);
+  const [currentItemId, setCurrentItemId] = useState('');
+  const [currentQuantity, setCurrentQuantity] = useState(0);
 
-  // Use passed item or find from items list
-  const activeItem = item || items.find((i) => i.id === selectedItemId) || null;
+  // If a specific item is passed, use single-item mode
+  const isSingleItemMode = !!item;
+
+  const resetForm = () => {
+    setWarehouseId('');
+    setBolNumber('');
+    setProductEntries([]);
+    setCurrentItemId('');
+    setCurrentQuantity(0);
+  };
+
+  const handleAddProduct = () => {
+    if (currentItemId && currentQuantity > 0) {
+      // Check if product already exists in entries
+      const existingIndex = productEntries.findIndex(e => e.itemId === currentItemId);
+      if (existingIndex >= 0) {
+        // Update quantity
+        const updated = [...productEntries];
+        updated[existingIndex].quantity += currentQuantity;
+        setProductEntries(updated);
+      } else {
+        setProductEntries([...productEntries, { itemId: currentItemId, quantity: currentQuantity }]);
+      }
+      setCurrentItemId('');
+      setCurrentQuantity(0);
+    }
+  };
+
+  const handleRemoveProduct = (index: number) => {
+    setProductEntries(productEntries.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (activeItem && warehouseId && quantity > 0 && bolNumber.trim()) {
-      onReceive(activeItem.id, warehouseId, quantity, bolNumber.trim());
-      onOpenChange(false);
-      setSelectedItemId('');
-      setWarehouseId('');
-      setQuantity(0);
-      setBolNumber('');
+    
+    if (isSingleItemMode) {
+      // Single item mode
+      if (item && warehouseId && currentQuantity > 0 && bolNumber.trim()) {
+        onReceive(item.id, warehouseId, currentQuantity, bolNumber.trim());
+        onOpenChange(false);
+        resetForm();
+      }
+    } else {
+      // Multi-item mode
+      if (warehouseId && bolNumber.trim() && productEntries.length > 0) {
+        productEntries.forEach(entry => {
+          onReceive(entry.itemId, warehouseId, entry.quantity, bolNumber.trim());
+        });
+        onOpenChange(false);
+        resetForm();
+      }
     }
   };
 
   const selectedWarehouse = warehouses.find((wh) => wh.id === warehouseId);
-  const currentStock = activeItem?.stock.find((s) => s.warehouseId === warehouseId)?.quantity || 0;
+  const getItemById = (id: string) => items.find(i => i.id === id);
+  const availableItems = items.filter(i => !productEntries.some(e => e.itemId === i.id));
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={(open) => { onOpenChange(open); if (!open) resetForm(); }}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
             Receive Stock
           </DialogTitle>
           <DialogDescription>
-            Add incoming inventory to a specific warehouse
+            {isSingleItemMode ? 'Add incoming inventory to a specific warehouse' : 'Add multiple products from a single BOL'}
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          {!item && items.length > 0 && (
-            <div>
-              <Label htmlFor="item">Select Product</Label>
-              <Select value={selectedItemId} onValueChange={setSelectedItemId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose product" />
-                </SelectTrigger>
-                <SelectContent>
-                  {items.map((i) => (
-                    <SelectItem key={i.id} value={i.id}>
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground text-xs">{i.sku}</span>
-                        <span>{i.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {activeItem && (
-            <div className="bg-muted/50 rounded-lg p-4">
-              <p className="font-semibold text-foreground">{activeItem.name}</p>
-              <p className="text-sm text-muted-foreground">SKU: {activeItem.sku}</p>
-            </div>
-          )}
-
-          <div>
-            <Label htmlFor="warehouse">Select Warehouse</Label>
-            <Select value={warehouseId} onValueChange={setWarehouseId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose warehouse" />
-              </SelectTrigger>
-              <SelectContent>
-              {warehouses.map((wh) => {
-                  const stock = activeItem?.stock.find((s) => s.warehouseId === wh.id);
-                  return (
-                    <SelectItem key={wh.id} value={wh.id}>
-                      <div className="flex items-center justify-between w-full gap-4">
-                        <span>{wh.name}</span>
-                        <span className="text-muted-foreground text-xs">
-                          Current: {stock?.quantity || 0}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {selectedWarehouse && (
-            <div className="bg-accent/50 rounded-lg p-3 text-sm">
-              <p className="text-muted-foreground">
-                Current stock at <span className="font-medium text-foreground">{selectedWarehouse.name}</span>: 
-                <span className="font-semibold text-foreground ml-1">{currentStock} units</span>
-              </p>
-            </div>
-          )}
-
+          {/* BOL Number - Always first */}
           <div>
             <Label htmlFor="bolNumber">BOL Number</Label>
             <Input
@@ -139,23 +125,128 @@ export function ReceiveStockDialog({ open, onOpenChange, item, items = [], onRec
             />
           </div>
 
+          {/* Warehouse Selection */}
           <div>
-            <Label htmlFor="quantity">Quantity to Add</Label>
-            <Input
-              id="quantity"
-              type="number"
-              min="1"
-              value={quantity || ''}
-              onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-              placeholder="Enter quantity"
-              required
-            />
+            <Label htmlFor="warehouse">Select Warehouse</Label>
+            <Select value={warehouseId} onValueChange={setWarehouseId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose warehouse" />
+              </SelectTrigger>
+              <SelectContent>
+                {warehouses.map((wh) => (
+                  <SelectItem key={wh.id} value={wh.id}>
+                    {wh.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          {selectedWarehouse && quantity > 0 && (
-            <div className="bg-success/10 rounded-lg p-3 text-sm border border-success/20">
-              <p className="text-success font-medium">
-                New stock at {selectedWarehouse.name}: {currentStock + quantity} units
+          {isSingleItemMode ? (
+            // Single item mode
+            <>
+              {item && (
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <p className="font-semibold text-foreground">{item.name}</p>
+                  <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
+                </div>
+              )}
+              <div>
+                <Label htmlFor="quantity">Quantity to Add</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="1"
+                  value={currentQuantity || ''}
+                  onChange={(e) => setCurrentQuantity(parseInt(e.target.value) || 0)}
+                  placeholder="Enter quantity"
+                  required
+                />
+              </div>
+            </>
+          ) : (
+            // Multi-item mode
+            <>
+              {/* Added Products List */}
+              {productEntries.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Products to Receive</Label>
+                  <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+                    {productEntries.map((entry, index) => {
+                      const product = getItemById(entry.itemId);
+                      return (
+                        <div key={index} className="flex items-center justify-between bg-background rounded p-2">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{product?.name}</p>
+                            <p className="text-xs text-muted-foreground">SKU: {product?.sku} • Qty: {entry.quantity}</p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveProduct(index)}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Add Product Section */}
+              <div className="border border-dashed border-border rounded-lg p-4 space-y-3">
+                <Label className="text-muted-foreground">Add Product</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2">
+                    <Select value={currentItemId} onValueChange={setCurrentItemId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select product" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableItems.map((i) => (
+                          <SelectItem key={i.id} value={i.id}>
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground text-xs">{i.sku}</span>
+                              <span>{i.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={currentQuantity || ''}
+                    onChange={(e) => setCurrentQuantity(parseInt(e.target.value) || 0)}
+                    placeholder="Qty"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
+                  onClick={handleAddProduct}
+                  disabled={!currentItemId || currentQuantity <= 0}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Product
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* Summary */}
+          {selectedWarehouse && productEntries.length > 0 && !isSingleItemMode && (
+            <div className="bg-primary/10 rounded-lg p-3 text-sm border border-primary/20">
+              <p className="font-medium text-primary">
+                {productEntries.length} product(s) will be added to {selectedWarehouse.name}
+              </p>
+              <p className="text-muted-foreground text-xs mt-1">
+                Total units: {productEntries.reduce((sum, e) => sum + e.quantity, 0)}
               </p>
             </div>
           )}
@@ -164,7 +255,14 @@ export function ReceiveStockDialog({ open, onOpenChange, item, items = [], onRec
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!activeItem || !warehouseId || quantity <= 0 || !bolNumber.trim()}>
+            <Button 
+              type="submit" 
+              disabled={
+                !warehouseId || 
+                !bolNumber.trim() || 
+                (isSingleItemMode ? currentQuantity <= 0 : productEntries.length === 0)
+              }
+            >
               Receive Stock
             </Button>
           </div>
