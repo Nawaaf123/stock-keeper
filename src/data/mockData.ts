@@ -1,4 +1,11 @@
-import { InventoryItem, Category } from '@/types/inventory';
+import { InventoryItem, Category, Warehouse } from '@/types/inventory';
+
+export const warehouses: Warehouse[] = [
+  { id: 'wh-a', name: 'Warehouse A', location: 'New York', color: 'hsl(172, 66%, 40%)' },
+  { id: 'wh-b', name: 'Warehouse B', location: 'Los Angeles', color: 'hsl(221, 83%, 53%)' },
+  { id: 'wh-c', name: 'Warehouse C', location: 'Chicago', color: 'hsl(262, 83%, 58%)' },
+  { id: 'wh-d', name: 'Warehouse D', location: 'Houston', color: 'hsl(38, 92%, 50%)' },
+];
 
 export const categories: Category[] = [
   { id: '1', name: 'Electronics', color: 'hsl(172, 66%, 40%)' },
@@ -13,10 +20,14 @@ export const initialInventory: InventoryItem[] = [
     name: 'Wireless Mouse',
     sku: 'WM-001',
     category: 'Electronics',
-    quantity: 150,
+    stock: [
+      { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 50 },
+      { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 35 },
+      { warehouseId: 'wh-c', warehouseName: 'Warehouse C', quantity: 40 },
+      { warehouseId: 'wh-d', warehouseName: 'Warehouse D', quantity: 25 },
+    ],
     minStock: 50,
     price: 29.99,
-    location: 'Warehouse A',
     lastUpdated: new Date('2024-01-15'),
   },
   {
@@ -24,10 +35,14 @@ export const initialInventory: InventoryItem[] = [
     name: 'USB-C Hub',
     sku: 'USB-002',
     category: 'Electronics',
-    quantity: 23,
+    stock: [
+      { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 15 },
+      { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 8 },
+      { warehouseId: 'wh-c', warehouseName: 'Warehouse C', quantity: 0 },
+      { warehouseId: 'wh-d', warehouseName: 'Warehouse D', quantity: 0 },
+    ],
     minStock: 30,
     price: 49.99,
-    location: 'Warehouse A',
     lastUpdated: new Date('2024-01-14'),
   },
   {
@@ -35,10 +50,14 @@ export const initialInventory: InventoryItem[] = [
     name: 'A4 Paper (500 sheets)',
     sku: 'PAP-001',
     category: 'Office Supplies',
-    quantity: 200,
+    stock: [
+      { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 100 },
+      { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 50 },
+      { warehouseId: 'wh-c', warehouseName: 'Warehouse C', quantity: 30 },
+      { warehouseId: 'wh-d', warehouseName: 'Warehouse D', quantity: 20 },
+    ],
     minStock: 100,
     price: 8.99,
-    location: 'Warehouse B',
     lastUpdated: new Date('2024-01-13'),
   },
   {
@@ -46,10 +65,14 @@ export const initialInventory: InventoryItem[] = [
     name: 'Ergonomic Chair',
     sku: 'FRN-001',
     category: 'Furniture',
-    quantity: 12,
+    stock: [
+      { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 5 },
+      { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 3 },
+      { warehouseId: 'wh-c', warehouseName: 'Warehouse C', quantity: 2 },
+      { warehouseId: 'wh-d', warehouseName: 'Warehouse D', quantity: 2 },
+    ],
     minStock: 5,
     price: 299.99,
-    location: 'Warehouse C',
     lastUpdated: new Date('2024-01-12'),
   },
   {
@@ -57,10 +80,14 @@ export const initialInventory: InventoryItem[] = [
     name: 'Steel Rods (1m)',
     sku: 'RAW-001',
     category: 'Raw Materials',
-    quantity: 8,
+    stock: [
+      { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 0 },
+      { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 5 },
+      { warehouseId: 'wh-c', warehouseName: 'Warehouse C', quantity: 3 },
+      { warehouseId: 'wh-d', warehouseName: 'Warehouse D', quantity: 0 },
+    ],
     minStock: 20,
     price: 15.50,
-    location: 'Warehouse D',
     lastUpdated: new Date('2024-01-11'),
   },
   {
@@ -68,10 +95,14 @@ export const initialInventory: InventoryItem[] = [
     name: 'Mechanical Keyboard',
     sku: 'KB-001',
     category: 'Electronics',
-    quantity: 45,
+    stock: [
+      { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 20 },
+      { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 10 },
+      { warehouseId: 'wh-c', warehouseName: 'Warehouse C', quantity: 10 },
+      { warehouseId: 'wh-d', warehouseName: 'Warehouse D', quantity: 5 },
+    ],
     minStock: 25,
     price: 89.99,
-    location: 'Warehouse A',
     lastUpdated: new Date('2024-01-10'),
   },
   {
@@ -79,10 +110,14 @@ export const initialInventory: InventoryItem[] = [
     name: 'Standing Desk',
     sku: 'FRN-002',
     category: 'Furniture',
-    quantity: 3,
+    stock: [
+      { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 1 },
+      { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 1 },
+      { warehouseId: 'wh-c', warehouseName: 'Warehouse C', quantity: 1 },
+      { warehouseId: 'wh-d', warehouseName: 'Warehouse D', quantity: 0 },
+    ],
     minStock: 10,
     price: 549.99,
-    location: 'Warehouse C',
     lastUpdated: new Date('2024-01-09'),
   },
   {
@@ -90,10 +125,18 @@ export const initialInventory: InventoryItem[] = [
     name: 'Sticky Notes Pack',
     sku: 'OFF-002',
     category: 'Office Supplies',
-    quantity: 500,
+    stock: [
+      { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 200 },
+      { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 150 },
+      { warehouseId: 'wh-c', warehouseName: 'Warehouse C', quantity: 100 },
+      { warehouseId: 'wh-d', warehouseName: 'Warehouse D', quantity: 50 },
+    ],
     minStock: 200,
     price: 4.99,
-    location: 'Warehouse B',
     lastUpdated: new Date('2024-01-08'),
   },
 ];
+
+export const getTotalQuantity = (item: InventoryItem): number => {
+  return item.stock.reduce((sum, s) => sum + s.quantity, 0);
+};

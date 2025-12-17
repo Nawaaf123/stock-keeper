@@ -16,27 +16,27 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { InventoryItem } from '@/types/inventory';
-import { categories } from '@/data/mockData';
+import { categories, warehouses } from '@/data/mockData';
 
 interface ItemFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item?: InventoryItem | null;
-  onSubmit: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
+  onSubmit: (item: Omit<InventoryItem, 'id' | 'lastUpdated' | 'stock'> & { initialStock?: { warehouseId: string; quantity: number }[] }) => void;
+  onUpdate: (id: string, updates: Partial<Omit<InventoryItem, 'stock'>>) => void;
 }
 
 const initialFormState = {
   name: '',
   sku: '',
   category: '',
-  quantity: 0,
   minStock: 0,
   price: 0,
-  location: '',
 };
 
-export function ItemFormDialog({ open, onOpenChange, item, onSubmit }: ItemFormDialogProps) {
+export function ItemFormDialog({ open, onOpenChange, item, onSubmit, onUpdate }: ItemFormDialogProps) {
   const [formData, setFormData] = useState(initialFormState);
+  const [initialStock, setInitialStock] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (item) {
@@ -44,19 +44,25 @@ export function ItemFormDialog({ open, onOpenChange, item, onSubmit }: ItemFormD
         name: item.name,
         sku: item.sku,
         category: item.category,
-        quantity: item.quantity,
         minStock: item.minStock,
         price: item.price,
-        location: item.location,
       });
     } else {
       setFormData(initialFormState);
+      setInitialStock({});
     }
   }, [item, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    if (item) {
+      onUpdate(item.id, formData);
+    } else {
+      const stockData = Object.entries(initialStock)
+        .filter(([_, qty]) => qty > 0)
+        .map(([warehouseId, quantity]) => ({ warehouseId, quantity }));
+      onSubmit({ ...formData, initialStock: stockData });
+    }
     onOpenChange(false);
   };
 
@@ -105,17 +111,6 @@ export function ItemFormDialog({ open, onOpenChange, item, onSubmit }: ItemFormD
               </Select>
             </div>
             <div>
-              <Label htmlFor="quantity">Quantity</Label>
-              <Input
-                id="quantity"
-                type="number"
-                min="0"
-                value={formData.quantity}
-                onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
-                required
-              />
-            </div>
-            <div>
               <Label htmlFor="minStock">Min Stock Level</Label>
               <Input
                 id="minStock"
@@ -138,16 +133,29 @@ export function ItemFormDialog({ open, onOpenChange, item, onSubmit }: ItemFormD
                 required
               />
             </div>
-            <div>
-              <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                required
-              />
-            </div>
           </div>
+
+          {!item && (
+            <div className="space-y-3 pt-4 border-t border-border">
+              <Label className="text-sm font-medium">Initial Stock (Optional)</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {warehouses.map((wh) => (
+                  <div key={wh.id} className="flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground min-w-20">{wh.name}</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={initialStock[wh.id] || ''}
+                      onChange={(e) => setInitialStock({ ...initialStock, [wh.id]: parseInt(e.target.value) || 0 })}
+                      className="h-8"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

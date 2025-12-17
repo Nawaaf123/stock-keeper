@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { DashboardView } from '@/components/views/DashboardView';
 import { InventoryView } from '@/components/views/InventoryView';
+import { WarehousesView } from '@/components/views/WarehousesView';
 import { LowStockView } from '@/components/views/LowStockView';
 import { CategoriesView } from '@/components/views/CategoriesView';
 import { useInventory } from '@/hooks/useInventory';
-import { initialInventory } from '@/data/mockData';
 
 const Index = () => {
   const [activeView, setActiveView] = useState('dashboard');
@@ -23,18 +23,24 @@ const Index = () => {
             onSearchChange={inventory.setSearchQuery}
             categoryFilter={inventory.categoryFilter}
             onCategoryChange={inventory.setCategoryFilter}
+            warehouseFilter={inventory.warehouseFilter}
+            onWarehouseChange={inventory.setWarehouseFilter}
             sortField={inventory.sortField}
             sortDirection={inventory.sortDirection}
             onSort={inventory.toggleSort}
             onAddItem={inventory.addItem}
             onUpdateItem={inventory.updateItem}
+            onReceiveStock={inventory.receiveStock}
+            onUpdateStock={inventory.updateStock}
             onDeleteItem={inventory.deleteItem}
           />
         );
+      case 'warehouses':
+        return <WarehousesView stats={inventory.stats} items={inventory.allItems} />;
       case 'low-stock':
-        return <LowStockView items={initialInventory} />;
+        return <LowStockView items={inventory.allItems} />;
       case 'categories':
-        return <CategoriesView items={initialInventory} />;
+        return <CategoriesView items={inventory.allItems} />;
       default:
         return <DashboardView stats={inventory.stats} />;
     }
