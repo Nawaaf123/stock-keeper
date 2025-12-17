@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, PackagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SearchAndFilter } from '@/components/inventory/SearchAndFilter';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
@@ -102,10 +102,16 @@ export function InventoryView({
             Manage products across all warehouses
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Item
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setReceiveDialogOpen(true)} className="gap-2">
+            <PackagePlus className="w-4 h-4" />
+            Receive Stock
+          </Button>
+          <Button onClick={() => setDialogOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Add Item
+          </Button>
+        </div>
       </div>
 
       <SearchAndFilter
@@ -138,8 +144,12 @@ export function InventoryView({
 
       <ReceiveStockDialog
         open={receiveDialogOpen}
-        onOpenChange={setReceiveDialogOpen}
+        onOpenChange={(open) => {
+          setReceiveDialogOpen(open);
+          if (!open) setReceivingItem(null);
+        }}
         item={receivingItem}
+        items={items}
         onReceive={handleReceive}
       />
 
