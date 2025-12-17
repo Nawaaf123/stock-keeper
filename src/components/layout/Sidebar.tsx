@@ -1,4 +1,4 @@
-import { Package, LayoutDashboard, Tags, Settings, TrendingDown } from 'lucide-react';
+import { Package, LayoutDashboard, Tags, Settings, TrendingDown, Warehouse } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -9,6 +9,7 @@ interface SidebarProps {
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'inventory', label: 'Inventory', icon: Package },
+  { id: 'warehouses', label: 'Warehouses', icon: Warehouse },
   { id: 'low-stock', label: 'Low Stock', icon: TrendingDown },
   { id: 'categories', label: 'Categories', icon: Tags },
 ];
@@ -23,7 +24,7 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
           </div>
           <div>
             <h1 className="font-semibold text-lg">InvenTrack</h1>
-            <p className="text-xs text-sidebar-foreground/60">Inventory Manager</p>
+            <p className="text-xs text-sidebar-foreground/60">Multi-Warehouse</p>
           </div>
         </div>
       </div>

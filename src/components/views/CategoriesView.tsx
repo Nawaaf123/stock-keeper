@@ -1,4 +1,4 @@
-import { categories } from '@/data/mockData';
+import { categories, getTotalQuantity } from '@/data/mockData';
 import { InventoryItem } from '@/types/inventory';
 
 interface CategoriesViewProps {
@@ -8,8 +8,8 @@ interface CategoriesViewProps {
 export function CategoriesView({ items }: CategoriesViewProps) {
   const getCategoryStats = (categoryName: string) => {
     const categoryItems = items.filter((item) => item.category === categoryName);
-    const totalItems = categoryItems.reduce((sum, item) => sum + item.quantity, 0);
-    const totalValue = categoryItems.reduce((sum, item) => sum + item.quantity * item.price, 0);
+    const totalItems = categoryItems.reduce((sum, item) => sum + getTotalQuantity(item), 0);
+    const totalValue = categoryItems.reduce((sum, item) => sum + getTotalQuantity(item) * item.price, 0);
     return { count: categoryItems.length, totalItems, totalValue };
   };
 

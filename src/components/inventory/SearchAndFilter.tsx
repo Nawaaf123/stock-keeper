@@ -7,13 +7,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { categories } from '@/data/mockData';
+import { categories, warehouses } from '@/data/mockData';
 
 interface SearchAndFilterProps {
   searchQuery: string;
   onSearchChange: (value: string) => void;
   categoryFilter: string;
   onCategoryChange: (value: string) => void;
+  warehouseFilter: string;
+  onWarehouseChange: (value: string) => void;
 }
 
 export function SearchAndFilter({
@@ -21,20 +23,22 @@ export function SearchAndFilter({
   onSearchChange,
   categoryFilter,
   onCategoryChange,
+  warehouseFilter,
+  onWarehouseChange,
 }: SearchAndFilterProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-4">
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          placeholder="Search by name, SKU, or location..."
+          placeholder="Search by name or SKU..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-10"
         />
       </div>
       <Select value={categoryFilter} onValueChange={onCategoryChange}>
-        <SelectTrigger className="w-full sm:w-48">
+        <SelectTrigger className="w-full sm:w-44">
           <SelectValue placeholder="All Categories" />
         </SelectTrigger>
         <SelectContent>
@@ -42,6 +46,19 @@ export function SearchAndFilter({
           {categories.map((category) => (
             <SelectItem key={category.id} value={category.name}>
               {category.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={warehouseFilter} onValueChange={onWarehouseChange}>
+        <SelectTrigger className="w-full sm:w-44">
+          <SelectValue placeholder="All Warehouses" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Warehouses</SelectItem>
+          {warehouses.map((wh) => (
+            <SelectItem key={wh.id} value={wh.id}>
+              {wh.name}
             </SelectItem>
           ))}
         </SelectContent>
