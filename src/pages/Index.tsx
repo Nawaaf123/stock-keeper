@@ -3,7 +3,6 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { DashboardView } from '@/components/views/DashboardView';
 import { InventoryView } from '@/components/views/InventoryView';
 import { WarehousesView } from '@/components/views/WarehousesView';
-import { LowStockView } from '@/components/views/LowStockView';
 import { CategoriesView } from '@/components/views/CategoriesView';
 import { BillOfLadingView } from '@/components/views/BillOfLadingView';
 import { useInventory } from '@/hooks/useInventory';
@@ -38,8 +37,6 @@ const Index = () => {
         );
       case 'warehouses':
         return <WarehousesView stats={inventory.stats} items={inventory.allItems} />;
-      case 'low-stock':
-        return <LowStockView items={inventory.allItems} />;
       case 'categories':
         return <CategoriesView items={inventory.allItems} />;
       case 'bill-of-lading':
