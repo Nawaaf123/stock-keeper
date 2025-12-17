@@ -22,7 +22,7 @@ interface InventoryViewProps {
   onSort: (field: SortField) => void;
   onAddItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated' | 'stock'> & { initialStock?: { warehouseId: string; quantity: number }[] }) => void;
   onUpdateItem: (id: string, updates: Partial<Omit<InventoryItem, 'stock'>>) => void;
-  onReceiveStock: (itemId: string, warehouseId: string, quantity: number) => void;
+  onReceiveStock: (itemId: string, warehouseId: string, quantity: number, bolNumber: string) => void;
   onUpdateStock: (itemId: string, warehouseId: string, newQuantity: number) => void;
   onDeleteItem: (id: string) => void;
 }
@@ -83,9 +83,9 @@ export function InventoryView({
     setEditingItem(null);
   };
 
-  const handleReceive = (itemId: string, warehouseId: string, quantity: number) => {
-    onReceiveStock(itemId, warehouseId, quantity);
-    toast.success(`Added ${quantity} units to inventory`);
+  const handleReceive = (itemId: string, warehouseId: string, quantity: number, bolNumber: string) => {
+    onReceiveStock(itemId, warehouseId, quantity, bolNumber);
+    toast.success(`Added ${quantity} units to inventory (BOL: ${bolNumber})`);
   };
 
   const handleDialogChange = (open: boolean) => {
