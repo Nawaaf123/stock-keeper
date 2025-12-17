@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
-import { InventoryItem, SortField, SortDirection, WarehouseStock } from '@/types/inventory';
+import { InventoryItem, SortField, SortDirection, WarehouseStock, InventoryTransaction } from '@/types/inventory';
 import { initialInventory, getTotalQuantity, warehouses } from '@/data/mockData';
 
 export function useInventory() {
   const [items, setItems] = useState<InventoryItem[]>(initialInventory);
+  const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [warehouseFilter, setWarehouseFilter] = useState<string>('all');
@@ -103,7 +104,27 @@ export function useInventory() {
     );
   };
 
-  const receiveStock = (itemId: string, warehouseId: string, quantity: number) => {
+  const receiveStock = (itemId: string, warehouseId: string, quantity: number, bolNumber: string) => {
+    const item = items.find(i => i.id === itemId);
+    const warehouse = warehouses.find(w => w.id === warehouseId);
+    
+    if (item && warehouse) {
+      // Add transaction record
+      const transaction: InventoryTransaction = {
+        id: Date.now().toString(),
+        itemId,
+        itemName: item.name,
+        itemSku: item.sku,
+        warehouseId,
+        warehouseName: warehouse.name,
+        quantity,
+        bolNumber,
+        date: new Date(),
+        type: 'receive',
+      };
+      setTransactions(prev => [transaction, ...prev]);
+    }
+
     setItems((prev) =>
       prev.map((item) => {
         if (item.id !== itemId) return item;
@@ -148,6 +169,7 @@ export function useInventory() {
     items: filteredAndSortedItems,
     allItems: items,
     stats,
+    transactions,
     searchQuery,
     setSearchQuery,
     categoryFilter,

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { DashboardView } from '@/components/views/DashboardView';
 import { InventoryView } from '@/components/views/InventoryView';
+import { InventoryHistoryView } from '@/components/views/InventoryHistoryView';
 import { WarehousesView } from '@/components/views/WarehousesView';
 import { CategoriesView } from '@/components/views/CategoriesView';
 import { BillOfLadingView } from '@/components/views/BillOfLadingView';
@@ -35,6 +36,8 @@ const Index = () => {
             onDeleteItem={inventory.deleteItem}
           />
         );
+      case 'inventory-history':
+        return <InventoryHistoryView transactions={inventory.transactions} />;
       case 'warehouses':
         return <WarehousesView stats={inventory.stats} items={inventory.allItems} />;
       case 'categories':

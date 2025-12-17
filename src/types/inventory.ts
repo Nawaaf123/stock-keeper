@@ -30,3 +30,16 @@ export interface Category {
 
 export type SortField = 'name' | 'quantity' | 'price' | 'lastUpdated';
 export type SortDirection = 'asc' | 'desc';
+
+export interface InventoryTransaction {
+  id: string;
+  itemId: string;
+  itemName: string;
+  itemSku: string;
+  warehouseId: string;
+  warehouseName: string;
+  quantity: number;
+  bolNumber: string;
+  date: Date;
+  type: 'receive' | 'adjust';
+}

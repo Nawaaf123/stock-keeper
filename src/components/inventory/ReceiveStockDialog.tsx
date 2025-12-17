@@ -24,20 +24,22 @@ interface ReceiveStockDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: InventoryItem | null;
-  onReceive: (itemId: string, warehouseId: string, quantity: number) => void;
+  onReceive: (itemId: string, warehouseId: string, quantity: number, bolNumber: string) => void;
 }
 
 export function ReceiveStockDialog({ open, onOpenChange, item, onReceive }: ReceiveStockDialogProps) {
   const [warehouseId, setWarehouseId] = useState('');
   const [quantity, setQuantity] = useState(0);
+  const [bolNumber, setBolNumber] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (item && warehouseId && quantity > 0) {
-      onReceive(item.id, warehouseId, quantity);
+    if (item && warehouseId && quantity > 0 && bolNumber.trim()) {
+      onReceive(item.id, warehouseId, quantity, bolNumber.trim());
       onOpenChange(false);
       setWarehouseId('');
       setQuantity(0);
+      setBolNumber('');
     }
   };
 
@@ -99,6 +101,18 @@ export function ReceiveStockDialog({ open, onOpenChange, item, onReceive }: Rece
           )}
 
           <div>
+            <Label htmlFor="bolNumber">BOL Number</Label>
+            <Input
+              id="bolNumber"
+              type="text"
+              value={bolNumber}
+              onChange={(e) => setBolNumber(e.target.value)}
+              placeholder="Enter Bill of Lading number"
+              required
+            />
+          </div>
+
+          <div>
             <Label htmlFor="quantity">Quantity to Add</Label>
             <Input
               id="quantity"
@@ -123,7 +137,7 @@ export function ReceiveStockDialog({ open, onOpenChange, item, onReceive }: Rece
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!warehouseId || quantity <= 0}>
+            <Button type="submit" disabled={!warehouseId || quantity <= 0 || !bolNumber.trim()}>
               Receive Stock
             </Button>
           </div>
