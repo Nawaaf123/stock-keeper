@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
-import { InventoryItem, SortField, SortDirection, WarehouseStock, InventoryTransaction } from '@/types/inventory';
+import { InventoryItem, SortField, SortDirection, WarehouseStock, InventoryTransaction, Order, OrderItem } from '@/types/inventory';
 import { initialInventory, getTotalQuantity, warehouses } from '@/data/mockData';
 
 export function useInventory() {
   const [items, setItems] = useState<InventoryItem[]>(initialInventory);
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [warehouseFilter, setWarehouseFilter] = useState<string>('all');
@@ -156,6 +157,46 @@ export function useInventory() {
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
+  const createOrder = (shopName: string, orderItems: { itemId: string; warehouseId: string; quantity: number }[]) => {
+    const orderItemsWithDetails: OrderItem[] = orderItems.map(entry => {
+      const item = items.find(i => i.id === entry.itemId);
+      const warehouse = warehouses.find(w => w.id === entry.warehouseId);
+      return {
+        itemId: entry.itemId,
+        itemName: item?.name || '',
+        itemSku: item?.sku || '',
+        warehouseId: entry.warehouseId,
+        warehouseName: warehouse?.name || '',
+        quantity: entry.quantity,
+      };
+    });
+
+    const newOrder: Order = {
+      id: Date.now().toString(),
+      shopName,
+      items: orderItemsWithDetails,
+      date: new Date(),
+      status: 'completed',
+    };
+
+    setOrders(prev => [newOrder, ...prev]);
+
+    // Reduce stock for each item
+    setItems(prev => {
+      return prev.map(item => {
+        const orderEntry = orderItems.find(e => e.itemId === item.id);
+        if (!orderEntry) return item;
+        
+        const updatedStock = item.stock.map(s => 
+          s.warehouseId === orderEntry.warehouseId
+            ? { ...s, quantity: Math.max(0, s.quantity - orderEntry.quantity) }
+            : s
+        );
+        return { ...item, stock: updatedStock, lastUpdated: new Date() };
+      });
+    });
+  };
+
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -170,6 +211,7 @@ export function useInventory() {
     allItems: items,
     stats,
     transactions,
+    orders,
     searchQuery,
     setSearchQuery,
     categoryFilter,
@@ -184,5 +226,6 @@ export function useInventory() {
     receiveStock,
     updateStock,
     deleteItem,
+    createOrder,
   };
 }
