@@ -6,6 +6,7 @@ import { InventoryHistoryView } from '@/components/views/InventoryHistoryView';
 import { WarehousesView } from '@/components/views/WarehousesView';
 import { CategoriesView } from '@/components/views/CategoriesView';
 import { BillOfLadingView } from '@/components/views/BillOfLadingView';
+import { OrdersView } from '@/components/views/OrdersView';
 import { useInventory } from '@/hooks/useInventory';
 
 const Index = () => {
@@ -34,6 +35,14 @@ const Index = () => {
             onReceiveStock={inventory.receiveStock}
             onUpdateStock={inventory.updateStock}
             onDeleteItem={inventory.deleteItem}
+          />
+        );
+      case 'orders':
+        return (
+          <OrdersView
+            orders={inventory.orders}
+            items={inventory.allItems}
+            onCreateOrder={inventory.createOrder}
           />
         );
       case 'inventory-history':

@@ -43,3 +43,20 @@ export interface InventoryTransaction {
   date: Date;
   type: 'receive' | 'adjust';
 }
+
+export interface OrderItem {
+  itemId: string;
+  itemName: string;
+  itemSku: string;
+  warehouseId: string;
+  warehouseName: string;
+  quantity: number;
+}
+
+export interface Order {
+  id: string;
+  shopName: string;
+  items: OrderItem[];
+  date: Date;
+  status: 'pending' | 'completed' | 'cancelled';
+}
