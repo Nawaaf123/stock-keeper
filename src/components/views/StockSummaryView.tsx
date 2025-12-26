@@ -125,9 +125,9 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
                     </TableCell>
                     <TableCell className="max-w-md">
                       {item.buyers.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-col gap-0.5">
                           {item.buyers.map((buyer, idx) => (
-                            <span key={idx} className="text-xs bg-muted px-2 py-0.5 rounded">
+                            <span key={idx} className="text-xs">
                               {buyer.shop}: {buyer.qty} ({format(buyer.lastDate, 'dd/MM')})
                             </span>
                           ))}
