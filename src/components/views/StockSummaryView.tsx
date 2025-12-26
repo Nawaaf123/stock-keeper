@@ -103,35 +103,11 @@ export function StockSummaryView({ items, orders, transactions }: StockSummaryVi
     );
   }, [summaryData, searchQuery]);
 
-  const totalsSold = summaryData.reduce((sum, item) => sum + item.totalSold, 0);
-  const totalsStock = summaryData.reduce((sum, item) => sum + item.currentStock, 0);
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Stock Summary</h1>
         <p className="text-muted-foreground">Overview of sold quantities and remaining stock per product</p>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{items.length}</div>
-            <p className="text-sm text-muted-foreground">Total Products</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-orange-600">{totalsSold}</div>
-            <p className="text-sm text-muted-foreground">Total Units Sold</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">{totalsStock}</div>
-            <p className="text-sm text-muted-foreground">Total Stock Remaining</p>
-          </CardContent>
-        </Card>
       </div>
 
       <Card>
