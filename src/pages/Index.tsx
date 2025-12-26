@@ -7,6 +7,7 @@ import { CategoriesView } from '@/components/views/CategoriesView';
 import { BillOfLadingView } from '@/components/views/BillOfLadingView';
 import { OrdersView } from '@/components/views/OrdersView';
 import { WholesalersView } from '@/components/views/WholesalersView';
+import { StockSummaryView } from '@/components/views/StockSummaryView';
 import { useInventory } from '@/hooks/useInventory';
 
 const Index = () => {
@@ -42,6 +43,13 @@ const Index = () => {
             items={inventory.allItems}
             wholesalers={inventory.wholesalers}
             onCreateOrder={inventory.createOrder}
+          />
+        );
+      case 'stock-summary':
+        return (
+          <StockSummaryView
+            items={inventory.allItems}
+            orders={inventory.orders}
           />
         );
       case 'wholesalers':
