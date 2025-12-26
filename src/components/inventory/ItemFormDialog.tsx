@@ -8,15 +8,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { InventoryItem } from '@/types/inventory';
-import { categories, warehouses } from '@/data/mockData';
+import { warehouses } from '@/data/mockData';
 
 interface ItemFormDialogProps {
   open: boolean;
@@ -30,6 +23,7 @@ const initialFormState = {
   name: '',
   sku: '',
   category: '',
+  subCategory: '',
   minStock: 0,
   price: 0,
 };
@@ -44,6 +38,7 @@ export function ItemFormDialog({ open, onOpenChange, item, onSubmit, onUpdate }:
         name: item.name,
         sku: item.sku,
         category: item.category,
+        subCategory: item.subCategory || '',
         minStock: item.minStock,
         price: item.price,
       });
@@ -94,21 +89,22 @@ export function ItemFormDialog({ open, onOpenChange, item, onSubmit, onUpdate }:
             </div>
             <div>
               <Label htmlFor="category">Category</Label>
-              <Select
+              <Input
+                id="category"
                 value={formData.category}
-                onValueChange={(value) => setFormData({ ...formData, category: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.name}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                placeholder="e.g. Electronics"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="subCategory">Sub Category</Label>
+              <Input
+                id="subCategory"
+                value={formData.subCategory}
+                onChange={(e) => setFormData({ ...formData, subCategory: e.target.value })}
+                placeholder="e.g. Accessories"
+              />
             </div>
             <div>
               <Label htmlFor="minStock">Min Stock Level</Label>
