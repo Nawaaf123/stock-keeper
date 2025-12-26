@@ -19,6 +19,8 @@ interface InventoryViewProps {
   onSearchChange: (value: string) => void;
   categoryFilter: string;
   onCategoryChange: (value: string) => void;
+  subCategoryFilter: string;
+  onSubCategoryChange: (value: string) => void;
   warehouseFilter: string;
   onWarehouseChange: (value: string) => void;
   sortField: SortField;
@@ -41,6 +43,8 @@ export function InventoryView({
   onSearchChange,
   categoryFilter,
   onCategoryChange,
+  subCategoryFilter,
+  onSubCategoryChange,
   warehouseFilter,
   onWarehouseChange,
   sortField,
@@ -259,6 +263,9 @@ export function InventoryView({
         onSearchChange={onSearchChange}
         categoryFilter={categoryFilter}
         onCategoryChange={onCategoryChange}
+        subCategoryFilter={subCategoryFilter}
+        onSubCategoryChange={onSubCategoryChange}
+        subCategories={[...new Set(allItems.map(item => item.subCategory).filter(Boolean))]}
         warehouseFilter={warehouseFilter}
         onWarehouseChange={onWarehouseChange}
         warehouses={warehouses}

@@ -26,6 +26,8 @@ const Index = () => {
             onSearchChange={inventory.setSearchQuery}
             categoryFilter={inventory.categoryFilter}
             onCategoryChange={inventory.setCategoryFilter}
+            subCategoryFilter={inventory.subCategoryFilter}
+            onSubCategoryChange={inventory.setSubCategoryFilter}
             warehouseFilter={inventory.warehouseFilter}
             onWarehouseChange={inventory.setWarehouseFilter}
             sortField={inventory.sortField}
@@ -85,6 +87,8 @@ const Index = () => {
             onSearchChange={inventory.setSearchQuery}
             categoryFilter={inventory.categoryFilter}
             onCategoryChange={inventory.setCategoryFilter}
+            subCategoryFilter={inventory.subCategoryFilter}
+            onSubCategoryChange={inventory.setSubCategoryFilter}
             warehouseFilter={inventory.warehouseFilter}
             onWarehouseChange={inventory.setWarehouseFilter}
             sortField={inventory.sortField}
