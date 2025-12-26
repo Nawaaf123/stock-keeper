@@ -15,28 +15,41 @@ interface StockSummaryViewProps {
 export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
   const summaryData = useMemo(() => {
     return items.map(item => {
-      // Calculate total sold from orders
-      let totalSold = 0;
-      const buyers = new Map<string, { qty: number; lastDate: Date }>();
+      // Get all sales for this item with dates
+      const salesByWholesaler: { shop: string; qty: number; date: Date }[] = [];
 
       orders.forEach(order => {
         order.items.forEach(orderItem => {
           if (orderItem.itemId === item.id) {
-            totalSold += orderItem.quantity;
-            const existing = buyers.get(order.shopName);
-            if (existing) {
-              existing.qty += orderItem.quantity;
-              if (order.date > existing.lastDate) {
-                existing.lastDate = order.date;
-              }
-            } else {
-              buyers.set(order.shopName, { qty: orderItem.quantity, lastDate: order.date });
-            }
+            salesByWholesaler.push({
+              shop: order.shopName,
+              qty: orderItem.quantity,
+              date: order.date,
+            });
           }
         });
       });
 
+      // Sort by date (oldest first) to calculate running balance
+      salesByWholesaler.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      // Calculate total sold and current stock
+      const totalSold = salesByWholesaler.reduce((sum, s) => sum + s.qty, 0);
       const currentStock = getTotalQuantity(item);
+      const startingStock = currentStock + totalSold;
+
+      // Calculate running remaining after each sale
+      let runningStock = startingStock;
+      const salesWithRemaining = salesByWholesaler.map(sale => {
+        runningStock -= sale.qty;
+        return {
+          ...sale,
+          remainingAfter: runningStock,
+        };
+      });
+
+      // Reverse to show most recent first
+      salesWithRemaining.reverse();
 
       return {
         id: item.id,
@@ -45,9 +58,7 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
         category: item.category,
         totalSold,
         currentStock,
-        buyers: Array.from(buyers.entries())
-          .sort((a, b) => b[1].lastDate.getTime() - a[1].lastDate.getTime())
-          .map(([shop, data]) => ({ shop, qty: data.qty, lastDate: data.lastDate })),
+        sales: salesWithRemaining,
       };
     }).sort((a, b) => b.totalSold - a.totalSold);
   }, [items, orders]);
@@ -105,7 +116,7 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
               </TableHeader>
               <TableBody>
                 {summaryData.map((item) => {
-                  if (item.buyers.length === 0) {
+                  if (item.sales.length === 0) {
                     return (
                       <TableRow key={item.id} className="hover:bg-muted/30">
                         <TableCell className="font-mono text-xs">{item.sku}</TableCell>
@@ -122,29 +133,29 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
                     );
                   }
 
-                  return item.buyers.map((buyer, idx) => (
+                  return item.sales.map((sale, idx) => (
                     <TableRow key={`${item.id}-${idx}`} className="hover:bg-muted/30">
                       {idx === 0 ? (
                         <>
-                          <TableCell className="font-mono text-xs" rowSpan={item.buyers.length}>
+                          <TableCell className="font-mono text-xs" rowSpan={item.sales.length}>
                             {item.sku}
                           </TableCell>
-                          <TableCell className="font-medium" rowSpan={item.buyers.length}>
+                          <TableCell className="font-medium" rowSpan={item.sales.length}>
                             {item.name}
                           </TableCell>
                         </>
                       ) : null}
-                      <TableCell className="text-sm font-medium">{buyer.shop}</TableCell>
+                      <TableCell className="text-sm font-medium">{sale.shop}</TableCell>
                       <TableCell className="text-center">
-                        <span className="text-orange-600 font-semibold">{buyer.qty}</span>
+                        <span className="text-orange-600 font-semibold">{sale.qty}</span>
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className={item.currentStock < 10 ? "text-red-600 font-semibold" : "text-green-600 font-semibold"}>
-                          {item.currentStock}
+                        <span className={sale.remainingAfter < 10 ? "text-red-600 font-semibold" : "text-green-600 font-semibold"}>
+                          {sale.remainingAfter}
                         </span>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {format(buyer.lastDate, 'dd/MM/yy')}
+                        {format(sale.date, 'dd/MM/yy')}
                       </TableCell>
                     </TableRow>
                   ));
