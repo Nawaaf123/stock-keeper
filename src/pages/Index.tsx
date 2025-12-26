@@ -43,6 +43,7 @@ const Index = () => {
           <OrdersView
             orders={inventory.orders}
             items={inventory.allItems}
+            wholesalers={inventory.wholesalers}
             onCreateOrder={inventory.createOrder}
           />
         );
