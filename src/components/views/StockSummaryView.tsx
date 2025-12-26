@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { InventoryItem, Order, InventoryTransaction } from '@/types/inventory';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, ArrowUp, ArrowDown } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ClipboardList, ArrowUp, ArrowDown, Search } from 'lucide-react';
 import { getTotalQuantity } from '@/data/mockData';
 import { format } from 'date-fns';
 
@@ -22,6 +23,8 @@ interface StockEntry {
 }
 
 export function StockSummaryView({ items, orders, transactions }: StockSummaryViewProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+
   const summaryData = useMemo(() => {
     return items.map(item => {
       // Collect all stock movements for this item
@@ -91,6 +94,15 @@ export function StockSummaryView({ items, orders, transactions }: StockSummaryVi
     }).sort((a, b) => b.totalSold - a.totalSold);
   }, [items, orders, transactions]);
 
+  const filteredSummaryData = useMemo(() => {
+    if (!searchQuery.trim()) return summaryData;
+    const query = searchQuery.toLowerCase();
+    return summaryData.filter(item => 
+      item.name.toLowerCase().includes(query) || 
+      item.sku.toLowerCase().includes(query)
+    );
+  }, [summaryData, searchQuery]);
+
   const totalsSold = summaryData.reduce((sum, item) => sum + item.totalSold, 0);
   const totalsStock = summaryData.reduce((sum, item) => sum + item.currentStock, 0);
 
@@ -124,10 +136,21 @@ export function StockSummaryView({ items, orders, transactions }: StockSummaryVi
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardList className="w-5 h-5" />
-            Product Sales & Stock Overview
-          </CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="w-5 h-5" />
+              Product Sales & Stock Overview
+            </CardTitle>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or SKU..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="border rounded-lg overflow-hidden">
@@ -144,7 +167,7 @@ export function StockSummaryView({ items, orders, transactions }: StockSummaryVi
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {summaryData.map((item) => {
+                {filteredSummaryData.map((item) => {
                   if (item.entries.length === 0) {
                     return (
                       <TableRow key={item.id} className="hover:bg-muted/30">
@@ -205,10 +228,10 @@ export function StockSummaryView({ items, orders, transactions }: StockSummaryVi
                     </TableRow>
                   ));
                 })}
-                {summaryData.length === 0 && (
+                {filteredSummaryData.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No products in inventory
+                      {searchQuery ? 'No products match your search' : 'No products in inventory'}
                     </TableCell>
                   </TableRow>
                 )}
