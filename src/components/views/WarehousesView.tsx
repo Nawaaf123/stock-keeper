@@ -1,15 +1,21 @@
+import { useState } from 'react';
 import { warehouses } from '@/data/mockData';
 import { InventoryItem } from '@/types/inventory';
-import { MapPin, Package, DollarSign } from 'lucide-react';
+import { MapPin, Package, DollarSign, ArrowLeftRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TransferStockDialog } from '@/components/inventory/TransferStockDialog';
 
 interface WarehousesViewProps {
   stats: {
     warehouseStats: { id: string; name: string; location: string; color: string; totalItems: number; totalValue: number }[];
   };
   items: InventoryItem[];
+  onTransferStock: (itemId: string, fromWarehouseId: string, toWarehouseId: string, quantity: number) => void;
 }
 
-export function WarehousesView({ stats, items }: WarehousesViewProps) {
+export function WarehousesView({ stats, items, onTransferStock }: WarehousesViewProps) {
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -32,12 +38,25 @@ export function WarehousesView({ stats, items }: WarehousesViewProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Warehouses</h1>
-        <p className="text-muted-foreground mt-1">
-          View inventory distribution across all locations
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Warehouses</h1>
+          <p className="text-muted-foreground mt-1">
+            View inventory distribution across all locations
+          </p>
+        </div>
+        <Button onClick={() => setTransferDialogOpen(true)}>
+          <ArrowLeftRight className="w-4 h-4 mr-2" />
+          Transfer Stock
+        </Button>
       </div>
+
+      <TransferStockDialog
+        open={transferDialogOpen}
+        onOpenChange={setTransferDialogOpen}
+        items={items}
+        onTransfer={onTransferStock}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {warehouses.map((wh) => {
