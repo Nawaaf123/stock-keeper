@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { warehouses } from '@/data/mockData';
 import { InventoryItem } from '@/types/inventory';
-import { MapPin, Package, DollarSign, ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TransferStockDialog } from '@/components/inventory/TransferStockDialog';
 
 interface WarehousesViewProps {
@@ -15,40 +17,32 @@ interface WarehousesViewProps {
 
 export function WarehousesView({ stats, items, onTransferStock }: WarehousesViewProps) {
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const getWarehouseProducts = (warehouseId: string) => {
-    return items
-      .map((item) => {
-        const stock = item.stock.find((s) => s.warehouseId === warehouseId);
-        return { ...item, warehouseQty: stock?.quantity || 0 };
-      })
-      .filter((item) => item.warehouseQty > 0)
-      .sort((a, b) => b.warehouseQty - a.warehouseQty)
-      .slice(0, 5);
-  };
+  const filteredItems = items.filter(item => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return item.name.toLowerCase().includes(query) || item.sku.toLowerCase().includes(query);
+  });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Warehouses</h1>
-          <p className="text-muted-foreground mt-1">
-            View inventory distribution across all locations
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold text-foreground">Warehouses</h1>
         <Button onClick={() => setTransferDialogOpen(true)}>
           <ArrowLeftRight className="w-4 h-4 mr-2" />
           Transfer Stock
         </Button>
+      </div>
+
+      <div className="relative w-full max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by name or SKU..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
       </div>
 
       <TransferStockDialog
@@ -58,76 +52,48 @@ export function WarehousesView({ stats, items, onTransferStock }: WarehousesView
         onTransfer={onTransferStock}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {warehouses.map((wh) => {
-          const whStats = stats.warehouseStats.find((s) => s.id === wh.id);
-          const topProducts = getWarehouseProducts(wh.id);
-
-          return (
-            <div
-              key={wh.id}
-              className="bg-card rounded-xl border border-border overflow-hidden animate-fade-in"
-            >
-              <div
-                className="p-6 text-white"
-                style={{ backgroundColor: wh.color }}
-              >
-                <h2 className="text-xl font-bold">{wh.name}</h2>
-                <div className="flex items-center gap-1 mt-1 opacity-90">
-                  <MapPin className="w-4 h-4" />
-                  <span className="text-sm">{wh.location}</span>
-                </div>
-              </div>
-
-              <div className="p-6">
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Package className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Total Units</p>
-                      <p className="text-lg font-bold">{whStats?.totalItems.toLocaleString() || 0}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                      <DollarSign className="w-5 h-5 text-success" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Total Value</p>
-                      <p className="text-lg font-bold">{formatCurrency(whStats?.totalValue || 0)}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-3">Top Products</h3>
-                  {topProducts.length > 0 ? (
-                    <div className="space-y-2">
-                      {topProducts.map((product) => (
-                        <div
-                          key={product.id}
-                          className="flex items-center justify-between py-2 border-b border-border last:border-0"
-                        >
-                          <div>
-                            <p className="font-medium text-sm">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">{product.sku}</p>
-                          </div>
-                          <span className="font-semibold text-primary">{product.warehouseQty}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No products in this warehouse
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div className="border rounded-lg overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="font-semibold">SKU</TableHead>
+              <TableHead className="font-semibold">Product Name</TableHead>
+              {warehouses.map(wh => (
+                <TableHead key={wh.id} className="font-semibold text-center">{wh.name}</TableHead>
+              ))}
+              <TableHead className="font-semibold text-center">Total</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredItems.map(item => {
+              const total = item.stock.reduce((sum, s) => sum + s.quantity, 0);
+              return (
+                <TableRow key={item.id} className="hover:bg-muted/30">
+                  <TableCell className="font-mono text-xs">{item.sku}</TableCell>
+                  <TableCell className="font-medium">{item.name}</TableCell>
+                  {warehouses.map(wh => {
+                    const stock = item.stock.find(s => s.warehouseId === wh.id)?.quantity || 0;
+                    return (
+                      <TableCell key={wh.id} className="text-center">
+                        <span className={stock === 0 ? "text-muted-foreground" : stock < 10 ? "text-red-600 font-semibold" : ""}>
+                          {stock}
+                        </span>
+                      </TableCell>
+                    );
+                  })}
+                  <TableCell className="text-center font-semibold">{total}</TableCell>
+                </TableRow>
+              );
+            })}
+            {filteredItems.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={warehouses.length + 3} className="text-center py-8 text-muted-foreground">
+                  {searchQuery ? 'No products match your search' : 'No products in inventory'}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
