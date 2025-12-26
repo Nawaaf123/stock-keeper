@@ -48,9 +48,6 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
         };
       });
 
-      // Reverse to show most recent first
-      salesWithRemaining.reverse();
-
       return {
         id: item.id,
         sku: item.sku,
