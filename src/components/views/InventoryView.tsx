@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, PackagePlus, ArrowLeftRight, Pencil, Check, X } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, PackagePlus, ArrowLeftRight, Pencil, Check, X, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SearchAndFilter } from '@/components/inventory/SearchAndFilter';
@@ -63,6 +63,63 @@ export function InventoryView({
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [editingWarehouseId, setEditingWarehouseId] = useState<string | null>(null);
   const [editingWarehouseName, setEditingWarehouseName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+          toast.error('CSV file must have a header row and at least one data row');
+          return;
+        }
+
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const requiredHeaders = ['name', 'sku', 'category', 'subcategory', 'minstock', 'price'];
+        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+        
+        if (missingHeaders.length > 0) {
+          toast.error(`Missing required columns: ${missingHeaders.join(', ')}`);
+          return;
+        }
+
+        let importedCount = 0;
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim());
+          if (values.length < headers.length) continue;
+
+          const item: Omit<InventoryItem, 'id' | 'lastUpdated' | 'stock'> = {
+            name: values[headers.indexOf('name')] || '',
+            sku: values[headers.indexOf('sku')] || '',
+            category: values[headers.indexOf('category')] || '',
+            subCategory: values[headers.indexOf('subcategory')] || '',
+            minStock: parseInt(values[headers.indexOf('minstock')]) || 0,
+            price: parseFloat(values[headers.indexOf('price')]) || 0,
+          };
+
+          if (item.name && item.sku) {
+            onAddItem(item);
+            importedCount++;
+          }
+        }
+
+        toast.success(`Successfully imported ${importedCount} products`);
+      } catch (error) {
+        toast.error('Failed to parse CSV file');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
 
   const handleWarehouseEdit = (warehouse: Warehouse) => {
     setEditingWarehouseId(warehouse.id);
@@ -135,6 +192,17 @@ export function InventoryView({
           </p>
         </div>
         <div className="flex gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept=".csv"
+            className="hidden"
+          />
+          <Button variant="outline" onClick={handleImportClick} className="gap-2">
+            <Upload className="w-4 h-4" />
+            Import Products
+          </Button>
           <Button variant="outline" onClick={() => setTransferDialogOpen(true)} className="gap-2">
             <ArrowLeftRight className="w-4 h-4" />
             Transfer Stock
