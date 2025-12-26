@@ -20,6 +20,7 @@ const Index = () => {
         return (
           <InventoryView
             items={inventory.items}
+            allItems={inventory.allItems}
             searchQuery={inventory.searchQuery}
             onSearchChange={inventory.setSearchQuery}
             categoryFilter={inventory.categoryFilter}
@@ -34,6 +35,7 @@ const Index = () => {
             onReceiveStock={inventory.receiveStock}
             onUpdateStock={inventory.updateStock}
             onDeleteItem={inventory.deleteItem}
+            onTransferStock={inventory.transferStock}
           />
         );
       case 'orders':
@@ -65,7 +67,7 @@ const Index = () => {
       case 'inventory-history':
         return <InventoryHistoryView transactions={inventory.transactions} />;
       case 'warehouses':
-        return <WarehousesView stats={inventory.stats} items={inventory.allItems} onTransferStock={inventory.transferStock} />;
+        return <WarehousesView stats={inventory.stats} items={inventory.allItems} />;
       case 'categories':
         return <CategoriesView items={inventory.allItems} />;
       case 'bill-of-lading':
@@ -74,6 +76,7 @@ const Index = () => {
         return (
           <InventoryView
             items={inventory.items}
+            allItems={inventory.allItems}
             searchQuery={inventory.searchQuery}
             onSearchChange={inventory.setSearchQuery}
             categoryFilter={inventory.categoryFilter}
@@ -88,6 +91,7 @@ const Index = () => {
             onReceiveStock={inventory.receiveStock}
             onUpdateStock={inventory.updateStock}
             onDeleteItem={inventory.deleteItem}
+            onTransferStock={inventory.transferStock}
           />
         );
     }

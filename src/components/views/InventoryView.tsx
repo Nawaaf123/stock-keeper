@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import { Plus, PackagePlus } from 'lucide-react';
+import { Plus, PackagePlus, ArrowLeftRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SearchAndFilter } from '@/components/inventory/SearchAndFilter';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
 import { ItemFormDialog } from '@/components/inventory/ItemFormDialog';
 import { ReceiveStockDialog } from '@/components/inventory/ReceiveStockDialog';
 import { ProductDetailDialog } from '@/components/inventory/ProductDetailDialog';
+import { TransferStockDialog } from '@/components/inventory/TransferStockDialog';
 import { InventoryItem, SortField, SortDirection } from '@/types/inventory';
 import { toast } from 'sonner';
 
 interface InventoryViewProps {
   items: InventoryItem[];
+  allItems: InventoryItem[];
   searchQuery: string;
   onSearchChange: (value: string) => void;
   categoryFilter: string;
@@ -25,10 +27,12 @@ interface InventoryViewProps {
   onReceiveStock: (itemId: string, warehouseId: string, quantity: number, bolNumber: string) => void;
   onUpdateStock: (itemId: string, warehouseId: string, newQuantity: number) => void;
   onDeleteItem: (id: string) => void;
+  onTransferStock: (itemId: string, fromWarehouseId: string, toWarehouseId: string, quantity: number) => void;
 }
 
 export function InventoryView({
   items,
+  allItems,
   searchQuery,
   onSearchChange,
   categoryFilter,
@@ -43,6 +47,7 @@ export function InventoryView({
   onReceiveStock,
   onUpdateStock,
   onDeleteItem,
+  onTransferStock,
 }: InventoryViewProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -50,6 +55,7 @@ export function InventoryView({
   const [receivingItem, setReceivingItem] = useState<InventoryItem | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
 
   const handleEdit = (item: InventoryItem) => {
     setEditingItem(item);
@@ -103,6 +109,10 @@ export function InventoryView({
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setTransferDialogOpen(true)} className="gap-2">
+            <ArrowLeftRight className="w-4 h-4" />
+            Transfer Stock
+          </Button>
           <Button variant="outline" onClick={() => setReceiveDialogOpen(true)} className="gap-2">
             <PackagePlus className="w-4 h-4" />
             Receive Stock
@@ -158,6 +168,13 @@ export function InventoryView({
         onOpenChange={setDetailDialogOpen}
         item={detailItem}
         onUpdateStock={onUpdateStock}
+      />
+
+      <TransferStockDialog
+        open={transferDialogOpen}
+        onOpenChange={setTransferDialogOpen}
+        items={allItems}
+        onTransfer={onTransferStock}
       />
     </div>
   );

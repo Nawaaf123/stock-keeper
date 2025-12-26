@@ -1,22 +1,18 @@
 import { useState } from 'react';
 import { warehouses } from '@/data/mockData';
 import { InventoryItem } from '@/types/inventory';
-import { ArrowLeftRight, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { TransferStockDialog } from '@/components/inventory/TransferStockDialog';
 
 interface WarehousesViewProps {
   stats: {
     warehouseStats: { id: string; name: string; location: string; color: string; totalItems: number; totalValue: number }[];
   };
   items: InventoryItem[];
-  onTransferStock: (itemId: string, fromWarehouseId: string, toWarehouseId: string, quantity: number) => void;
 }
 
-export function WarehousesView({ stats, items, onTransferStock }: WarehousesViewProps) {
-  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+export function WarehousesView({ stats, items }: WarehousesViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredItems = items.filter(item => {
@@ -27,13 +23,7 @@ export function WarehousesView({ stats, items, onTransferStock }: WarehousesView
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Warehouses</h1>
-        <Button onClick={() => setTransferDialogOpen(true)}>
-          <ArrowLeftRight className="w-4 h-4 mr-2" />
-          Transfer Stock
-        </Button>
-      </div>
+      <h1 className="text-2xl font-bold text-foreground">Warehouses</h1>
 
       <div className="relative w-full max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -44,13 +34,6 @@ export function WarehousesView({ stats, items, onTransferStock }: WarehousesView
           className="pl-9"
         />
       </div>
-
-      <TransferStockDialog
-        open={transferDialogOpen}
-        onOpenChange={setTransferDialogOpen}
-        items={items}
-        onTransfer={onTransferStock}
-      />
 
       <div className="border rounded-lg overflow-hidden">
         <Table>
