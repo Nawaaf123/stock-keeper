@@ -9,6 +9,7 @@ export interface InventoryItem {
   name: string;
   sku: string;
   category: string;
+  subCategory: string;
   stock: WarehouseStock[];
   minStock: number;
   price: number;

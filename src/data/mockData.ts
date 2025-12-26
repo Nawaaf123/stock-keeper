@@ -20,6 +20,7 @@ export const initialInventory: InventoryItem[] = [
     name: 'Wireless Mouse',
     sku: 'WM-001',
     category: 'Electronics',
+    subCategory: 'Accessories',
     stock: [
       { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 50 },
       { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 35 },
@@ -35,6 +36,7 @@ export const initialInventory: InventoryItem[] = [
     name: 'USB-C Hub',
     sku: 'USB-002',
     category: 'Electronics',
+    subCategory: 'Accessories',
     stock: [
       { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 15 },
       { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 8 },
@@ -50,6 +52,7 @@ export const initialInventory: InventoryItem[] = [
     name: 'A4 Paper (500 sheets)',
     sku: 'PAP-001',
     category: 'Office Supplies',
+    subCategory: 'Paper',
     stock: [
       { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 100 },
       { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 50 },
@@ -65,6 +68,7 @@ export const initialInventory: InventoryItem[] = [
     name: 'Ergonomic Chair',
     sku: 'FRN-001',
     category: 'Furniture',
+    subCategory: 'Seating',
     stock: [
       { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 5 },
       { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 3 },
@@ -80,6 +84,7 @@ export const initialInventory: InventoryItem[] = [
     name: 'Steel Rods (1m)',
     sku: 'RAW-001',
     category: 'Raw Materials',
+    subCategory: 'Metal',
     stock: [
       { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 0 },
       { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 5 },
@@ -95,6 +100,7 @@ export const initialInventory: InventoryItem[] = [
     name: 'Mechanical Keyboard',
     sku: 'KB-001',
     category: 'Electronics',
+    subCategory: 'Accessories',
     stock: [
       { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 20 },
       { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 10 },
@@ -110,6 +116,7 @@ export const initialInventory: InventoryItem[] = [
     name: 'Standing Desk',
     sku: 'FRN-002',
     category: 'Furniture',
+    subCategory: 'Desks',
     stock: [
       { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 1 },
       { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 1 },
@@ -125,6 +132,7 @@ export const initialInventory: InventoryItem[] = [
     name: 'Sticky Notes Pack',
     sku: 'OFF-002',
     category: 'Office Supplies',
+    subCategory: 'Stationery',
     stock: [
       { warehouseId: 'wh-a', warehouseName: 'Warehouse A', quantity: 200 },
       { warehouseId: 'wh-b', warehouseName: 'Warehouse B', quantity: 150 },
