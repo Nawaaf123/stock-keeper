@@ -1,8 +1,8 @@
 import { ChevronUp, ChevronDown, Edit2, Trash2, Plus, Eye } from 'lucide-react';
-import { InventoryItem, SortField, SortDirection } from '@/types/inventory';
+import { InventoryItem, SortField, SortDirection, Warehouse } from '@/types/inventory';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { getTotalQuantity, warehouses } from '@/data/mockData';
+import { getTotalQuantity } from '@/data/mockData';
 import {
   Tooltip,
   TooltipContent,
@@ -11,6 +11,7 @@ import {
 
 interface InventoryTableProps {
   items: InventoryItem[];
+  warehouses: Warehouse[];
   sortField: SortField;
   sortDirection: SortDirection;
   onSort: (field: SortField) => void;
@@ -25,7 +26,7 @@ function SortIcon({ field, currentField, direction }: { field: SortField; curren
   return direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
 }
 
-export function InventoryTable({ items, sortField, sortDirection, onSort, onEdit, onDelete, onReceiveStock, onViewDetails }: InventoryTableProps) {
+export function InventoryTable({ items, warehouses, sortField, sortDirection, onSort, onEdit, onDelete, onReceiveStock, onViewDetails }: InventoryTableProps) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',

@@ -6,8 +6,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { InventoryItem } from '@/types/inventory';
-import { warehouses, getTotalQuantity } from '@/data/mockData';
+import { InventoryItem, Warehouse } from '@/types/inventory';
+import { getTotalQuantity } from '@/data/mockData';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -15,10 +15,11 @@ interface ProductDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: InventoryItem | null;
+  warehouses: Warehouse[];
   onUpdateStock: (itemId: string, warehouseId: string, newQuantity: number) => void;
 }
 
-export function ProductDetailDialog({ open, onOpenChange, item, onUpdateStock }: ProductDetailDialogProps) {
+export function ProductDetailDialog({ open, onOpenChange, item, warehouses, onUpdateStock }: ProductDetailDialogProps) {
   const [editingWarehouse, setEditingWarehouse] = useState<string | null>(null);
   const [editQuantity, setEditQuantity] = useState(0);
 

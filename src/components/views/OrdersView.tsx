@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Order, InventoryItem, Wholesaler } from '@/types/inventory';
+import { Order, InventoryItem, Wholesaler, Warehouse } from '@/types/inventory';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,11 +12,12 @@ import { format } from 'date-fns';
 interface OrdersViewProps {
   orders: Order[];
   items: InventoryItem[];
+  warehouses: Warehouse[];
   wholesalers: Wholesaler[];
   onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number }[]) => void;
 }
 
-export function OrdersView({ orders, items, wholesalers, onCreateOrder }: OrdersViewProps) {
+export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrder }: OrdersViewProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [shopFilter, setShopFilter] = useState<string>('all');
   const [productFilter, setProductFilter] = useState<string>('all');
@@ -401,6 +402,7 @@ export function OrdersView({ orders, items, wholesalers, onCreateOrder }: Orders
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         items={items}
+        warehouses={warehouses}
         wholesalers={wholesalers}
         onCreateOrder={onCreateOrder}
       />
