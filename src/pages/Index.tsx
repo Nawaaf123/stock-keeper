@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { DashboardView } from '@/components/views/DashboardView';
 import { InventoryView } from '@/components/views/InventoryView';
 import { InventoryHistoryView } from '@/components/views/InventoryHistoryView';
 import { WarehousesView } from '@/components/views/WarehousesView';
@@ -11,13 +10,11 @@ import { WholesalersView } from '@/components/views/WholesalersView';
 import { useInventory } from '@/hooks/useInventory';
 
 const Index = () => {
-  const [activeView, setActiveView] = useState('dashboard');
+  const [activeView, setActiveView] = useState('inventory');
   const inventory = useInventory();
 
   const renderView = () => {
     switch (activeView) {
-      case 'dashboard':
-        return <DashboardView stats={inventory.stats} />;
       case 'inventory':
         return (
           <InventoryView
@@ -65,7 +62,25 @@ const Index = () => {
       case 'bill-of-lading':
         return <BillOfLadingView />;
       default:
-        return <DashboardView stats={inventory.stats} />;
+        return (
+          <InventoryView
+            items={inventory.items}
+            searchQuery={inventory.searchQuery}
+            onSearchChange={inventory.setSearchQuery}
+            categoryFilter={inventory.categoryFilter}
+            onCategoryChange={inventory.setCategoryFilter}
+            warehouseFilter={inventory.warehouseFilter}
+            onWarehouseChange={inventory.setWarehouseFilter}
+            sortField={inventory.sortField}
+            sortDirection={inventory.sortDirection}
+            onSort={inventory.toggleSort}
+            onAddItem={inventory.addItem}
+            onUpdateItem={inventory.updateItem}
+            onReceiveStock={inventory.receiveStock}
+            onUpdateStock={inventory.updateStock}
+            onDeleteItem={inventory.deleteItem}
+          />
+        );
     }
   };
 
