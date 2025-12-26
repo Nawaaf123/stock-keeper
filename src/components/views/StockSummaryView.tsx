@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { ClipboardList } from 'lucide-react';
 import { getTotalQuantity } from '@/data/mockData';
+import { format } from 'date-fns';
 
 interface StockSummaryViewProps {
   items: InventoryItem[];
@@ -16,14 +17,21 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
     return items.map(item => {
       // Calculate total sold from orders
       let totalSold = 0;
-      const buyers = new Map<string, number>();
+      const buyers = new Map<string, { qty: number; lastDate: Date }>();
 
       orders.forEach(order => {
         order.items.forEach(orderItem => {
           if (orderItem.itemId === item.id) {
             totalSold += orderItem.quantity;
-            const currentQty = buyers.get(order.shopName) || 0;
-            buyers.set(order.shopName, currentQty + orderItem.quantity);
+            const existing = buyers.get(order.shopName);
+            if (existing) {
+              existing.qty += orderItem.quantity;
+              if (order.date > existing.lastDate) {
+                existing.lastDate = order.date;
+              }
+            } else {
+              buyers.set(order.shopName, { qty: orderItem.quantity, lastDate: order.date });
+            }
           }
         });
       });
@@ -38,8 +46,8 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
         totalSold,
         currentStock,
         buyers: Array.from(buyers.entries())
-          .sort((a, b) => b[1] - a[1])
-          .map(([shop, qty]) => ({ shop, qty })),
+          .sort((a, b) => b[1].lastDate.getTime() - a[1].lastDate.getTime())
+          .map(([shop, data]) => ({ shop, qty: data.qty, lastDate: data.lastDate })),
       };
     }).sort((a, b) => b.totalSold - a.totalSold);
   }, [items, orders]);
@@ -115,12 +123,12 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
                         {item.currentStock}
                       </span>
                     </TableCell>
-                    <TableCell className="max-w-xs">
+                    <TableCell className="max-w-md">
                       {item.buyers.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {item.buyers.map((buyer, idx) => (
                             <span key={idx} className="text-xs bg-muted px-2 py-0.5 rounded">
-                              {buyer.shop}: {buyer.qty}
+                              {buyer.shop}: {buyer.qty} ({format(buyer.lastDate, 'dd/MM')})
                             </span>
                           ))}
                         </div>
