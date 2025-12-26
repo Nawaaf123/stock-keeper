@@ -97,51 +97,58 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
                 <TableRow className="bg-muted/50">
                   <TableHead className="font-semibold">SKU</TableHead>
                   <TableHead className="font-semibold">Product Name</TableHead>
-                  <TableHead className="font-semibold">Category</TableHead>
+                  <TableHead className="font-semibold">Wholesaler</TableHead>
                   <TableHead className="font-semibold text-center">Sold</TableHead>
-                  <TableHead className="font-semibold text-center">In Stock</TableHead>
-                  <TableHead className="font-semibold">Wholesaler Details (Name / Sold / Date)</TableHead>
+                  <TableHead className="font-semibold text-center">Remaining</TableHead>
+                  <TableHead className="font-semibold">Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {summaryData.map((item) => (
-                  <TableRow key={item.id} className="hover:bg-muted/30">
-                    <TableCell className="font-mono text-xs">{item.sku}</TableCell>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {item.category}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className={item.totalSold > 0 ? "text-orange-600 font-semibold" : "text-muted-foreground"}>
-                        {item.totalSold}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className={item.currentStock < 10 ? "text-red-600 font-semibold" : "text-green-600 font-semibold"}>
-                        {item.currentStock}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {item.buyers.length > 0 ? (
-                        <div className="flex flex-col gap-1">
-                          {item.buyers.map((buyer, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-xs border-b last:border-0 pb-1 last:pb-0">
-                              <span className="font-medium">{buyer.shop}</span>
-                              <div className="flex items-center gap-3">
-                                <span className="text-orange-600">Sold: {buyer.qty}</span>
-                                <span className="text-muted-foreground">{format(buyer.lastDate, 'dd/MM/yy')}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">No sales yet</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {summaryData.map((item) => {
+                  if (item.buyers.length === 0) {
+                    return (
+                      <TableRow key={item.id} className="hover:bg-muted/30">
+                        <TableCell className="font-mono text-xs">{item.sku}</TableCell>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">-</TableCell>
+                        <TableCell className="text-center text-muted-foreground">0</TableCell>
+                        <TableCell className="text-center">
+                          <span className={item.currentStock < 10 ? "text-red-600 font-semibold" : "text-green-600 font-semibold"}>
+                            {item.currentStock}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">-</TableCell>
+                      </TableRow>
+                    );
+                  }
+
+                  return item.buyers.map((buyer, idx) => (
+                    <TableRow key={`${item.id}-${idx}`} className="hover:bg-muted/30">
+                      {idx === 0 ? (
+                        <>
+                          <TableCell className="font-mono text-xs" rowSpan={item.buyers.length}>
+                            {item.sku}
+                          </TableCell>
+                          <TableCell className="font-medium" rowSpan={item.buyers.length}>
+                            {item.name}
+                          </TableCell>
+                        </>
+                      ) : null}
+                      <TableCell className="text-sm font-medium">{buyer.shop}</TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-orange-600 font-semibold">{buyer.qty}</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className={item.currentStock < 10 ? "text-red-600 font-semibold" : "text-green-600 font-semibold"}>
+                          {item.currentStock}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {format(buyer.lastDate, 'dd/MM/yy')}
+                      </TableCell>
+                    </TableRow>
+                  ));
+                })}
                 {summaryData.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
