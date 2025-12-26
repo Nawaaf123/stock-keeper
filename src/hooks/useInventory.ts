@@ -158,6 +158,24 @@ export function useInventory() {
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
+  const transferStock = (itemId: string, fromWarehouseId: string, toWarehouseId: string, quantity: number) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId) return item;
+        const updatedStock = item.stock.map((s) => {
+          if (s.warehouseId === fromWarehouseId) {
+            return { ...s, quantity: Math.max(0, s.quantity - quantity) };
+          }
+          if (s.warehouseId === toWarehouseId) {
+            return { ...s, quantity: s.quantity + quantity };
+          }
+          return s;
+        });
+        return { ...item, stock: updatedStock, lastUpdated: new Date() };
+      })
+    );
+  };
+
   const createOrder = (shopName: string, orderItems: { itemId: string; warehouseId: string; quantity: number }[]) => {
     const orderItemsWithDetails: OrderItem[] = orderItems.map(entry => {
       const item = items.find(i => i.id === entry.itemId);
@@ -246,6 +264,7 @@ export function useInventory() {
     receiveStock,
     updateStock,
     deleteItem,
+    transferStock,
     createOrder,
     addWholesaler,
     updateWholesaler,
