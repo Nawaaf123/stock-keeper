@@ -100,7 +100,7 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
                   <TableHead className="font-semibold">Category</TableHead>
                   <TableHead className="font-semibold text-center">Sold</TableHead>
                   <TableHead className="font-semibold text-center">In Stock</TableHead>
-                  <TableHead className="font-semibold">Sold To (Shop: Qty)</TableHead>
+                  <TableHead className="font-semibold">Wholesaler Details (Name / Sold / Date)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -123,13 +123,17 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
                         {item.currentStock}
                       </span>
                     </TableCell>
-                    <TableCell className="max-w-md">
+                    <TableCell>
                       {item.buyers.length > 0 ? (
-                        <div className="flex flex-col gap-0.5">
+                        <div className="flex flex-col gap-1">
                           {item.buyers.map((buyer, idx) => (
-                            <span key={idx} className="text-xs">
-                              {buyer.shop}: {buyer.qty} ({format(buyer.lastDate, 'dd/MM')})
-                            </span>
+                            <div key={idx} className="flex items-center justify-between text-xs border-b last:border-0 pb-1 last:pb-0">
+                              <span className="font-medium">{buyer.shop}</span>
+                              <div className="flex items-center gap-3">
+                                <span className="text-orange-600">Sold: {buyer.qty}</span>
+                                <span className="text-muted-foreground">{format(buyer.lastDate, 'dd/MM/yy')}</span>
+                              </div>
+                            </div>
                           ))}
                         </div>
                       ) : (
