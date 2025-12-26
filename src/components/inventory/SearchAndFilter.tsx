@@ -7,7 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { categories, warehouses } from '@/data/mockData';
+import { categories } from '@/data/mockData';
+import { Warehouse } from '@/types/inventory';
 
 interface SearchAndFilterProps {
   searchQuery: string;
@@ -16,6 +17,7 @@ interface SearchAndFilterProps {
   onCategoryChange: (value: string) => void;
   warehouseFilter: string;
   onWarehouseChange: (value: string) => void;
+  warehouses: Warehouse[];
 }
 
 export function SearchAndFilter({
@@ -25,6 +27,7 @@ export function SearchAndFilter({
   onCategoryChange,
   warehouseFilter,
   onWarehouseChange,
+  warehouses,
 }: SearchAndFilterProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-4">

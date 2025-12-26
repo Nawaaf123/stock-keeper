@@ -7,12 +7,13 @@ import { ItemFormDialog } from '@/components/inventory/ItemFormDialog';
 import { ReceiveStockDialog } from '@/components/inventory/ReceiveStockDialog';
 import { ProductDetailDialog } from '@/components/inventory/ProductDetailDialog';
 import { TransferStockDialog } from '@/components/inventory/TransferStockDialog';
-import { InventoryItem, SortField, SortDirection } from '@/types/inventory';
+import { InventoryItem, SortField, SortDirection, Warehouse } from '@/types/inventory';
 import { toast } from 'sonner';
 
 interface InventoryViewProps {
   items: InventoryItem[];
   allItems: InventoryItem[];
+  warehouses: Warehouse[];
   searchQuery: string;
   onSearchChange: (value: string) => void;
   categoryFilter: string;
@@ -33,6 +34,7 @@ interface InventoryViewProps {
 export function InventoryView({
   items,
   allItems,
+  warehouses,
   searchQuery,
   onSearchChange,
   categoryFilter,
@@ -131,6 +133,7 @@ export function InventoryView({
         onCategoryChange={onCategoryChange}
         warehouseFilter={warehouseFilter}
         onWarehouseChange={onWarehouseChange}
+        warehouses={warehouses}
       />
 
       <InventoryTable
@@ -158,6 +161,7 @@ export function InventoryView({
           setReceiveDialogOpen(open);
           if (!open) setReceivingItem(null);
         }}
+        warehouses={warehouses}
         item={receivingItem}
         items={items}
         onReceive={handleReceive}
@@ -174,6 +178,7 @@ export function InventoryView({
         open={transferDialogOpen}
         onOpenChange={setTransferDialogOpen}
         items={allItems}
+        warehouses={warehouses}
         onTransfer={onTransferStock}
       />
     </div>

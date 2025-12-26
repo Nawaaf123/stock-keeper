@@ -16,8 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { InventoryItem } from '@/types/inventory';
-import { warehouses } from '@/data/mockData';
+import { InventoryItem, Warehouse } from '@/types/inventory';
 import { Package, Plus, Trash2 } from 'lucide-react';
 
 interface ProductEntry {
@@ -28,12 +27,13 @@ interface ProductEntry {
 interface ReceiveStockDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  warehouses: Warehouse[];
   item: InventoryItem | null;
   items?: InventoryItem[];
   onReceive: (itemId: string, warehouseId: string, quantity: number, bolNumber: string) => void;
 }
 
-export function ReceiveStockDialog({ open, onOpenChange, item, items = [], onReceive }: ReceiveStockDialogProps) {
+export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items = [], onReceive }: ReceiveStockDialogProps) {
   const [warehouseId, setWarehouseId] = useState('');
   const [bolNumber, setBolNumber] = useState('');
   const [productEntries, setProductEntries] = useState<ProductEntry[]>([]);
