@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { warehouses } from '@/data/mockData';
-import { InventoryItem } from '@/types/inventory';
-import { Search } from 'lucide-react';
+import { InventoryItem, Warehouse } from '@/types/inventory';
+import { Search, Pencil, Check, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface WarehousesViewProps {
@@ -10,16 +10,38 @@ interface WarehousesViewProps {
     warehouseStats: { id: string; name: string; location: string; color: string; totalItems: number; totalValue: number }[];
   };
   items: InventoryItem[];
+  warehouses: Warehouse[];
+  onUpdateWarehouse: (id: string, updates: Partial<Omit<Warehouse, 'id'>>) => void;
 }
 
-export function WarehousesView({ stats, items }: WarehousesViewProps) {
+export function WarehousesView({ stats, items, warehouses, onUpdateWarehouse }: WarehousesViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingWarehouseId, setEditingWarehouseId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   const filteredItems = items.filter(item => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return item.name.toLowerCase().includes(query) || item.sku.toLowerCase().includes(query);
   });
+
+  const handleStartEdit = (warehouse: Warehouse) => {
+    setEditingWarehouseId(warehouse.id);
+    setEditingName(warehouse.name);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingWarehouseId && editingName.trim()) {
+      onUpdateWarehouse(editingWarehouseId, { name: editingName.trim() });
+    }
+    setEditingWarehouseId(null);
+    setEditingName('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingWarehouseId(null);
+    setEditingName('');
+  };
 
   return (
     <div className="space-y-4">
@@ -42,7 +64,35 @@ export function WarehousesView({ stats, items }: WarehousesViewProps) {
               <TableHead className="font-semibold">SKU</TableHead>
               <TableHead className="font-semibold">Product Name</TableHead>
               {warehouses.map(wh => (
-                <TableHead key={wh.id} className="font-semibold text-center">{wh.name}</TableHead>
+                <TableHead key={wh.id} className="font-semibold text-center">
+                  {editingWarehouseId === wh.id ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        className="h-7 text-xs"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveEdit();
+                          if (e.key === 'Escape') handleCancelEdit();
+                        }}
+                      />
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleSaveEdit}>
+                        <Check className="h-3 w-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleCancelEdit}>
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-1">
+                      {wh.name}
+                      <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => handleStartEdit(wh)}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </TableHead>
               ))}
               <TableHead className="font-semibold text-center">Total</TableHead>
             </TableRow>
