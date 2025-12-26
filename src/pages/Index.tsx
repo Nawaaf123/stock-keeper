@@ -50,6 +50,7 @@ const Index = () => {
           <StockSummaryView
             items={inventory.allItems}
             orders={inventory.orders}
+            transactions={inventory.transactions}
           />
         );
       case 'wholesalers':

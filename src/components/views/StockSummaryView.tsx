@@ -1,28 +1,51 @@
 import { useMemo } from 'react';
-import { InventoryItem, Order } from '@/types/inventory';
+import { InventoryItem, Order, InventoryTransaction } from '@/types/inventory';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList, ArrowUp, ArrowDown } from 'lucide-react';
 import { getTotalQuantity } from '@/data/mockData';
 import { format } from 'date-fns';
 
 interface StockSummaryViewProps {
   items: InventoryItem[];
   orders: Order[];
+  transactions: InventoryTransaction[];
 }
 
-export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
+interface StockEntry {
+  type: 'receive' | 'sale';
+  source: string;
+  qty: number;
+  date: Date;
+  remainingAfter: number;
+}
+
+export function StockSummaryView({ items, orders, transactions }: StockSummaryViewProps) {
   const summaryData = useMemo(() => {
     return items.map(item => {
-      // Get all sales for this item with dates
-      const salesByWholesaler: { shop: string; qty: number; date: Date }[] = [];
+      // Collect all stock movements for this item
+      const stockEntries: { type: 'receive' | 'sale'; source: string; qty: number; date: Date }[] = [];
 
+      // Add receive transactions
+      transactions
+        .filter(t => t.itemId === item.id && t.type === 'receive')
+        .forEach(t => {
+          stockEntries.push({
+            type: 'receive',
+            source: `BOL: ${t.bolNumber}`,
+            qty: t.quantity,
+            date: t.date,
+          });
+        });
+
+      // Add sales from orders
       orders.forEach(order => {
         order.items.forEach(orderItem => {
           if (orderItem.itemId === item.id) {
-            salesByWholesaler.push({
-              shop: order.shopName,
+            stockEntries.push({
+              type: 'sale',
+              source: order.shopName,
               qty: orderItem.quantity,
               date: order.date,
             });
@@ -30,20 +53,27 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
         });
       });
 
-      // Sort by date (oldest first) to calculate running balance
-      salesByWholesaler.sort((a, b) => a.date.getTime() - b.date.getTime());
+      // Sort by date (oldest first)
+      stockEntries.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-      // Calculate total sold and current stock
-      const totalSold = salesByWholesaler.reduce((sum, s) => sum + s.qty, 0);
+      // Calculate total received and sold
+      const totalReceived = stockEntries.filter(e => e.type === 'receive').reduce((sum, e) => sum + e.qty, 0);
+      const totalSold = stockEntries.filter(e => e.type === 'sale').reduce((sum, e) => sum + e.qty, 0);
       const currentStock = getTotalQuantity(item);
-      const startingStock = currentStock + totalSold;
+      
+      // Starting stock = current - received + sold (what we had before any transactions)
+      const startingStock = currentStock - totalReceived + totalSold;
 
-      // Calculate running remaining after each sale
+      // Calculate running remaining after each entry
       let runningStock = startingStock;
-      const salesWithRemaining = salesByWholesaler.map(sale => {
-        runningStock -= sale.qty;
+      const entriesWithRemaining: StockEntry[] = stockEntries.map(entry => {
+        if (entry.type === 'receive') {
+          runningStock += entry.qty;
+        } else {
+          runningStock -= entry.qty;
+        }
         return {
-          ...sale,
+          ...entry,
           remainingAfter: runningStock,
         };
       });
@@ -53,12 +83,13 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
         sku: item.sku,
         name: item.name,
         category: item.category,
+        totalReceived,
         totalSold,
         currentStock,
-        sales: salesWithRemaining,
+        entries: entriesWithRemaining,
       };
     }).sort((a, b) => b.totalSold - a.totalSold);
-  }, [items, orders]);
+  }, [items, orders, transactions]);
 
   const totalsSold = summaryData.reduce((sum, item) => sum + item.totalSold, 0);
   const totalsStock = summaryData.reduce((sum, item) => sum + item.currentStock, 0);
@@ -105,19 +136,21 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
                 <TableRow className="bg-muted/50">
                   <TableHead className="font-semibold">SKU</TableHead>
                   <TableHead className="font-semibold">Product Name</TableHead>
-                  <TableHead className="font-semibold">Wholesaler</TableHead>
-                  <TableHead className="font-semibold text-center">Sold</TableHead>
+                  <TableHead className="font-semibold">Type</TableHead>
+                  <TableHead className="font-semibold">Source</TableHead>
+                  <TableHead className="font-semibold text-center">Qty</TableHead>
                   <TableHead className="font-semibold text-center">Remaining</TableHead>
                   <TableHead className="font-semibold">Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {summaryData.map((item) => {
-                  if (item.sales.length === 0) {
+                  if (item.entries.length === 0) {
                     return (
                       <TableRow key={item.id} className="hover:bg-muted/30">
                         <TableCell className="font-mono text-xs">{item.sku}</TableCell>
                         <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">-</TableCell>
                         <TableCell className="text-muted-foreground text-sm">-</TableCell>
                         <TableCell className="text-center text-muted-foreground">0</TableCell>
                         <TableCell className="text-center">
@@ -130,36 +163,51 @@ export function StockSummaryView({ items, orders }: StockSummaryViewProps) {
                     );
                   }
 
-                  return item.sales.map((sale, idx) => (
+                  return item.entries.map((entry, idx) => (
                     <TableRow key={`${item.id}-${idx}`} className="hover:bg-muted/30">
                       {idx === 0 ? (
                         <>
-                          <TableCell className="font-mono text-xs" rowSpan={item.sales.length}>
+                          <TableCell className="font-mono text-xs" rowSpan={item.entries.length}>
                             {item.sku}
                           </TableCell>
-                          <TableCell className="font-medium" rowSpan={item.sales.length}>
+                          <TableCell className="font-medium" rowSpan={item.entries.length}>
                             {item.name}
                           </TableCell>
                         </>
                       ) : null}
-                      <TableCell className="text-sm font-medium">{sale.shop}</TableCell>
+                      <TableCell>
+                        {entry.type === 'receive' ? (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            <ArrowUp className="w-3 h-3 mr-1" />
+                            Receive
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                            <ArrowDown className="w-3 h-3 mr-1" />
+                            Sale
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm font-medium">{entry.source}</TableCell>
                       <TableCell className="text-center">
-                        <span className="text-orange-600 font-semibold">{sale.qty}</span>
+                        <span className={entry.type === 'receive' ? "text-green-600 font-semibold" : "text-orange-600 font-semibold"}>
+                          {entry.type === 'receive' ? '+' : '-'}{entry.qty}
+                        </span>
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className={sale.remainingAfter < 10 ? "text-red-600 font-semibold" : "text-green-600 font-semibold"}>
-                          {sale.remainingAfter}
+                        <span className={entry.remainingAfter < 10 ? "text-red-600 font-semibold" : "text-green-600 font-semibold"}>
+                          {entry.remainingAfter}
                         </span>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {format(sale.date, 'dd/MM/yy')}
+                        {format(entry.date, 'dd/MM/yy')}
                       </TableCell>
                     </TableRow>
                   ));
                 })}
                 {summaryData.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No products in inventory
                     </TableCell>
                   </TableRow>
