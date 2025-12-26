@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Pencil, Trash2, Phone, Mail, MapPin, User, Users2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Pencil, Trash2, Phone, Mail, MapPin, User, Users2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -12,6 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Wholesaler } from '@/types/inventory';
+import { toast } from 'sonner';
 
 interface WholesalersViewProps {
   wholesalers: Wholesaler[];
@@ -35,6 +36,7 @@ export function WholesalersView({
     email: '',
     address: '',
   });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
     setFormData({
@@ -44,6 +46,61 @@ export function WholesalersView({
       email: '',
       address: '',
     });
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+          toast.error('CSV file must have a header row and at least one data row');
+          return;
+        }
+
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const requiredHeaders = ['name'];
+        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+        
+        if (missingHeaders.length > 0) {
+          toast.error(`Missing required columns: ${missingHeaders.join(', ')}`);
+          return;
+        }
+
+        let importedCount = 0;
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim());
+          if (values.length < 1) continue;
+
+          const wholesaler: Omit<Wholesaler, 'id'> = {
+            name: values[headers.indexOf('name')] || '',
+            contactPerson: headers.includes('contactperson') ? values[headers.indexOf('contactperson')] || '' : '',
+            phone: headers.includes('phone') ? values[headers.indexOf('phone')] || '' : '',
+            email: headers.includes('email') ? values[headers.indexOf('email')] || '' : '',
+            address: headers.includes('address') ? values[headers.indexOf('address')] || '' : '',
+          };
+
+          if (wholesaler.name) {
+            onAddWholesaler(wholesaler);
+            importedCount++;
+          }
+        }
+
+        toast.success(`Successfully imported ${importedCount} wholesalers`);
+      } catch (error) {
+        toast.error('Failed to parse CSV file');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
   };
 
   const handleAdd = () => {
@@ -84,19 +141,31 @@ export function WholesalersView({
           <h2 className="text-2xl font-bold text-foreground">Wholesalers</h2>
           <p className="text-muted-foreground">Manage your wholesaler contacts</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Wholesaler
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Wholesaler</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div className="space-y-2">
+        <div className="flex gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept=".csv"
+            className="hidden"
+          />
+          <Button variant="outline" onClick={handleImportClick}>
+            <Upload className="w-4 h-4 mr-2" />
+            Import Wholesalers
+          </Button>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Wholesaler
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Wholesaler</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
                 <Label htmlFor="name">Company Name *</Label>
                 <Input
                   id="name"
@@ -142,12 +211,13 @@ export function WholesalersView({
                   placeholder="Enter address"
                 />
               </div>
-              <Button onClick={handleAdd} className="w-full">
-                Add Wholesaler
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+                <Button onClick={handleAdd} className="w-full">
+                  Add Wholesaler
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {wholesalers.length === 0 ? (
