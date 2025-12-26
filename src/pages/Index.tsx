@@ -37,6 +37,7 @@ const Index = () => {
             onUpdateStock={inventory.updateStock}
             onDeleteItem={inventory.deleteItem}
             onTransferStock={inventory.transferStock}
+            onUpdateWarehouse={inventory.updateWarehouse}
           />
         );
       case 'orders':
@@ -94,6 +95,7 @@ const Index = () => {
             onUpdateStock={inventory.updateStock}
             onDeleteItem={inventory.deleteItem}
             onTransferStock={inventory.transferStock}
+            onUpdateWarehouse={inventory.updateWarehouse}
           />
         );
     }

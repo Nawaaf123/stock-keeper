@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Plus, PackagePlus, ArrowLeftRight } from 'lucide-react';
+import { Plus, PackagePlus, ArrowLeftRight, Pencil, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { SearchAndFilter } from '@/components/inventory/SearchAndFilter';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
 import { ItemFormDialog } from '@/components/inventory/ItemFormDialog';
@@ -29,6 +30,7 @@ interface InventoryViewProps {
   onUpdateStock: (itemId: string, warehouseId: string, newQuantity: number) => void;
   onDeleteItem: (id: string) => void;
   onTransferStock: (itemId: string, fromWarehouseId: string, toWarehouseId: string, quantity: number) => void;
+  onUpdateWarehouse?: (id: string, updates: Partial<Warehouse>) => void;
 }
 
 export function InventoryView({
@@ -50,6 +52,7 @@ export function InventoryView({
   onUpdateStock,
   onDeleteItem,
   onTransferStock,
+  onUpdateWarehouse,
 }: InventoryViewProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -58,6 +61,27 @@ export function InventoryView({
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [editingWarehouseId, setEditingWarehouseId] = useState<string | null>(null);
+  const [editingWarehouseName, setEditingWarehouseName] = useState('');
+
+  const handleWarehouseEdit = (warehouse: Warehouse) => {
+    setEditingWarehouseId(warehouse.id);
+    setEditingWarehouseName(warehouse.name);
+  };
+
+  const handleWarehouseSave = () => {
+    if (editingWarehouseId && onUpdateWarehouse) {
+      onUpdateWarehouse(editingWarehouseId, { name: editingWarehouseName });
+      toast.success('Warehouse name updated');
+    }
+    setEditingWarehouseId(null);
+    setEditingWarehouseName('');
+  };
+
+  const handleWarehouseCancel = () => {
+    setEditingWarehouseId(null);
+    setEditingWarehouseName('');
+  };
 
   const handleEdit = (item: InventoryItem) => {
     setEditingItem(item);
@@ -125,6 +149,42 @@ export function InventoryView({
           </Button>
         </div>
       </div>
+
+      {/* Warehouse Name Editor */}
+      {onUpdateWarehouse && (
+        <div className="bg-card border rounded-lg p-4">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">Edit Warehouse Names</h3>
+          <div className="flex flex-wrap gap-3">
+            {warehouses.map((warehouse) => (
+              <div key={warehouse.id} className="flex items-center gap-2">
+                {editingWarehouseId === warehouse.id ? (
+                  <>
+                    <Input
+                      value={editingWarehouseName}
+                      onChange={(e) => setEditingWarehouseName(e.target.value)}
+                      className="h-8 w-40"
+                      autoFocus
+                    />
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleWarehouseSave}>
+                      <Check className="h-4 w-4 text-green-500" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleWarehouseCancel}>
+                      <X className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="px-3 py-1.5 bg-muted rounded-md text-sm">{warehouse.name}</span>
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleWarehouseEdit(warehouse)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <SearchAndFilter
         searchQuery={searchQuery}
