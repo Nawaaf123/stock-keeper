@@ -21,6 +21,7 @@ const Index = () => {
           <InventoryView
             items={inventory.items}
             allItems={inventory.allItems}
+            warehouses={inventory.warehouses}
             searchQuery={inventory.searchQuery}
             onSearchChange={inventory.setSearchQuery}
             categoryFilter={inventory.categoryFilter}
@@ -77,6 +78,7 @@ const Index = () => {
           <InventoryView
             items={inventory.items}
             allItems={inventory.allItems}
+            warehouses={inventory.warehouses}
             searchQuery={inventory.searchQuery}
             onSearchChange={inventory.setSearchQuery}
             categoryFilter={inventory.categoryFilter}
