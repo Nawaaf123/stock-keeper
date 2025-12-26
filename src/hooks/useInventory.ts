@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
-import { InventoryItem, SortField, SortDirection, WarehouseStock, InventoryTransaction, Order, OrderItem, Wholesaler } from '@/types/inventory';
-import { initialInventory, getTotalQuantity, warehouses } from '@/data/mockData';
+import { InventoryItem, SortField, SortDirection, WarehouseStock, InventoryTransaction, Order, OrderItem, Wholesaler, Warehouse } from '@/types/inventory';
+import { initialInventory, getTotalQuantity, warehouses as initialWarehouses } from '@/data/mockData';
 
 export function useInventory() {
   const [items, setItems] = useState<InventoryItem[]>(initialInventory);
+  const [warehousesList, setWarehousesList] = useState<Warehouse[]>(initialWarehouses);
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [wholesalers, setWholesalers] = useState<Wholesaler[]>([]);
@@ -68,7 +69,7 @@ export function useInventory() {
     const uniqueCategories = new Set(items.map((item) => item.category)).size;
 
     // Per warehouse stats
-    const warehouseStats = warehouses.map((wh) => {
+    const warehouseStats = warehousesList.map((wh) => {
       const warehouseTotal = items.reduce((sum, item) => {
         const stock = item.stock.find((s) => s.warehouseId === wh.id);
         return sum + (stock?.quantity || 0);
@@ -81,10 +82,10 @@ export function useInventory() {
     });
 
     return { totalItems, lowStockItems, totalValue, uniqueCategories, warehouseStats };
-  }, [items]);
+  }, [items, warehousesList]);
 
   const addItem = (item: Omit<InventoryItem, 'id' | 'lastUpdated' | 'stock'> & { initialStock?: { warehouseId: string; quantity: number }[] }) => {
-    const stock: WarehouseStock[] = warehouses.map((wh) => {
+    const stock: WarehouseStock[] = warehousesList.map((wh) => {
       const initialQty = item.initialStock?.find((s) => s.warehouseId === wh.id)?.quantity || 0;
       return { warehouseId: wh.id, warehouseName: wh.name, quantity: initialQty };
     });
@@ -108,7 +109,7 @@ export function useInventory() {
 
   const receiveStock = (itemId: string, warehouseId: string, quantity: number, bolNumber: string) => {
     const item = items.find(i => i.id === itemId);
-    const warehouse = warehouses.find(w => w.id === warehouseId);
+    const warehouse = warehousesList.find(w => w.id === warehouseId);
     
     if (item && warehouse) {
       // Add transaction record
@@ -179,7 +180,7 @@ export function useInventory() {
   const createOrder = (shopName: string, orderItems: { itemId: string; warehouseId: string; quantity: number }[]) => {
     const orderItemsWithDetails: OrderItem[] = orderItems.map(entry => {
       const item = items.find(i => i.id === entry.itemId);
-      const warehouse = warehouses.find(w => w.id === entry.warehouseId);
+      const warehouse = warehousesList.find(w => w.id === entry.warehouseId);
       return {
         itemId: entry.itemId,
         itemName: item?.name || '',
@@ -243,6 +244,23 @@ export function useInventory() {
     }
   };
 
+  const updateWarehouse = (id: string, updates: Partial<Omit<Warehouse, 'id'>>) => {
+    setWarehousesList(prev =>
+      prev.map(wh => (wh.id === id ? { ...wh, ...updates } : wh))
+    );
+    // Also update warehouse names in items stock
+    if (updates.name) {
+      setItems(prev =>
+        prev.map(item => ({
+          ...item,
+          stock: item.stock.map(s =>
+            s.warehouseId === id ? { ...s, warehouseName: updates.name! } : s
+          ),
+        }))
+      );
+    }
+  };
+
   return {
     items: filteredAndSortedItems,
     allItems: items,
@@ -250,6 +268,7 @@ export function useInventory() {
     transactions,
     orders,
     wholesalers,
+    warehouses: warehousesList,
     searchQuery,
     setSearchQuery,
     categoryFilter,
@@ -269,5 +288,6 @@ export function useInventory() {
     addWholesaler,
     updateWholesaler,
     deleteWholesaler,
+    updateWarehouse,
   };
 }

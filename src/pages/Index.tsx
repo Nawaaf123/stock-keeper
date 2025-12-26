@@ -67,7 +67,7 @@ const Index = () => {
       case 'inventory-history':
         return <InventoryHistoryView transactions={inventory.transactions} />;
       case 'warehouses':
-        return <WarehousesView stats={inventory.stats} items={inventory.allItems} />;
+        return <WarehousesView stats={inventory.stats} items={inventory.allItems} warehouses={inventory.warehouses} onUpdateWarehouse={inventory.updateWarehouse} />;
       case 'categories':
         return <CategoriesView items={inventory.allItems} />;
       case 'bill-of-lading':
