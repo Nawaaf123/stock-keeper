@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { InventoryItem, Wholesaler } from '@/types/inventory';
-import { warehouses } from '@/data/mockData';
+import { InventoryItem, Wholesaler, Warehouse } from '@/types/inventory';
 import { Plus, Trash2, Store } from 'lucide-react';
 
 interface OrderItemEntry {
@@ -18,11 +17,12 @@ interface CreateOrderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   items: InventoryItem[];
+  warehouses: Warehouse[];
   wholesalers: Wholesaler[];
   onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number }[]) => void;
 }
 
-export function CreateOrderDialog({ open, onOpenChange, items, wholesalers, onCreateOrder }: CreateOrderDialogProps) {
+export function CreateOrderDialog({ open, onOpenChange, items, warehouses, wholesalers, onCreateOrder }: CreateOrderDialogProps) {
   const [selectedWholesaler, setSelectedWholesaler] = useState('');
   const [customShopName, setCustomShopName] = useState('');
   const [orderItems, setOrderItems] = useState<OrderItemEntry[]>([{ itemId: '', warehouseId: '', quantity: 1 }]);

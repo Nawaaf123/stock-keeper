@@ -8,13 +8,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { InventoryItem } from '@/types/inventory';
-import { warehouses } from '@/data/mockData';
+import { InventoryItem, Warehouse } from '@/types/inventory';
 
 interface ItemFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item?: InventoryItem | null;
+  warehouses: Warehouse[];
   onSubmit: (item: Omit<InventoryItem, 'id' | 'lastUpdated' | 'stock'> & { initialStock?: { warehouseId: string; quantity: number }[] }) => void;
   onUpdate: (id: string, updates: Partial<Omit<InventoryItem, 'stock'>>) => void;
 }
@@ -28,7 +28,7 @@ const initialFormState = {
   price: 0,
 };
 
-export function ItemFormDialog({ open, onOpenChange, item, onSubmit, onUpdate }: ItemFormDialogProps) {
+export function ItemFormDialog({ open, onOpenChange, item, warehouses, onSubmit, onUpdate }: ItemFormDialogProps) {
   const [formData, setFormData] = useState(initialFormState);
   const [initialStock, setInitialStock] = useState<Record<string, number>>({});
 

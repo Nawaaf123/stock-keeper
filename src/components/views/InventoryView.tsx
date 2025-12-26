@@ -198,6 +198,7 @@ export function InventoryView({
 
       <InventoryTable
         items={items}
+        warehouses={warehouses}
         sortField={sortField}
         sortDirection={sortDirection}
         onSort={onSort}
@@ -211,6 +212,7 @@ export function InventoryView({
         open={dialogOpen}
         onOpenChange={handleDialogChange}
         item={editingItem}
+        warehouses={warehouses}
         onSubmit={handleSubmit}
         onUpdate={handleUpdate}
       />
@@ -231,6 +233,7 @@ export function InventoryView({
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         item={detailItem}
+        warehouses={warehouses}
         onUpdateStock={onUpdateStock}
       />
 
