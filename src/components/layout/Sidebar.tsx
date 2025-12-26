@@ -1,4 +1,4 @@
-import { Package, Tags, Settings, Warehouse, FileText, History, ShoppingCart, Users } from 'lucide-react';
+import { Package, Tags, Settings, Warehouse, FileText, History, ShoppingCart, Users, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -9,6 +9,7 @@ interface SidebarProps {
 const navItems = [
   { id: 'inventory', label: 'Inventory', icon: Package },
   { id: 'orders', label: 'Orders', icon: ShoppingCart },
+  { id: 'stock-summary', label: 'Stock Summary', icon: ClipboardList },
   { id: 'wholesalers', label: 'Wholesalers', icon: Users },
   { id: 'inventory-history', label: 'Inventory History', icon: History },
   { id: 'warehouses', label: 'Warehouses', icon: Warehouse },
