@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Order, InventoryItem } from '@/types/inventory';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CreateOrderDialog } from '@/components/inventory/CreateOrderDialog';
-import { Plus, Store, Package, Calendar } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3 } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface OrdersViewProps {
@@ -15,6 +17,8 @@ interface OrdersViewProps {
 
 export function OrdersView({ orders, items, onCreateOrder }: OrdersViewProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [shopFilter, setShopFilter] = useState<string>('all');
+  const [productFilter, setProductFilter] = useState<string>('all');
 
   const groupedOrders = orders.reduce((acc, order) => {
     const dateKey = format(order.date, 'yyyy-MM-dd');
@@ -25,12 +29,120 @@ export function OrdersView({ orders, items, onCreateOrder }: OrdersViewProps) {
 
   const sortedDates = Object.keys(groupedOrders).sort((a, b) => b.localeCompare(a));
 
+  // Get unique shop names
+  const uniqueShops = useMemo(() => {
+    const shops = new Set(orders.map(o => o.shopName));
+    return Array.from(shops).sort();
+  }, [orders]);
+
+  // Get unique products from orders
+  const uniqueProducts = useMemo(() => {
+    const products = new Map<string, { id: string; name: string; sku: string }>();
+    orders.forEach(order => {
+      order.items.forEach(item => {
+        if (!products.has(item.itemId)) {
+          products.set(item.itemId, { id: item.itemId, name: item.itemName, sku: item.itemSku });
+        }
+      });
+    });
+    return Array.from(products.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [orders]);
+
+  // Shop history - products shipped to each shop over time
+  const shopHistory = useMemo(() => {
+    const history = new Map<string, { 
+      shopName: string; 
+      totalOrders: number; 
+      totalUnits: number;
+      products: Map<string, { name: string; sku: string; quantity: number; orders: number }>;
+      lastOrder: Date;
+    }>();
+
+    orders.forEach(order => {
+      if (!history.has(order.shopName)) {
+        history.set(order.shopName, {
+          shopName: order.shopName,
+          totalOrders: 0,
+          totalUnits: 0,
+          products: new Map(),
+          lastOrder: order.date,
+        });
+      }
+
+      const shop = history.get(order.shopName)!;
+      shop.totalOrders++;
+      if (order.date > shop.lastOrder) shop.lastOrder = order.date;
+
+      order.items.forEach(item => {
+        shop.totalUnits += item.quantity;
+        if (!shop.products.has(item.itemId)) {
+          shop.products.set(item.itemId, { name: item.itemName, sku: item.itemSku, quantity: 0, orders: 0 });
+        }
+        const product = shop.products.get(item.itemId)!;
+        product.quantity += item.quantity;
+        product.orders++;
+      });
+    });
+
+    return Array.from(history.values()).sort((a, b) => b.totalUnits - a.totalUnits);
+  }, [orders]);
+
+  // Product history - which shops received each product
+  const productHistory = useMemo(() => {
+    const history = new Map<string, {
+      itemId: string;
+      itemName: string;
+      itemSku: string;
+      totalUnits: number;
+      shops: Map<string, { shopName: string; quantity: number; orders: number; lastOrder: Date }>;
+    }>();
+
+    orders.forEach(order => {
+      order.items.forEach(item => {
+        if (!history.has(item.itemId)) {
+          history.set(item.itemId, {
+            itemId: item.itemId,
+            itemName: item.itemName,
+            itemSku: item.itemSku,
+            totalUnits: 0,
+            shops: new Map(),
+          });
+        }
+
+        const product = history.get(item.itemId)!;
+        product.totalUnits += item.quantity;
+
+        if (!product.shops.has(order.shopName)) {
+          product.shops.set(order.shopName, { shopName: order.shopName, quantity: 0, orders: 0, lastOrder: order.date });
+        }
+        const shop = product.shops.get(order.shopName)!;
+        shop.quantity += item.quantity;
+        shop.orders++;
+        if (order.date > shop.lastOrder) shop.lastOrder = order.date;
+      });
+    });
+
+    return Array.from(history.values()).sort((a, b) => b.totalUnits - a.totalUnits);
+  }, [orders]);
+
+  // Filtered shop history
+  const filteredShopHistory = useMemo(() => {
+    if (shopFilter === 'all') return shopHistory;
+    return shopHistory.filter(s => s.shopName === shopFilter);
+  }, [shopHistory, shopFilter]);
+
+  // Filtered product history
+  const filteredProductHistory = useMemo(() => {
+    if (productFilter === 'all') return productHistory;
+    return productHistory.filter(p => p.itemId === productFilter);
+  }, [productHistory, productFilter]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Orders</h1>
-          <p className="text-muted-foreground">Manage outgoing orders and shipments</p>
+          <p className="text-muted-foreground">Manage outgoing orders and track shipment history</p>
         </div>
         <Button onClick={() => setDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
@@ -38,79 +150,251 @@ export function OrdersView({ orders, items, onCreateOrder }: OrdersViewProps) {
         </Button>
       </div>
 
-      {orders.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Package className="w-12 h-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">No Orders Yet</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              Create your first order to start tracking outgoing shipments
-            </p>
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Order
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {sortedDates.map((dateKey) => (
-            <div key={dateKey}>
-              <div className="flex items-center gap-2 mb-3">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                <h2 className="text-sm font-semibold text-muted-foreground">
-                  {format(new Date(dateKey), 'EEEE, MMMM d, yyyy')}
-                </h2>
-                <Badge variant="secondary">{groupedOrders[dateKey].length} orders</Badge>
-              </div>
+      <Tabs defaultValue="orders" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="orders" className="flex items-center gap-2">
+            <Package className="w-4 h-4" />
+            Orders
+          </TabsTrigger>
+          <TabsTrigger value="shop-history" className="flex items-center gap-2">
+            <Store className="w-4 h-4" />
+            By Shop
+          </TabsTrigger>
+          <TabsTrigger value="product-history" className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            By Product
+          </TabsTrigger>
+        </TabsList>
 
-              <div className="space-y-3">
-                {groupedOrders[dateKey].map((order) => (
-                  <Card key={order.id}>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <Store className="w-4 h-4 text-primary" />
-                          {order.shopName}
-                        </CardTitle>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">
-                            {format(order.date, 'h:mm a')}
-                          </span>
-                          <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
-                            {order.status}
-                          </Badge>
-                        </div>
+        <TabsContent value="orders" className="space-y-6">
+          {orders.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Package className="w-12 h-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No Orders Yet</h3>
+                <p className="text-muted-foreground text-center mb-4">
+                  Create your first order to start tracking outgoing shipments
+                </p>
+                <Button onClick={() => setDialogOpen(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Order
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {sortedDates.map((dateKey) => (
+                <div key={dateKey}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <h2 className="text-sm font-semibold text-muted-foreground">
+                      {format(new Date(dateKey), 'EEEE, MMMM d, yyyy')}
+                    </h2>
+                    <Badge variant="secondary">{groupedOrders[dateKey].length} orders</Badge>
+                  </div>
+
+                  <div className="space-y-3">
+                    {groupedOrders[dateKey].map((order) => (
+                      <Card key={order.id}>
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <Store className="w-4 h-4 text-primary" />
+                              {order.shopName}
+                            </CardTitle>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">
+                                {format(order.date, 'h:mm a')}
+                              </span>
+                              <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
+                                {order.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-1">
+                            {order.items.map((item, idx) => (
+                              <div key={idx} className="flex justify-between text-sm py-1 border-b last:border-0">
+                                <span>
+                                  <span className="font-mono text-xs text-muted-foreground mr-2">
+                                    {item.itemSku}
+                                  </span>
+                                  {item.itemName}
+                                </span>
+                                <span className="text-muted-foreground">
+                                  {item.quantity} from {item.warehouseName}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-2 pt-2 border-t flex justify-between text-sm font-medium">
+                            <span>Total Items</span>
+                            <span>{order.items.reduce((sum, i) => sum + i.quantity, 0)} units</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="shop-history" className="space-y-4">
+          <div className="flex items-center gap-4">
+            <Select value={shopFilter} onValueChange={setShopFilter}>
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Filter by shop" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Shops</SelectItem>
+                {uniqueShops.map(shop => (
+                  <SelectItem key={shop} value={shop}>{shop}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filteredShopHistory.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <History className="w-12 h-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No Shop History</h3>
+                <p className="text-muted-foreground text-center">
+                  Create orders to see which products were shipped to each shop
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {filteredShopHistory.map(shop => (
+                <Card key={shop.shopName}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Store className="w-5 h-5 text-primary" />
+                        {shop.shopName}
+                      </CardTitle>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline">
+                          <TrendingUp className="w-3 h-3 mr-1" />
+                          {shop.totalOrders} orders
+                        </Badge>
+                        <Badge>
+                          {shop.totalUnits} units shipped
+                        </Badge>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-1">
-                        {order.items.map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-sm py-1 border-b last:border-0">
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Last order: {format(shop.lastOrder, 'MMM d, yyyy')}
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <h4 className="text-sm font-medium text-foreground mb-2">Products Shipped</h4>
+                    <div className="space-y-2">
+                      {Array.from(shop.products.values())
+                        .sort((a, b) => b.quantity - a.quantity)
+                        .map(product => (
+                          <div key={product.sku} className="flex justify-between items-center text-sm py-2 px-3 bg-muted/50 rounded-md">
                             <span>
                               <span className="font-mono text-xs text-muted-foreground mr-2">
-                                {item.itemSku}
+                                {product.sku}
                               </span>
-                              {item.itemName}
+                              {product.name}
                             </span>
-                            <span className="text-muted-foreground">
-                              {item.quantity} from {item.warehouseName}
-                            </span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-muted-foreground text-xs">
+                                {product.orders} {product.orders === 1 ? 'order' : 'orders'}
+                              </span>
+                              <Badge variant="secondary">{product.quantity} units</Badge>
+                            </div>
                           </div>
                         ))}
-                      </div>
-                      <div className="mt-2 pt-2 border-t flex justify-between text-sm font-medium">
-                        <span>Total Items</span>
-                        <span>{order.items.reduce((sum, i) => sum + i.quantity, 0)} units</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
+        </TabsContent>
+
+        <TabsContent value="product-history" className="space-y-4">
+          <div className="flex items-center gap-4">
+            <Select value={productFilter} onValueChange={setProductFilter}>
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Filter by product" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Products</SelectItem>
+                {uniqueProducts.map(product => (
+                  <SelectItem key={product.id} value={product.id}>
+                    {product.sku} - {product.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filteredProductHistory.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <History className="w-12 h-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No Product History</h3>
+                <p className="text-muted-foreground text-center">
+                  Create orders to see where each product has been shipped
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {filteredProductHistory.map(product => (
+                <Card key={product.itemId}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="w-5 h-5 text-primary" />
+                        <span className="font-mono text-sm text-muted-foreground mr-2">
+                          {product.itemSku}
+                        </span>
+                        {product.itemName}
+                      </CardTitle>
+                      <Badge>
+                        {product.totalUnits} units shipped total
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <h4 className="text-sm font-medium text-foreground mb-2">Shipped To</h4>
+                    <div className="space-y-2">
+                      {Array.from(product.shops.values())
+                        .sort((a, b) => b.quantity - a.quantity)
+                        .map(shop => (
+                          <div key={shop.shopName} className="flex justify-between items-center text-sm py-2 px-3 bg-muted/50 rounded-md">
+                            <span className="flex items-center gap-2">
+                              <Store className="w-4 h-4 text-muted-foreground" />
+                              {shop.shopName}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-muted-foreground text-xs">
+                                {shop.orders} {shop.orders === 1 ? 'order' : 'orders'}
+                              </span>
+                              <span className="text-muted-foreground text-xs">
+                                Last: {format(shop.lastOrder, 'MMM d')}
+                              </span>
+                              <Badge variant="secondary">{shop.quantity} units</Badge>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <CreateOrderDialog
         open={dialogOpen}
