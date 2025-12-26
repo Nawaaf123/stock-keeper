@@ -15,6 +15,9 @@ interface SearchAndFilterProps {
   onSearchChange: (value: string) => void;
   categoryFilter: string;
   onCategoryChange: (value: string) => void;
+  subCategoryFilter: string;
+  onSubCategoryChange: (value: string) => void;
+  subCategories: string[];
   warehouseFilter: string;
   onWarehouseChange: (value: string) => void;
   warehouses: Warehouse[];
@@ -25,6 +28,9 @@ export function SearchAndFilter({
   onSearchChange,
   categoryFilter,
   onCategoryChange,
+  subCategoryFilter,
+  onSubCategoryChange,
+  subCategories,
   warehouseFilter,
   onWarehouseChange,
   warehouses,
@@ -44,7 +50,7 @@ export function SearchAndFilter({
         <SelectTrigger className="w-full sm:w-44">
           <SelectValue placeholder="All Categories" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-popover">
           <SelectItem value="all">All Categories</SelectItem>
           {categories.map((category) => (
             <SelectItem key={category.id} value={category.name}>
@@ -53,11 +59,24 @@ export function SearchAndFilter({
           ))}
         </SelectContent>
       </Select>
+      <Select value={subCategoryFilter} onValueChange={onSubCategoryChange}>
+        <SelectTrigger className="w-full sm:w-44">
+          <SelectValue placeholder="All Subcategories" />
+        </SelectTrigger>
+        <SelectContent className="bg-popover">
+          <SelectItem value="all">All Subcategories</SelectItem>
+          {subCategories.map((subCat) => (
+            <SelectItem key={subCat} value={subCat}>
+              {subCat}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <Select value={warehouseFilter} onValueChange={onWarehouseChange}>
         <SelectTrigger className="w-full sm:w-44">
           <SelectValue placeholder="All Warehouses" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-popover">
           <SelectItem value="all">All Warehouses</SelectItem>
           {warehouses.map((wh) => (
             <SelectItem key={wh.id} value={wh.id}>

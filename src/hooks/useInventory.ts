@@ -10,6 +10,7 @@ export function useInventory() {
   const [wholesalers, setWholesalers] = useState<Wholesaler[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
   const [warehouseFilter, setWarehouseFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -30,6 +31,11 @@ export function useInventory() {
     // Filter by category
     if (categoryFilter !== 'all') {
       result = result.filter((item) => item.category === categoryFilter);
+    }
+
+    // Filter by subcategory
+    if (subCategoryFilter !== 'all') {
+      result = result.filter((item) => item.subCategory === subCategoryFilter);
     }
 
     // Filter by warehouse (show items that have stock in that warehouse)
@@ -60,7 +66,7 @@ export function useInventory() {
     });
 
     return result;
-  }, [items, searchQuery, categoryFilter, warehouseFilter, sortField, sortDirection]);
+  }, [items, searchQuery, categoryFilter, subCategoryFilter, warehouseFilter, sortField, sortDirection]);
 
   const stats = useMemo(() => {
     const totalItems = items.reduce((sum, item) => sum + getTotalQuantity(item), 0);
@@ -273,6 +279,8 @@ export function useInventory() {
     setSearchQuery,
     categoryFilter,
     setCategoryFilter,
+    subCategoryFilter,
+    setSubCategoryFilter,
     warehouseFilter,
     setWarehouseFilter,
     sortField,
