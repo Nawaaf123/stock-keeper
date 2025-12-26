@@ -360,8 +360,8 @@ export function OrdersView({ orders, items, onCreateOrder }: OrdersViewProps) {
                         </span>
                         {product.itemName}
                       </CardTitle>
-                      <Badge>
-                        {product.totalUnits} units shipped total
+                      <Badge variant="destructive" className="font-mono">
+                        -{product.totalUnits} from inventory
                       </Badge>
                     </div>
                   </CardHeader>
@@ -383,7 +383,7 @@ export function OrdersView({ orders, items, onCreateOrder }: OrdersViewProps) {
                               <span className="text-muted-foreground text-xs">
                                 Last: {format(shop.lastOrder, 'MMM d')}
                               </span>
-                              <Badge variant="secondary">{shop.quantity} units</Badge>
+                              <Badge variant="outline" className="font-mono text-destructive border-destructive/50">-{shop.quantity}</Badge>
                             </div>
                           </div>
                         ))}
