@@ -7,6 +7,7 @@ import { WarehousesView } from '@/components/views/WarehousesView';
 import { CategoriesView } from '@/components/views/CategoriesView';
 import { BillOfLadingView } from '@/components/views/BillOfLadingView';
 import { OrdersView } from '@/components/views/OrdersView';
+import { WholesalersView } from '@/components/views/WholesalersView';
 import { useInventory } from '@/hooks/useInventory';
 
 const Index = () => {
@@ -43,6 +44,15 @@ const Index = () => {
             orders={inventory.orders}
             items={inventory.allItems}
             onCreateOrder={inventory.createOrder}
+          />
+        );
+      case 'wholesalers':
+        return (
+          <WholesalersView
+            wholesalers={inventory.wholesalers}
+            onAddWholesaler={inventory.addWholesaler}
+            onUpdateWholesaler={inventory.updateWholesaler}
+            onDeleteWholesaler={inventory.deleteWholesaler}
           />
         );
       case 'inventory-history':

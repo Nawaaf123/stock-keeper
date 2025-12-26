@@ -60,3 +60,12 @@ export interface Order {
   date: Date;
   status: 'pending' | 'completed' | 'cancelled';
 }
+
+export interface Wholesaler {
+  id: string;
+  name: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+  address: string;
+}

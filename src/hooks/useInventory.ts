@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
-import { InventoryItem, SortField, SortDirection, WarehouseStock, InventoryTransaction, Order, OrderItem } from '@/types/inventory';
+import { InventoryItem, SortField, SortDirection, WarehouseStock, InventoryTransaction, Order, OrderItem, Wholesaler } from '@/types/inventory';
 import { initialInventory, getTotalQuantity, warehouses } from '@/data/mockData';
 
 export function useInventory() {
   const [items, setItems] = useState<InventoryItem[]>(initialInventory);
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [wholesalers, setWholesalers] = useState<Wholesaler[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [warehouseFilter, setWarehouseFilter] = useState<string>('all');
@@ -197,6 +198,24 @@ export function useInventory() {
     });
   };
 
+  const addWholesaler = (wholesaler: Omit<Wholesaler, 'id'>) => {
+    const newWholesaler: Wholesaler = {
+      ...wholesaler,
+      id: Date.now().toString(),
+    };
+    setWholesalers(prev => [...prev, newWholesaler]);
+  };
+
+  const updateWholesaler = (id: string, updates: Partial<Omit<Wholesaler, 'id'>>) => {
+    setWholesalers(prev =>
+      prev.map(w => (w.id === id ? { ...w, ...updates } : w))
+    );
+  };
+
+  const deleteWholesaler = (id: string) => {
+    setWholesalers(prev => prev.filter(w => w.id !== id));
+  };
+
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -212,6 +231,7 @@ export function useInventory() {
     stats,
     transactions,
     orders,
+    wholesalers,
     searchQuery,
     setSearchQuery,
     categoryFilter,
@@ -227,5 +247,8 @@ export function useInventory() {
     updateStock,
     deleteItem,
     createOrder,
+    addWholesaler,
+    updateWholesaler,
+    deleteWholesaler,
   };
 }
