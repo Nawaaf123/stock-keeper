@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
-import { Plus, Pencil, Trash2, Phone, Mail, MapPin, User, Users2, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, Search, Users2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -9,8 +10,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Wholesaler } from '@/types/inventory';
 import { toast } from 'sonner';
 
@@ -29,6 +36,7 @@ export function WholesalersView({
 }: WholesalersViewProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingWholesaler, setEditingWholesaler] = useState<Wholesaler | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     contactPerson: '',
@@ -37,6 +45,13 @@ export function WholesalersView({
     address: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const filteredWholesalers = wholesalers.filter((w) =>
+    w.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    w.contactPerson.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    w.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    w.phone.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const resetForm = () => {
     setFormData({
@@ -135,7 +150,7 @@ export function WholesalersView({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Wholesalers</h2>
@@ -151,7 +166,7 @@ export function WholesalersView({
           />
           <Button variant="outline" onClick={handleImportClick}>
             <Upload className="w-4 h-4 mr-2" />
-            Import Wholesalers
+            Import
           </Button>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
@@ -166,51 +181,51 @@ export function WholesalersView({
               </DialogHeader>
               <div className="space-y-4 pt-4">
                 <div className="space-y-2">
-                <Label htmlFor="name">Company Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter company name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contactPerson">Contact Person</Label>
-                <Input
-                  id="contactPerson"
-                  value={formData.contactPerson}
-                  onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
-                  placeholder="Enter contact person name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="Enter phone number"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="Enter email address"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="Enter address"
-                />
-              </div>
+                  <Label htmlFor="name">Company Name *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Enter company name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contactPerson">Contact Person</Label>
+                  <Input
+                    id="contactPerson"
+                    value={formData.contactPerson}
+                    onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                    placeholder="Enter contact person name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="Enter phone number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="Enter email address"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="Enter address"
+                  />
+                </div>
                 <Button onClick={handleAdd} className="w-full">
                   Add Wholesaler
                 </Button>
@@ -220,68 +235,76 @@ export function WholesalersView({
         </div>
       </div>
 
-      {wholesalers.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Users2 className="w-12 h-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-center">
-              No wholesalers added yet. Click "Add Wholesaler" to get started.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {wholesalers.map((wholesaler) => (
-            <Card key={wholesaler.id}>
-              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                <CardTitle className="text-lg font-semibold">{wholesaler.name}</CardTitle>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleEdit(wholesaler)}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(wholesaler.id)}
-                  >
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {wholesaler.contactPerson && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <User className="w-4 h-4" />
-                    {wholesaler.contactPerson}
+      {/* Search Bar */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search wholesalers..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
+      {/* Excel-like Table */}
+      <div className="border rounded-lg overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="font-semibold">Company Name</TableHead>
+              <TableHead className="font-semibold">Contact Person</TableHead>
+              <TableHead className="font-semibold">Phone</TableHead>
+              <TableHead className="font-semibold">Email</TableHead>
+              <TableHead className="font-semibold">Address</TableHead>
+              <TableHead className="font-semibold text-center w-24">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredWholesalers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-32 text-center">
+                  <div className="flex flex-col items-center justify-center text-muted-foreground">
+                    <Users2 className="w-8 h-8 mb-2" />
+                    {wholesalers.length === 0 
+                      ? 'No wholesalers added yet. Click "Add Wholesaler" to get started.'
+                      : 'No wholesalers match your search.'}
                   </div>
-                )}
-                {wholesaler.phone && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="w-4 h-4" />
-                    {wholesaler.phone}
-                  </div>
-                )}
-                {wholesaler.email && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="w-4 h-4" />
-                    {wholesaler.email}
-                  </div>
-                )}
-                {wholesaler.address && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="w-4 h-4" />
-                    {wholesaler.address}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredWholesalers.map((wholesaler) => (
+                <TableRow key={wholesaler.id} className="hover:bg-muted/30">
+                  <TableCell className="font-medium">{wholesaler.name}</TableCell>
+                  <TableCell>{wholesaler.contactPerson || '-'}</TableCell>
+                  <TableCell>{wholesaler.phone || '-'}</TableCell>
+                  <TableCell>{wholesaler.email || '-'}</TableCell>
+                  <TableCell>{wholesaler.address || '-'}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(wholesaler)}
+                        className="h-8 w-8"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(wholesaler.id)}
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       {/* Edit Dialog */}
       <Dialog open={!!editingWholesaler} onOpenChange={(open) => !open && setEditingWholesaler(null)}>
