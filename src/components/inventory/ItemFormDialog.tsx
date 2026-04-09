@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { InventoryItem, Warehouse } from '@/types/inventory';
+import { CategoryCombobox } from './CategoryCombobox';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ItemFormDialogProps {
   open: boolean;
@@ -31,6 +33,25 @@ const initialFormState = {
 export function ItemFormDialog({ open, onOpenChange, item, warehouses, onSubmit, onUpdate }: ItemFormDialogProps) {
   const [formData, setFormData] = useState(initialFormState);
   const [initialStock, setInitialStock] = useState<Record<string, number>>({});
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [subCategories, setSubCategories] = useState<{ id: string; name: string; category_id: string }[]>([]);
+
+  const fetchCategories = useCallback(async () => {
+    const { data } = await supabase.from('categories').select('id, name').order('name');
+    if (data) setCategories(data);
+  }, []);
+
+  const fetchSubCategories = useCallback(async () => {
+    const { data } = await supabase.from('sub_categories').select('id, name, category_id').order('name');
+    if (data) setSubCategories(data);
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      fetchCategories();
+      fetchSubCategories();
+    }
+  }, [open, fetchCategories, fetchSubCategories]);
 
   useEffect(() => {
     if (item) {
@@ -47,6 +68,30 @@ export function ItemFormDialog({ open, onOpenChange, item, warehouses, onSubmit,
       setInitialStock({});
     }
   }, [item, open]);
+
+  const selectedCategoryId = categories.find(c => c.name === formData.category)?.id;
+  const filteredSubCategories = selectedCategoryId
+    ? subCategories.filter(sc => sc.category_id === selectedCategoryId).map(sc => sc.name)
+    : [];
+
+  const handleAddCategory = async (name: string) => {
+    const { data } = await supabase.from('categories').insert({ name }).select().single();
+    if (data) {
+      setCategories(prev => [...prev, { id: data.id, name: data.name }].sort((a, b) => a.name.localeCompare(b.name)));
+    }
+  };
+
+  const handleAddSubCategory = async (name: string) => {
+    if (!selectedCategoryId) return;
+    const { data } = await supabase.from('sub_categories').insert({ name, category_id: selectedCategoryId }).select().single();
+    if (data) {
+      setSubCategories(prev => [...prev, { id: data.id, name: data.name, category_id: data.category_id }]);
+    }
+  };
+
+  const handleCategoryChange = (value: string) => {
+    setFormData({ ...formData, category: value, subCategory: '' });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,22 +133,25 @@ export function ItemFormDialog({ open, onOpenChange, item, warehouses, onSubmit,
               />
             </div>
             <div>
-              <Label htmlFor="category">Category</Label>
-              <Input
-                id="category"
+              <Label>Category</Label>
+              <CategoryCombobox
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                placeholder="e.g. Electronics"
-                required
+                onChange={handleCategoryChange}
+                options={categories.map(c => c.name)}
+                onAddNew={handleAddCategory}
+                placeholder="Select category"
+                label="Category"
               />
             </div>
             <div>
-              <Label htmlFor="subCategory">Sub Category</Label>
-              <Input
-                id="subCategory"
+              <Label>Sub Category</Label>
+              <CategoryCombobox
                 value={formData.subCategory}
-                onChange={(e) => setFormData({ ...formData, subCategory: e.target.value })}
-                placeholder="e.g. Accessories"
+                onChange={(v) => setFormData({ ...formData, subCategory: v })}
+                options={filteredSubCategories}
+                onAddNew={handleAddSubCategory}
+                placeholder={formData.category ? "Select sub-category" : "Select category first"}
+                label="Sub Category"
               />
             </div>
             <div>
