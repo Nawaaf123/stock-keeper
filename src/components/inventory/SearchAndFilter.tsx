@@ -30,6 +30,7 @@ export function SearchAndFilter({
   onCategoryChange,
   subCategoryFilter,
   onSubCategoryChange,
+  categories,
   subCategories,
   warehouseFilter,
   onWarehouseChange,
@@ -52,9 +53,9 @@ export function SearchAndFilter({
         </SelectTrigger>
         <SelectContent className="bg-popover">
           <SelectItem value="all">All Categories</SelectItem>
-          {categories.map((category) => (
-            <SelectItem key={category.id} value={category.name}>
-              {category.name}
+          {categories.map((cat) => (
+            <SelectItem key={cat} value={cat}>
+              {cat}
             </SelectItem>
           ))}
         </SelectContent>
