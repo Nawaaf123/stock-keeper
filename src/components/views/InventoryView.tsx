@@ -206,7 +206,7 @@ export function InventoryView({
             type="file"
             ref={fileInputRef}
             onChange={handleFileChange}
-            accept=".csv"
+            accept=".csv,.xlsx,.xls"
             className="hidden"
           />
           <Button variant="outline" onClick={handleImportClick} className="gap-2">
