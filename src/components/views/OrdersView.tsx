@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { CreateOrderDialog } from '@/components/inventory/CreateOrderDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface OrdersViewProps {
