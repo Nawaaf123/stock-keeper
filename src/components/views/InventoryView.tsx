@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Plus, PackagePlus, ArrowLeftRight, Pencil, Check, X, Upload } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SearchAndFilter } from '@/components/inventory/SearchAndFilter';
