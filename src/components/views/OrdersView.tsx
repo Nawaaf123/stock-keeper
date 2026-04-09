@@ -198,45 +198,55 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
 
                   <div className="space-y-3">
                     {groupedOrders[dateKey].map((order) => (
-                      <Card key={order.id}>
-                        <CardHeader className="pb-2">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-base flex items-center gap-2">
-                              <Store className="w-4 h-4 text-primary" />
-                              {order.shopName}
-                            </CardTitle>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">
-                                {format(order.date, 'h:mm a')}
-                              </span>
-                              <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
-                                {order.status}
-                              </Badge>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-1">
-                            {order.items.map((item, idx) => (
-                              <div key={idx} className="flex justify-between text-sm py-1 border-b last:border-0">
-                                <span>
-                                  <span className="font-mono text-xs text-muted-foreground mr-2">
-                                    {item.itemSku}
+                      <Collapsible key={order.id}>
+                        <Card>
+                          <CollapsibleTrigger asChild>
+                            <CardHeader className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors">
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="text-base flex items-center gap-2">
+                                  <Store className="w-4 h-4 text-primary" />
+                                  {order.shopName}
+                                  <span className="text-sm font-normal text-muted-foreground">
+                                    — {order.items.reduce((sum, i) => sum + i.quantity, 0)} units, {order.items.length} {order.items.length === 1 ? 'product' : 'products'}
                                   </span>
-                                  {item.itemName}
-                                </span>
-                                <span className="text-muted-foreground">
-                                  {item.quantity} from {item.warehouseName}
-                                </span>
+                                </CardTitle>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">
+                                    {format(order.date, 'h:mm a')}
+                                  </span>
+                                  <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
+                                    {order.status}
+                                  </Badge>
+                                  <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                </div>
                               </div>
-                            ))}
-                          </div>
-                          <div className="mt-2 pt-2 border-t flex justify-between text-sm font-medium">
-                            <span>Total Items</span>
-                            <span>{order.items.reduce((sum, i) => sum + i.quantity, 0)} units</span>
-                          </div>
-                        </CardContent>
-                      </Card>
+                            </CardHeader>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <CardContent>
+                              <div className="space-y-1">
+                                {order.items.map((item, idx) => (
+                                  <div key={idx} className="flex justify-between text-sm py-1 border-b last:border-0">
+                                    <span>
+                                      <span className="font-mono text-xs text-muted-foreground mr-2">
+                                        {item.itemSku}
+                                      </span>
+                                      {item.itemName}
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                      {item.quantity} from {item.warehouseName}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="mt-2 pt-2 border-t flex justify-between text-sm font-medium">
+                                <span>Total Items</span>
+                                <span>{order.items.reduce((sum, i) => sum + i.quantity, 0)} units</span>
+                              </div>
+                            </CardContent>
+                          </CollapsibleContent>
+                        </Card>
+                      </Collapsible>
                     ))}
                   </div>
                 </div>
