@@ -7,7 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { categories } from '@/data/mockData';
 import { Warehouse } from '@/types/inventory';
 
 interface SearchAndFilterProps {
@@ -17,6 +16,7 @@ interface SearchAndFilterProps {
   onCategoryChange: (value: string) => void;
   subCategoryFilter: string;
   onSubCategoryChange: (value: string) => void;
+  categories: string[];
   subCategories: string[];
   warehouseFilter: string;
   onWarehouseChange: (value: string) => void;
