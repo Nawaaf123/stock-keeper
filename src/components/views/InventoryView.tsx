@@ -81,34 +81,39 @@ export function InventoryView({
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const text = e.target?.result as string;
-        const lines = text.split('\n').filter(line => line.trim());
-        if (lines.length < 2) {
-          toast.error('CSV file must have a header row and at least one data row');
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+
+        if (rows.length === 0) {
+          toast.error('File must have a header row and at least one data row');
           return;
         }
 
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const firstRowKeys = Object.keys(rows[0]).map(k => k.toLowerCase());
         const requiredHeaders = ['name', 'sku', 'category', 'subcategory', 'minstock', 'price'];
-        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-        
+        const missingHeaders = requiredHeaders.filter(h => !firstRowKeys.includes(h));
+
         if (missingHeaders.length > 0) {
           toast.error(`Missing required columns: ${missingHeaders.join(', ')}`);
           return;
         }
 
-        let importedCount = 0;
-        for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(',').map(v => v.trim());
-          if (values.length < headers.length) continue;
+        const getVal = (row: Record<string, unknown>, key: string) => {
+          const found = Object.keys(row).find(k => k.toLowerCase() === key);
+          return found ? String(row[found] ?? '') : '';
+        };
 
+        let importedCount = 0;
+        for (const row of rows) {
           const item: Omit<InventoryItem, 'id' | 'lastUpdated' | 'stock'> = {
-            name: values[headers.indexOf('name')] || '',
-            sku: values[headers.indexOf('sku')] || '',
-            category: values[headers.indexOf('category')] || '',
-            subCategory: values[headers.indexOf('subcategory')] || '',
-            minStock: parseInt(values[headers.indexOf('minstock')]) || 0,
-            price: parseFloat(values[headers.indexOf('price')]) || 0,
+            name: getVal(row, 'name'),
+            sku: getVal(row, 'sku'),
+            category: getVal(row, 'category'),
+            subCategory: getVal(row, 'subcategory'),
+            minStock: parseInt(getVal(row, 'minstock')) || 0,
+            price: parseFloat(getVal(row, 'price')) || 0,
           };
 
           if (item.name && item.sku) {
@@ -119,10 +124,10 @@ export function InventoryView({
 
         toast.success(`Successfully imported ${importedCount} products`);
       } catch (error) {
-        toast.error('Failed to parse CSV file');
+        toast.error('Failed to parse file. Please check the format.');
       }
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
     event.target.value = '';
   };
 
