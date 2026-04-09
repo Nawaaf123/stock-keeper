@@ -265,6 +265,7 @@ export function InventoryView({
         onCategoryChange={onCategoryChange}
         subCategoryFilter={subCategoryFilter}
         onSubCategoryChange={onSubCategoryChange}
+        categories={[...new Set(allItems.map(item => item.category).filter(Boolean))]}
         subCategories={[...new Set(allItems.map(item => item.subCategory).filter(Boolean))]}
         warehouseFilter={warehouseFilter}
         onWarehouseChange={onWarehouseChange}

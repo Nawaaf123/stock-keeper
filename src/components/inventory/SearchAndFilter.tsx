@@ -7,7 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { categories } from '@/data/mockData';
 import { Warehouse } from '@/types/inventory';
 
 interface SearchAndFilterProps {
@@ -17,6 +16,7 @@ interface SearchAndFilterProps {
   onCategoryChange: (value: string) => void;
   subCategoryFilter: string;
   onSubCategoryChange: (value: string) => void;
+  categories: string[];
   subCategories: string[];
   warehouseFilter: string;
   onWarehouseChange: (value: string) => void;
@@ -30,6 +30,7 @@ export function SearchAndFilter({
   onCategoryChange,
   subCategoryFilter,
   onSubCategoryChange,
+  categories,
   subCategories,
   warehouseFilter,
   onWarehouseChange,
@@ -52,9 +53,9 @@ export function SearchAndFilter({
         </SelectTrigger>
         <SelectContent className="bg-popover">
           <SelectItem value="all">All Categories</SelectItem>
-          {categories.map((category) => (
-            <SelectItem key={category.id} value={category.name}>
-              {category.name}
+          {categories.map((cat) => (
+            <SelectItem key={cat} value={cat}>
+              {cat}
             </SelectItem>
           ))}
         </SelectContent>
