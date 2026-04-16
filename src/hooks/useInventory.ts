@@ -142,16 +142,21 @@ export function useInventory() {
       result = result.filter((item) => item.stock.some((s) => s.warehouseId === warehouseFilter && s.quantity > 0));
     }
 
-    result.sort((a, b) => {
-      let comparison = 0;
-      switch (sortField) {
-        case 'name': comparison = a.name.localeCompare(b.name); break;
-        case 'quantity': comparison = getTotalQuantity(a) - getTotalQuantity(b); break;
-        case 'price': comparison = a.price - b.price; break;
-        case 'lastUpdated': comparison = a.lastUpdated.getTime() - b.lastUpdated.getTime(); break;
-      }
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
+    // When filtering by sub-category, always sort by SKU ascending (numeric-aware)
+    if (subCategoryFilter !== 'all') {
+      result.sort((a, b) => a.sku.localeCompare(b.sku, undefined, { numeric: true, sensitivity: 'base' }));
+    } else {
+      result.sort((a, b) => {
+        let comparison = 0;
+        switch (sortField) {
+          case 'name': comparison = a.name.localeCompare(b.name); break;
+          case 'quantity': comparison = getTotalQuantity(a) - getTotalQuantity(b); break;
+          case 'price': comparison = a.price - b.price; break;
+          case 'lastUpdated': comparison = a.lastUpdated.getTime() - b.lastUpdated.getTime(); break;
+        }
+        return sortDirection === 'asc' ? comparison : -comparison;
+      });
+    }
 
     return result;
   }, [items, searchQuery, categoryFilter, subCategoryFilter, warehouseFilter, sortField, sortDirection]);
