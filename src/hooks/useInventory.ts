@@ -186,7 +186,10 @@ export function useInventory() {
       .select()
       .single();
     
-    if (error || !newItem) return;
+    if (error || !newItem) {
+      console.error('Failed to add item:', error);
+      throw error || new Error('Failed to add item');
+    }
 
     // Create warehouse_stock rows for all warehouses
     const stockRows = warehousesList.map(wh => ({
