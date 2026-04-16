@@ -170,16 +170,24 @@ export function InventoryView({
     setDetailDialogOpen(true);
   };
 
-  const handleSubmit = (data: Omit<InventoryItem, 'id' | 'lastUpdated' | 'stock'> & { initialStock?: { warehouseId: string; quantity: number }[] }) => {
-    onAddItem(data);
-    toast.success('Item added successfully');
-    setEditingItem(null);
+  const handleSubmit = async (data: Omit<InventoryItem, 'id' | 'lastUpdated' | 'stock'> & { initialStock?: { warehouseId: string; quantity: number }[] }) => {
+    try {
+      await onAddItem(data);
+      toast.success('Item added successfully');
+      setEditingItem(null);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to add item');
+    }
   };
 
-  const handleUpdate = (id: string, updates: Partial<Omit<InventoryItem, 'stock'>>) => {
-    onUpdateItem(id, updates);
-    toast.success('Item updated successfully');
-    setEditingItem(null);
+  const handleUpdate = async (id: string, updates: Partial<Omit<InventoryItem, 'stock'>>) => {
+    try {
+      await onUpdateItem(id, updates);
+      toast.success('Item updated successfully');
+      setEditingItem(null);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update item');
+    }
   };
 
   const handleReceive = (itemId: string, warehouseId: string, quantity: number, bolNumber: string) => {
