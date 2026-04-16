@@ -60,11 +60,16 @@ export function InventoryTable({ items, warehouses, sortField, sortDirection, on
                 </div>
               </th>
               <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground">
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-3">
                   {warehouses.map(wh => (
-                    <span key={wh.id} className="w-7 text-center" title={wh.name}>
-                      {wh.name.replace('Warehouse ', '')}
-                    </span>
+                    <Tooltip key={wh.id}>
+                      <TooltipTrigger asChild>
+                        <span className="w-16 text-center truncate inline-block" title={wh.name}>
+                          {wh.name}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">{wh.name}</TooltipContent>
+                    </Tooltip>
                   ))}
                 </div>
               </th>
