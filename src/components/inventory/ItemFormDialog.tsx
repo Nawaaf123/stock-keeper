@@ -95,6 +95,10 @@ export function ItemFormDialog({ open, onOpenChange, item, warehouses, onSubmit,
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.category) {
+      alert('Please select a category');
+      return;
+    }
     if (item) {
       onUpdate(item.id, formData);
     } else {
