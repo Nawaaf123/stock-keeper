@@ -122,6 +122,37 @@ export function useInventory() {
     loadAll();
   }, [fetchWarehouses, fetchItems, fetchTransactions, fetchOrders, fetchWholesalers]);
 
+  // ─── Realtime: live sync across all connected users/computers ───
+  useEffect(() => {
+    // Debounce helper to avoid refetch storms when many rows change at once
+    const debounce = (fn: () => void, ms = 200) => {
+      let t: ReturnType<typeof setTimeout> | null = null;
+      return () => {
+        if (t) clearTimeout(t);
+        t = setTimeout(fn, ms);
+      };
+    };
+
+    const refreshItems = debounce(() => { fetchItems(); });
+    const refreshTx = debounce(() => { fetchTransactions(); });
+    const refreshOrders = debounce(() => { fetchOrders(); fetchItems(); });
+    const refreshWholesalers = debounce(() => { fetchWholesalers(); });
+    const refreshWarehouses = debounce(() => { fetchWarehouses(); fetchItems(); });
+
+    const channel = supabase
+      .channel('inventory-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items' }, refreshItems)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'warehouse_stock' }, refreshItems)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_transactions' }, refreshTx)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, refreshOrders)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, refreshOrders)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wholesalers' }, refreshWholesalers)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'warehouses' }, refreshWarehouses)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchItems, fetchTransactions, fetchOrders, fetchWholesalers, fetchWarehouses]);
+
   // ─── Filtering & Sorting (client-side on fetched data) ───
   const filteredAndSortedItems = useMemo(() => {
     let result = [...items];
