@@ -95,7 +95,7 @@ export function InventoryTable({ items, warehouses, sortField, sortDirection, on
                     <span className="font-semibold text-sm text-foreground">{total}</span>
                   </td>
                   <td className="px-3 py-1.5">
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-3">
                       {warehouses.map((wh) => {
                         const stock = item.stock.find((s) => s.warehouseId === wh.id);
                         const qty = stock?.quantity || 0;
@@ -104,7 +104,7 @@ export function InventoryTable({ items, warehouses, sortField, sortDirection, on
                             <TooltipTrigger asChild>
                               <span
                                 className={cn(
-                                  'w-7 text-center text-xs tabular-nums',
+                                  'w-16 text-center text-xs tabular-nums',
                                   qty > 0 ? 'text-foreground' : 'text-muted-foreground/50'
                                 )}
                               >
