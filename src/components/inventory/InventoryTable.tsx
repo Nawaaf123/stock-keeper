@@ -60,11 +60,16 @@ export function InventoryTable({ items, warehouses, sortField, sortDirection, on
                 </div>
               </th>
               <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground">
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-3">
                   {warehouses.map(wh => (
-                    <span key={wh.id} className="w-7 text-center" title={wh.name}>
-                      {wh.name.replace('Warehouse ', '')}
-                    </span>
+                    <Tooltip key={wh.id}>
+                      <TooltipTrigger asChild>
+                        <span className="w-16 text-center truncate inline-block" title={wh.name}>
+                          {wh.name}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">{wh.name}</TooltipContent>
+                    </Tooltip>
                   ))}
                 </div>
               </th>
@@ -90,7 +95,7 @@ export function InventoryTable({ items, warehouses, sortField, sortDirection, on
                     <span className="font-semibold text-sm text-foreground">{total}</span>
                   </td>
                   <td className="px-3 py-1.5">
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-3">
                       {warehouses.map((wh) => {
                         const stock = item.stock.find((s) => s.warehouseId === wh.id);
                         const qty = stock?.quantity || 0;
@@ -99,7 +104,7 @@ export function InventoryTable({ items, warehouses, sortField, sortDirection, on
                             <TooltipTrigger asChild>
                               <span
                                 className={cn(
-                                  'w-7 text-center text-xs tabular-nums',
+                                  'w-16 text-center text-xs tabular-nums',
                                   qty > 0 ? 'text-foreground' : 'text-muted-foreground/50'
                                 )}
                               >
