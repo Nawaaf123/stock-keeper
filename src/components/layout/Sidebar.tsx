@@ -31,7 +31,7 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
-  const activeLabel = navItems.find(n => n.id === activeView)?.label ?? 'InvenTrack';
+  const activeLabel = navItems.find(n => n.id === activeView)?.label ?? 'Nawaaf Track';
 
   const NavList = () => (
     <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
@@ -96,7 +96,7 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
               <Package className="w-5 h-5 text-sidebar-primary-foreground" />
             </div>
             <div className="min-w-0">
-              <h1 className="font-semibold text-lg truncate">InvenTrack</h1>
+              <h1 className="font-semibold text-lg truncate">Nawaaf Track</h1>
               <p className="text-xs text-sidebar-foreground/60 truncate">Multi-Warehouse</p>
             </div>
           </div>
