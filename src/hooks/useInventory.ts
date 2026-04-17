@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { InventoryItem, SortField, SortDirection, WarehouseStock, InventoryTransaction, Order, OrderItem, Wholesaler, Warehouse } from '@/types/inventory';
+import { InventoryItem, SortField, SortDirection, WarehouseStock, InventoryTransaction, Order, OrderItem, Wholesaler, Warehouse, Payment } from '@/types/inventory';
 import { supabase } from '@/integrations/supabase/client';
 import { getTotalQuantity } from '@/data/mockData';
 
@@ -9,6 +9,7 @@ export function useInventory() {
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [wholesalers, setWholesalers] = useState<Wholesaler[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
@@ -113,15 +114,29 @@ export function useInventory() {
     }
   }, []);
 
+  const fetchPayments = useCallback(async () => {
+    const { data } = await (supabase as any).from('payments').select('*').order('payment_date', { ascending: false });
+    if (data) {
+      setPayments(data.map((p: any) => ({
+        id: p.id,
+        orderId: p.order_id,
+        amount: Number(p.amount),
+        paymentDate: new Date(p.payment_date),
+        method: p.method,
+        note: p.note,
+      })));
+    }
+  }, []);
+
   // Initial load
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      await Promise.all([fetchWarehouses(), fetchItems(), fetchTransactions(), fetchOrders(), fetchWholesalers()]);
+      await Promise.all([fetchWarehouses(), fetchItems(), fetchTransactions(), fetchOrders(), fetchWholesalers(), fetchPayments()]);
       setLoading(false);
     };
     loadAll();
-  }, [fetchWarehouses, fetchItems, fetchTransactions, fetchOrders, fetchWholesalers]);
+  }, [fetchWarehouses, fetchItems, fetchTransactions, fetchOrders, fetchWholesalers, fetchPayments]);
 
   // ─── Realtime: live sync across all connected users/computers ───
   useEffect(() => {
@@ -392,6 +407,22 @@ export function useInventory() {
     await Promise.all([fetchWarehouses(), fetchItems()]);
   };
 
+  const addPayment = async (orderId: string, amount: number, method: string, note: string, paymentDate?: Date) => {
+    await (supabase as any).from('payments').insert({
+      order_id: orderId,
+      amount,
+      method,
+      note,
+      payment_date: (paymentDate ?? new Date()).toISOString(),
+    });
+    await fetchPayments();
+  };
+
+  const deletePayment = async (id: string) => {
+    await (supabase as any).from('payments').delete().eq('id', id);
+    await fetchPayments();
+  };
+
   return {
     items: filteredAndSortedItems,
     allItems: items,
@@ -399,6 +430,9 @@ export function useInventory() {
     transactions,
     orders,
     wholesalers,
+    payments,
+    addPayment,
+    deletePayment,
     warehouses: warehousesList,
     loading,
     searchQuery,
