@@ -154,6 +154,50 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
             />
           </div>
 
+          {/* BOL Document Upload */}
+          <div>
+            <Label>BOL Document (optional)</Label>
+            {bolFile ? (
+              <div className="flex items-center justify-between gap-2 border rounded-md px-3 py-2 bg-muted/40">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText className="w-4 h-4 text-primary shrink-0" />
+                  <span className="text-sm truncate">{bolFile.name}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    ({(bolFile.size / 1024).toFixed(0)} KB)
+                  </span>
+                </div>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setBolFile(null)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <label
+                htmlFor="bolFile"
+                className="flex items-center justify-center gap-2 border border-dashed rounded-md px-3 py-3 text-sm text-muted-foreground hover:bg-muted/40 cursor-pointer"
+              >
+                <Upload className="w-4 h-4" />
+                Upload scan / PDF
+              </label>
+            )}
+            <input
+              id="bolFile"
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) {
+                  if (f.size > 20 * 1024 * 1024) {
+                    toast.error('File too large (max 20 MB)');
+                    return;
+                  }
+                  setBolFile(f);
+                }
+                e.target.value = '';
+              }}
+            />
+          </div>
+
           {/* Warehouse Selection */}
           <div>
             <Label htmlFor="warehouse">Select Warehouse</Label>
