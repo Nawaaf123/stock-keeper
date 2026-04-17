@@ -1,7 +1,8 @@
-import { Package, BarChart3, Settings, FileText, History, ShoppingCart, Users, ClipboardList, CreditCard, Menu, X } from 'lucide-react';
+import { Package, BarChart3, FileText, History, ShoppingCart, Users, ClipboardList, CreditCard, Menu, X, LogOut, UserCog } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import mrfogLogo from '@/assets/mrfog-logo.png';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SidebarProps {
   activeView: string;
@@ -17,10 +18,12 @@ const navItems = [
   { id: 'inventory-history', label: 'Inventory History', icon: History },
   { id: 'reports', label: 'Reports', icon: BarChart3 },
   { id: 'bill-of-lading', label: 'Bill of Lading', icon: FileText },
+  { id: 'users', label: 'Users', icon: UserCog },
 ];
 
 export function Sidebar({ activeView, onViewChange }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, signOut } = useAuth();
 
   // Close drawer when view changes
   useEffect(() => { setMobileOpen(false); }, [activeView]);
@@ -112,10 +115,18 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
 
         <NavList />
 
-        <div className="p-3 border-t border-sidebar-border" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 min-h-[44px]">
-            <Settings className="w-5 h-5 flex-shrink-0" />
-            Settings
+        <div className="p-3 border-t border-sidebar-border space-y-1" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+          {user && (
+            <div className="px-4 py-2 text-xs text-sidebar-foreground/60 truncate" title={user.email ?? ''}>
+              {user.email}
+            </div>
+          )}
+          <button
+            onClick={() => signOut()}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 min-h-[44px]"
+          >
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            Sign out
           </button>
         </div>
       </aside>
