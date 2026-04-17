@@ -143,32 +143,34 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground">Orders</h1>
-          <p className="text-muted-foreground">Manage outgoing orders and track shipment history</p>
+          <p className="text-muted-foreground text-sm sm:text-base">Manage outgoing orders and track shipment history</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={() => setDialogOpen(true)} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Create Order
         </Button>
       </div>
 
       <Tabs defaultValue="orders" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="orders" className="flex items-center gap-2">
-            <Package className="w-4 h-4" />
-            Orders
-          </TabsTrigger>
-          <TabsTrigger value="shop-history" className="flex items-center gap-2">
-            <Store className="w-4 h-4" />
-            By Shop
-          </TabsTrigger>
-          <TabsTrigger value="product-history" className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" />
-            By Product
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+          <TabsList className="w-max">
+            <TabsTrigger value="orders" className="flex items-center gap-2">
+              <Package className="w-4 h-4" />
+              Orders
+            </TabsTrigger>
+            <TabsTrigger value="shop-history" className="flex items-center gap-2">
+              <Store className="w-4 h-4" />
+              By Shop
+            </TabsTrigger>
+            <TabsTrigger value="product-history" className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              By Product
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="orders" className="space-y-6">
           {orders.length === 0 ? (
