@@ -2,11 +2,9 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InventoryItem, Wholesaler, Warehouse } from '@/types/inventory';
-import { Plus, Trash2, Store, Zap, List, Filter } from 'lucide-react';
+import { Plus, Trash2, Store } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface OrderItemEntry {
@@ -28,46 +26,25 @@ interface CreateOrderDialogProps {
 export function CreateOrderDialog({ open, onOpenChange, items, warehouses, wholesalers, onCreateOrder }: CreateOrderDialogProps) {
   const [selectedWholesaler, setSelectedWholesaler] = useState('');
   const [customShopName, setCustomShopName] = useState('');
-  const [orderItems, setOrderItems] = useState<OrderItemEntry[]>([{ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 }]);
-
-  // Category / subcategory filters that narrow the product pickers
+  const [orderItems, setOrderItems] = useState<OrderItemEntry[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
 
-  // Quick SKU entry state
   const [skuInput, setSkuInput] = useState('');
   const [qtyInput, setQtyInput] = useState('1');
   const skuRef = useRef<HTMLInputElement>(null);
 
-  const categories = useMemo(() => {
-    return Array.from(new Set(items.map(i => i.category).filter(Boolean))).sort();
-  }, [items]);
-
-  const subCategories = useMemo(() => {
-    const filtered = categoryFilter === 'all'
-      ? items
-      : items.filter(i => i.category === categoryFilter);
-    return Array.from(new Set(filtered.map(i => i.subCategory).filter(Boolean))).sort();
-  }, [items, categoryFilter]);
+  const categories = useMemo(
+    () => Array.from(new Set(items.map(i => i.category).filter(Boolean))).sort(),
+    [items]
+  );
 
   const filteredItems = useMemo(() => {
-    return items.filter(i => {
-      if (categoryFilter !== 'all' && i.category !== categoryFilter) return false;
-      if (subCategoryFilter !== 'all' && i.subCategory !== subCategoryFilter) return false;
-      return true;
-    });
-  }, [items, categoryFilter, subCategoryFilter]);
+    return categoryFilter === 'all' ? items : items.filter(i => i.category === categoryFilter);
+  }, [items, categoryFilter]);
 
-  // Reset subcategory if it no longer matches the chosen category
   useEffect(() => {
-    if (subCategoryFilter !== 'all' && !subCategories.includes(subCategoryFilter)) {
-      setSubCategoryFilter('all');
-    }
-  }, [subCategories, subCategoryFilter]);
-
-  const handleAddItem = () => {
-    setOrderItems([...orderItems, { itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 }]);
-  };
+    if (open) setTimeout(() => skuRef.current?.focus(), 50);
+  }, [open]);
 
   const handleRemoveItem = (index: number) => {
     setOrderItems(orderItems.filter((_, i) => i !== index));
@@ -76,17 +53,11 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   const handleItemChange = (index: number, field: keyof OrderItemEntry, value: string | number) => {
     const updated = [...orderItems];
     updated[index] = { ...updated[index], [field]: value };
-
-    // Auto-pick the warehouse with most stock + default unit price when product changes
     if (field === 'itemId') {
       const item = items.find(i => i.id === value);
       if (item) {
         const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
-        if (best && best.quantity > 0) {
-          updated[index].warehouseId = best.warehouseId;
-        } else {
-          updated[index].warehouseId = '';
-        }
+        updated[index].warehouseId = best && best.quantity > 0 ? best.warehouseId : '';
         updated[index].unitPrice = item.price;
       }
     }
@@ -95,18 +66,14 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
   const getAvailableStock = (itemId: string, warehouseId: string): number => {
     const item = items.find(i => i.id === itemId);
-    if (!item) return 0;
-    const stock = item.stock.find(s => s.warehouseId === warehouseId);
-    return stock?.quantity || 0;
+    return item?.stock.find(s => s.warehouseId === warehouseId)?.quantity || 0;
   };
 
   const getShopName = (): string => {
     if (selectedWholesaler === 'custom') return customShopName.trim();
-    const wholesaler = wholesalers.find(w => w.id === selectedWholesaler);
-    return wholesaler?.name || '';
+    return wholesalers.find(w => w.id === selectedWholesaler)?.name || '';
   };
 
-  // Quick SKU add — type SKU + qty, press Enter
   const handleQuickAdd = () => {
     const sku = skuInput.trim().toLowerCase();
     if (!sku) return;
@@ -116,47 +83,30 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
       || items.find(i => i.sku.toLowerCase().startsWith(sku))
       || items.find(i => i.name.toLowerCase().includes(sku));
 
-    if (!item) {
-      toast.error(`No product found for "${skuInput}"`);
-      return;
-    }
+    if (!item) { toast.error(`No product found for "${skuInput}"`); return; }
 
     const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
-    if (!best || best.quantity === 0) {
-      toast.error(`${item.name} has no stock available`);
-      return;
-    }
+    if (!best || best.quantity === 0) { toast.error(`${item.name} has no stock`); return; }
 
-    // If this item+warehouse already exists, bump the qty
-    const existingIdx = orderItems.findIndex(
-      e => e.itemId === item.id && e.warehouseId === best.warehouseId
-    );
+    const existingIdx = orderItems.findIndex(e => e.itemId === item.id && e.warehouseId === best.warehouseId);
     if (existingIdx >= 0) {
       const updated = [...orderItems];
       updated[existingIdx].quantity += qty;
       setOrderItems(updated);
     } else {
-      const newEntry = { itemId: item.id, warehouseId: best.warehouseId, quantity: qty, unitPrice: item.price };
-      // Replace the empty placeholder row if present
-      if (orderItems.length === 1 && !orderItems[0].itemId) {
-        setOrderItems([newEntry]);
-      } else {
-        setOrderItems([...orderItems, newEntry]);
-      }
+      setOrderItems([...orderItems, { itemId: item.id, warehouseId: best.warehouseId, quantity: qty, unitPrice: item.price }]);
     }
 
-    toast.success(`Added ${qty} × ${item.name}`);
     setSkuInput('');
     setQtyInput('1');
     skuRef.current?.focus();
   };
 
   const isValid = () => {
-    const shopName = getShopName();
-    if (!shopName) return false;
+    if (!getShopName()) return false;
     const valid = orderItems.filter(e => e.itemId && e.warehouseId && e.quantity > 0);
     if (valid.length === 0) return false;
-    return valid.every(entry => entry.quantity <= getAvailableStock(entry.itemId, entry.warehouseId));
+    return valid.every(e => e.quantity <= getAvailableStock(e.itemId, e.warehouseId));
   };
 
   const handleSubmit = () => {
@@ -172,267 +122,212 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   const resetState = () => {
     setSelectedWholesaler('');
     setCustomShopName('');
-    setOrderItems([{ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 }]);
+    setOrderItems([]);
     setCategoryFilter('all');
-    setSubCategoryFilter('all');
     setSkuInput('');
     setQtyInput('1');
   };
 
-  const handleClose = () => {
-    resetState();
-    onOpenChange(false);
-  };
+  const handleClose = () => { resetState(); onOpenChange(false); };
 
-  const totalUnits = orderItems.reduce((sum, e) => sum + (e.itemId && e.warehouseId ? e.quantity : 0), 0);
-  const totalValue = orderItems.reduce((sum, e) => sum + (e.itemId && e.warehouseId ? e.quantity * (Number(e.unitPrice) || 0) : 0), 0);
+  const totalUnits = orderItems.reduce((s, e) => s + (e.itemId && e.warehouseId ? e.quantity : 0), 0);
+  const totalValue = orderItems.reduce((s, e) => s + (e.itemId && e.warehouseId ? e.quantity * (Number(e.unitPrice) || 0) : 0), 0);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Store className="w-5 h-5" />
-            Create Order
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Store className="w-4 h-4" /> Create Order
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Shop / Wholesaler</Label>
+        <div className="space-y-3">
+          {/* Shop + Category in one row */}
+          <div className="grid grid-cols-[1fr_180px] gap-2">
             <Select value={selectedWholesaler} onValueChange={setSelectedWholesaler}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select wholesaler or enter custom" />
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Select shop / wholesaler" />
               </SelectTrigger>
               <SelectContent className="bg-popover">
-                {wholesalers.map((wholesaler) => (
-                  <SelectItem key={wholesaler.id} value={wholesaler.id}>
-                    {wholesaler.name}
-                    {wholesaler.contactPerson && (
-                      <span className="text-muted-foreground ml-2">({wholesaler.contactPerson})</span>
-                    )}
-                  </SelectItem>
+                {wholesalers.map((w) => (
+                  <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
                 ))}
-                <SelectItem value="custom">+ Enter custom name</SelectItem>
+                <SelectItem value="custom">+ Custom name</SelectItem>
               </SelectContent>
             </Select>
-            {selectedWholesaler === 'custom' && (
-              <Input
-                value={customShopName}
-                onChange={(e) => setCustomShopName(e.target.value)}
-                placeholder="Enter shop or customer name"
-                className="mt-2"
-              />
-            )}
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All categories</SelectItem>
+                {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Category filters — narrow the product pickers */}
-          <div className="grid grid-cols-2 gap-3 p-3 border rounded-lg bg-muted/30">
-            <div className="space-y-1">
-              <Label className="text-xs flex items-center gap-1">
-                <Filter className="w-3 h-3" /> Category
-              </Label>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All categories</SelectItem>
-                  {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs flex items-center gap-1">
-                <Filter className="w-3 h-3" /> Sub-category
-              </Label>
-              <Select value={subCategoryFilter} onValueChange={setSubCategoryFilter}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All sub-categories</SelectItem>
-                  {subCategories.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          {selectedWholesaler === 'custom' && (
+            <Input
+              value={customShopName}
+              onChange={(e) => setCustomShopName(e.target.value)}
+              placeholder="Shop / customer name"
+              className="h-9"
+            />
+          )}
 
-          <Tabs defaultValue="quick" className="w-full">
-            <TabsList className="grid grid-cols-2 w-full">
-              <TabsTrigger value="quick" className="flex items-center gap-2">
-                <Zap className="w-4 h-4" /> Quick SKU Entry
-              </TabsTrigger>
-              <TabsTrigger value="manual" className="flex items-center gap-2">
-                <List className="w-4 h-4" /> Pick Products
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="quick" className="space-y-3 mt-3">
-              <div className="flex gap-2">
-                <Input
-                  ref={skuRef}
-                  autoFocus
-                  value={skuInput}
-                  onChange={(e) => setSkuInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleQuickAdd();
-                    }
-                  }}
-                  placeholder="Type SKU or product name, press Enter"
-                  className="flex-1"
-                />
-                <Input
-                  type="number"
-                  min={1}
-                  value={qtyInput}
-                  onChange={(e) => setQtyInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleQuickAdd();
-                    }
-                  }}
-                  className="w-20"
-                />
-                <Button onClick={handleQuickAdd} type="button">
-                  <Plus className="w-4 h-4 mr-1" /> Add
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Tip: warehouse with the most stock is auto-selected. Same product scanned twice just increases the quantity.
-              </p>
-            </TabsContent>
-
-            <TabsContent value="manual" className="mt-3">
-              <p className="text-xs text-muted-foreground mb-2">
-                Showing {filteredItems.length} of {items.length} products{categoryFilter !== 'all' && ` in "${categoryFilter}"`}
-              </p>
-            </TabsContent>
-          </Tabs>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Order Lines ({orderItems.filter(e => e.itemId).length})</Label>
-              {totalUnits > 0 && (
-                <span className="text-sm text-muted-foreground">
-                  {totalUnits} units · <span className="font-semibold text-foreground">${totalValue.toFixed(2)}</span>
-                </span>
-              )}
-            </div>
-
-            {orderItems.map((entry, index) => {
-              const selectedItem = items.find(i => i.id === entry.itemId);
-              const availableStock = getAvailableStock(entry.itemId, entry.warehouseId);
-              const productListForRow = entry.itemId && !filteredItems.find(i => i.id === entry.itemId)
-                ? [...filteredItems, selectedItem!]
-                : filteredItems;
-
-              return (
-                <div key={index} className="flex gap-2 items-start p-3 border rounded-lg bg-muted/30">
-                  <div className="flex-1 space-y-2">
-                    <Select
-                      value={entry.itemId}
-                      onValueChange={(value) => handleItemChange(index, 'itemId', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select product" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {productListForRow.map((item) => (
-                          <SelectItem key={item.id} value={item.id}>
-                            {item.sku} - {item.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <div className="flex gap-2">
-                      <Select
-                        value={entry.warehouseId}
-                        onValueChange={(value) => handleItemChange(index, 'warehouseId', value)}
-                        disabled={!entry.itemId}
-                      >
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Select warehouse" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {warehouses.map((wh) => {
-                            const stock = selectedItem?.stock.find(s => s.warehouseId === wh.id);
-                            return (
-                              <SelectItem key={wh.id} value={wh.id} disabled={!stock || stock.quantity === 0}>
-                                {wh.name} ({stock?.quantity || 0} available)
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-
-                      <Input
-                        type="number"
-                        min={1}
-                        max={availableStock || undefined}
-                        value={entry.quantity}
-                        onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
-                        className="w-20"
-                        disabled={!entry.warehouseId}
-                        placeholder="Qty"
-                      />
-
-                      <div className="relative w-28">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={entry.unitPrice}
-                          onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                          className="pl-6"
-                          disabled={!entry.itemId}
-                          placeholder="Price"
-                        />
-                      </div>
-                    </div>
-
-                    {entry.itemId && entry.warehouseId && (
-                      <p className="text-xs text-muted-foreground flex justify-between">
-                        <span>
-                          Available: {availableStock} units
-                          {entry.quantity > availableStock && (
-                            <span className="text-destructive ml-2">Exceeds available stock!</span>
-                          )}
-                        </span>
-                        <span className="font-medium text-foreground">
-                          Line: ${(entry.quantity * (Number(entry.unitPrice) || 0)).toFixed(2)}
-                        </span>
-                      </p>
-                    )}
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveItem(index)}
-                    disabled={orderItems.length === 1}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              );
-            })}
-
-            <Button variant="outline" onClick={handleAddItem} className="w-full">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Another Product
+          {/* Quick add SKU bar */}
+          <div className="flex gap-2">
+            <Input
+              ref={skuRef}
+              value={skuInput}
+              onChange={(e) => setSkuInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleQuickAdd(); } }}
+              placeholder="Scan / type SKU or name, press Enter"
+              className="flex-1 h-9"
+            />
+            <Input
+              type="number"
+              min={1}
+              value={qtyInput}
+              onChange={(e) => setQtyInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleQuickAdd(); } }}
+              className="w-16 h-9"
+            />
+            <Button onClick={handleQuickAdd} type="button" size="sm" className="h-9">
+              <Plus className="w-4 h-4" />
             </Button>
           </div>
+
+          {/* Order lines table */}
+          {orderItems.length > 0 ? (
+            <div className="border rounded-md overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs">
+                  <tr>
+                    <th className="text-left px-2 py-1.5 font-medium">Product</th>
+                    <th className="text-left px-2 py-1.5 font-medium w-32">Warehouse</th>
+                    <th className="text-right px-2 py-1.5 font-medium w-16">Qty</th>
+                    <th className="text-right px-2 py-1.5 font-medium w-20">Price</th>
+                    <th className="text-right px-2 py-1.5 font-medium w-20">Total</th>
+                    <th className="w-8"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orderItems.map((entry, index) => {
+                    const selectedItem = items.find(i => i.id === entry.itemId);
+                    const availableStock = getAvailableStock(entry.itemId, entry.warehouseId);
+                    const productList = entry.itemId && !filteredItems.find(i => i.id === entry.itemId)
+                      ? [...filteredItems, selectedItem!]
+                      : filteredItems;
+                    const exceeds = entry.quantity > availableStock;
+
+                    return (
+                      <tr key={index} className="border-t">
+                        <td className="px-1 py-1">
+                          <Select value={entry.itemId} onValueChange={(v) => handleItemChange(index, 'itemId', v)}>
+                            <SelectTrigger className="h-8 border-0 shadow-none focus:ring-1">
+                              <SelectValue placeholder="Select product" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {productList.map((item) => (
+                                <SelectItem key={item.id} value={item.id}>{item.sku} – {item.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="px-1 py-1">
+                          <Select
+                            value={entry.warehouseId}
+                            onValueChange={(v) => handleItemChange(index, 'warehouseId', v)}
+                            disabled={!entry.itemId}
+                          >
+                            <SelectTrigger className="h-8 border-0 shadow-none focus:ring-1">
+                              <SelectValue placeholder="—" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {warehouses.map((wh) => {
+                                const stock = selectedItem?.stock.find(s => s.warehouseId === wh.id);
+                                return (
+                                  <SelectItem key={wh.id} value={wh.id} disabled={!stock || stock.quantity === 0}>
+                                    {wh.name} ({stock?.quantity || 0})
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="px-1 py-1">
+                          <Input
+                            type="number"
+                            min={1}
+                            value={entry.quantity}
+                            onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
+                            className={`h-8 text-right border-0 shadow-none focus-visible:ring-1 ${exceeds ? 'text-destructive' : ''}`}
+                            disabled={!entry.warehouseId}
+                          />
+                        </td>
+                        <td className="px-1 py-1">
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={entry.unitPrice}
+                            onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                            className="h-8 text-right border-0 shadow-none focus-visible:ring-1"
+                            disabled={!entry.itemId}
+                          />
+                        </td>
+                        <td className="px-2 py-1 text-right tabular-nums">
+                          ${(entry.quantity * (Number(entry.unitPrice) || 0)).toFixed(2)}
+                        </td>
+                        <td className="px-1 py-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemoveItem(index)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="bg-muted/30 text-sm">
+                  <tr className="border-t">
+                    <td colSpan={2} className="px-2 py-1.5 text-muted-foreground text-xs">
+                      {totalUnits} units · {orderItems.length} line{orderItems.length !== 1 ? 's' : ''}
+                    </td>
+                    <td colSpan={3} className="px-2 py-1.5 text-right font-semibold tabular-nums">
+                      ${totalValue.toFixed(2)}
+                    </td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          ) : (
+            <div className="border border-dashed rounded-md py-6 text-center text-sm text-muted-foreground">
+              Scan a SKU above or <button
+                type="button"
+                className="underline text-foreground"
+                onClick={() => setOrderItems([{ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 }])}
+              >add a line manually</button>
+            </div>
+          )}
+
+          {orderItems.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setOrderItems([...orderItems, { itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 }])}
+              className="w-full h-8 text-xs"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" /> Add line
+            </Button>
+          )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={!isValid()}>
-            Create Order
-          </Button>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" size="sm" onClick={handleClose}>Cancel</Button>
+          <Button size="sm" onClick={handleSubmit} disabled={!isValid()}>Create Order</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
