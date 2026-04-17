@@ -54,7 +54,7 @@ export function downloadInvoice(order: Order, wholesaler?: Wholesaler) {
     head: [['SKU', 'Product', 'Qty', 'Unit Price', 'Line Total']],
     body: rows,
     theme: 'striped',
-    headStyles: { fillColor: [38, 138, 130], textColor: 255, fontStyle: 'bold' },
+    headStyles: { fillColor: [220, 77, 68], textColor: 255, fontStyle: 'bold' },
     styles: { fontSize: 9, cellPadding: 3 },
     columnStyles: {
       2: { halign: 'right' },

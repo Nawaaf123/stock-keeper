@@ -66,7 +66,7 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
           <Menu className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
+          <div className="w-8 h-8 rounded-md bg-accent flex items-center justify-center flex-shrink-0 overflow-hidden">
             <img src={mrfogLogo} alt="MR Fog" className="w-7 h-7 object-contain" />
           </div>
           <h1 className="font-semibold text-base truncate">{activeLabel}</h1>
@@ -93,7 +93,7 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
       >
         <div className="p-4 lg:p-6 border-b border-sidebar-border flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center flex-shrink-0 overflow-hidden">
               <img src={mrfogLogo} alt="MR Fog" className="w-9 h-9 object-contain" />
             </div>
             <div className="min-w-0">
