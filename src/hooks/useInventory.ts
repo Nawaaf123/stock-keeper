@@ -93,6 +93,7 @@ export function useInventory() {
             warehouseId: oi.warehouse_id,
             warehouseName: (oi.warehouses as any)?.name || '',
             quantity: oi.quantity,
+            unitPrice: Number((oi as any).unit_price ?? 0),
           })),
       })));
     }
