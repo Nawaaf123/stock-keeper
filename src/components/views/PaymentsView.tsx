@@ -350,7 +350,7 @@ export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDe
       <Card>
         <CardHeader className="pb-3"><CardTitle>Payment History</CardTitle></CardHeader>
         <CardContent>
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-lg overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
