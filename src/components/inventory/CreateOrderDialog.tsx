@@ -153,8 +153,8 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
         </DialogHeader>
 
         <div className="space-y-3">
-          {/* Shop + Category in one row */}
-          <div className="grid grid-cols-[1fr_180px] gap-2">
+          {/* Shop + Category + Subcategory in one row */}
+          <div className="grid grid-cols-[1fr_150px_150px] gap-2">
             <Select value={selectedWholesaler} onValueChange={setSelectedWholesaler}>
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="Select shop / wholesaler" />
@@ -166,13 +166,22 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                 <SelectItem value="custom">+ Custom name</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setSubCategoryFilter('all'); }}>
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="All categories" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All categories</SelectItem>
                 {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={subCategoryFilter} onValueChange={setSubCategoryFilter} disabled={subCategories.length === 0}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="All sub-categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All sub-categories</SelectItem>
+                {subCategories.map(sc => <SelectItem key={sc} value={sc}>{sc}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
