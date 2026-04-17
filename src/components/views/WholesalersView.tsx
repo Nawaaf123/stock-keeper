@@ -151,12 +151,12 @@ export function WholesalersView({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <div className="min-w-0">
           <h2 className="text-2xl font-bold text-foreground">Wholesalers</h2>
-          <p className="text-muted-foreground">Manage your wholesaler contacts</p>
+          <p className="text-muted-foreground text-sm sm:text-base">Manage your wholesaler contacts</p>
         </div>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
           <input
             type="file"
             ref={fileInputRef}
@@ -172,7 +172,7 @@ export function WholesalersView({
             <DialogTrigger asChild>
               <Button onClick={resetForm}>
                 <Plus className="w-4 h-4 mr-2" />
-                Add Wholesaler
+                <span className="truncate">Add Wholesaler</span>
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -247,7 +247,7 @@ export function WholesalersView({
       </div>
 
       {/* Excel-like Table */}
-      <div className="border rounded-lg overflow-hidden">
+      <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">

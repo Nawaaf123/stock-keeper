@@ -81,11 +81,11 @@ export function UsersView() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 space-y-0">
           <CardTitle>Users</CardTitle>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button size="sm"><UserPlus className="w-4 h-4" /> Add user</Button>
+              <Button size="sm" className="w-full sm:w-auto"><UserPlus className="w-4 h-4 mr-2" /> Add user</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Create new user</DialogTitle></DialogHeader>
@@ -110,33 +110,35 @@ export function UsersView() {
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Last sign-in</TableHead>
-                  <TableHead className="w-16"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((u) => (
-                  <TableRow key={u.id}>
-                    <TableCell className="font-medium">{u.email}{u.id === currentUser?.id && <span className="text-xs text-muted-foreground ml-2">(you)</span>}</TableCell>
-                    <TableCell>{new Date(u.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell>{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString() : '—'}</TableCell>
-                    <TableCell>
-                      <Button size="icon" variant="ghost" disabled={u.id === currentUser?.id} onClick={() => onDelete(u.id, u.email)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">Email</TableHead>
+                    <TableHead className="whitespace-nowrap">Created</TableHead>
+                    <TableHead className="whitespace-nowrap">Last sign-in</TableHead>
+                    <TableHead className="w-16"></TableHead>
                   </TableRow>
-                ))}
-                {users.length === 0 && (
-                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No users yet</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {users.map((u) => (
+                    <TableRow key={u.id}>
+                      <TableCell className="font-medium break-all">{u.email}{u.id === currentUser?.id && <span className="text-xs text-muted-foreground ml-2">(you)</span>}</TableCell>
+                      <TableCell className="whitespace-nowrap">{new Date(u.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="whitespace-nowrap">{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString() : '—'}</TableCell>
+                      <TableCell>
+                        <Button size="icon" variant="ghost" disabled={u.id === currentUser?.id} onClick={() => onDelete(u.id, u.email)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {users.length === 0 && (
+                    <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No users yet</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
