@@ -41,6 +41,7 @@ export interface InventoryTransaction {
   warehouseName: string;
   quantity: number;
   bolNumber: string;
+  bolDocumentUrl?: string | null;
   date: Date;
   type: 'receive' | 'adjust';
 }

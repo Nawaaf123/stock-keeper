@@ -67,6 +67,7 @@ export function useInventory() {
         warehouseName: (t.warehouses as any)?.name || '',
         quantity: t.quantity,
         bolNumber: t.bol_number,
+        bolDocumentUrl: (t as any).bol_document_url ?? null,
         date: new Date(t.created_at),
         type: t.type as 'receive' | 'adjust',
       })));
@@ -268,15 +269,16 @@ export function useInventory() {
     await fetchItems();
   };
 
-  const receiveStock = async (itemId: string, warehouseId: string, quantity: number, bolNumber: string) => {
+  const receiveStock = async (itemId: string, warehouseId: string, quantity: number, bolNumber: string, bolDocumentUrl?: string | null) => {
     // Insert transaction
     await supabase.from('inventory_transactions').insert({
       item_id: itemId,
       warehouse_id: warehouseId,
       quantity,
       bol_number: bolNumber,
+      bol_document_url: bolDocumentUrl ?? null,
       type: 'receive',
-    });
+    } as any);
 
     // Update stock quantity
     const { data: existing } = await supabase
