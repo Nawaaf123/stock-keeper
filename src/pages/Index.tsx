@@ -9,6 +9,7 @@ import { OrdersView } from '@/components/views/OrdersView';
 import { WholesalersView } from '@/components/views/WholesalersView';
 import { StockSummaryView } from '@/components/views/StockSummaryView';
 import { PaymentsView } from '@/components/views/PaymentsView';
+import { UsersView } from '@/components/views/UsersView';
 import { useInventory } from '@/hooks/useInventory';
 
 const Index = () => {
@@ -88,6 +89,8 @@ const Index = () => {
         return <ReportsView orders={inventory.orders} items={inventory.allItems} transactions={inventory.transactions} warehouses={inventory.warehouses} />;
       case 'bill-of-lading':
         return <BillOfLadingView />;
+      case 'users':
+        return <UsersView />;
       default:
         return (
           <InventoryView
