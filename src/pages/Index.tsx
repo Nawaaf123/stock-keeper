@@ -66,6 +66,7 @@ const Index = () => {
           <PaymentsView
             orders={inventory.orders}
             payments={inventory.payments}
+            wholesalers={inventory.wholesalers}
             onAddPayment={inventory.addPayment}
             onDeletePayment={inventory.deletePayment}
           />
