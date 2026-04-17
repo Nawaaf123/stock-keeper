@@ -119,7 +119,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar activeView={activeView} onViewChange={setActiveView} />
-      <main className="ml-64 p-8">
+      <main className="lg:ml-64 pt-14 lg:pt-0 p-3 sm:p-5 lg:p-8">
         {renderView()}
       </main>
     </div>
