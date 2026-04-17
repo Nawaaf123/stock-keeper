@@ -331,12 +331,13 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
             <Button 
               type="submit" 
               disabled={
+                uploading ||
                 !warehouseId || 
                 !bolNumber.trim() || 
                 (isSingleItemMode ? currentQuantity <= 0 : productEntries.length === 0)
               }
             >
-              Receive Stock
+              {uploading ? 'Uploading…' : 'Receive Stock'}
             </Button>
           </div>
         </form>
