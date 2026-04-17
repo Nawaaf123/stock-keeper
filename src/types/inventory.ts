@@ -52,6 +52,7 @@ export interface OrderItem {
   warehouseId: string;
   warehouseName: string;
   quantity: number;
+  unitPrice: number;
 }
 
 export interface Order {

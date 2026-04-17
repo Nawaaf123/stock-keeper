@@ -123,6 +123,7 @@ export type Database = {
           item_id: string
           order_id: string
           quantity: number
+          unit_price: number
           warehouse_id: string
         }
         Insert: {
@@ -131,6 +132,7 @@ export type Database = {
           item_id: string
           order_id: string
           quantity: number
+          unit_price?: number
           warehouse_id: string
         }
         Update: {
@@ -139,6 +141,7 @@ export type Database = {
           item_id?: string
           order_id?: string
           quantity?: number
+          unit_price?: number
           warehouse_id?: string
         }
         Relationships: [
