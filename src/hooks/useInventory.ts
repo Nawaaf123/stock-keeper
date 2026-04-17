@@ -316,7 +316,7 @@ export function useInventory() {
     await fetchItems();
   };
 
-  const createOrder = async (shopName: string, orderItems: { itemId: string; warehouseId: string; quantity: number }[]) => {
+  const createOrder = async (shopName: string, orderItems: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]) => {
     const { data: newOrder, error } = await supabase
       .from('orders')
       .insert({ shop_name: shopName, status: 'completed' })
@@ -325,16 +325,15 @@ export function useInventory() {
 
     if (error || !newOrder) return;
 
-    // Insert order items
     const oiRows = orderItems.map(entry => ({
       order_id: newOrder.id,
       item_id: entry.itemId,
       warehouse_id: entry.warehouseId,
       quantity: entry.quantity,
+      unit_price: entry.unitPrice,
     }));
     await supabase.from('order_items').insert(oiRows);
 
-    // Reduce stock
     for (const entry of orderItems) {
       const { data: stock } = await supabase
         .from('warehouse_stock')
@@ -348,6 +347,7 @@ export function useInventory() {
     }
 
     await Promise.all([fetchItems(), fetchOrders()]);
+    return newOrder.id as string;
   };
 
   const addWholesaler = async (wholesaler: Omit<Wholesaler, 'id'>) => {
