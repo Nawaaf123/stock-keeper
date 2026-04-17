@@ -8,6 +8,7 @@ import { BillOfLadingView } from '@/components/views/BillOfLadingView';
 import { OrdersView } from '@/components/views/OrdersView';
 import { WholesalersView } from '@/components/views/WholesalersView';
 import { StockSummaryView } from '@/components/views/StockSummaryView';
+import { PaymentsView } from '@/components/views/PaymentsView';
 import { useInventory } from '@/hooks/useInventory';
 
 const Index = () => {
@@ -58,6 +59,15 @@ const Index = () => {
             items={inventory.allItems}
             orders={inventory.orders}
             transactions={inventory.transactions}
+          />
+        );
+      case 'payments':
+        return (
+          <PaymentsView
+            orders={inventory.orders}
+            payments={inventory.payments}
+            onAddPayment={inventory.addPayment}
+            onDeletePayment={inventory.deletePayment}
           />
         );
       case 'wholesalers':
