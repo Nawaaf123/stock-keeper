@@ -28,6 +28,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   const [customShopName, setCustomShopName] = useState('');
   const [orderItems, setOrderItems] = useState<OrderItemEntry[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
 
   const [skuInput, setSkuInput] = useState('');
   const [qtyInput, setQtyInput] = useState('1');
@@ -38,9 +39,17 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     [items]
   );
 
-  const filteredItems = useMemo(() => {
-    return categoryFilter === 'all' ? items : items.filter(i => i.category === categoryFilter);
+  const subCategories = useMemo(() => {
+    const pool = categoryFilter === 'all' ? items : items.filter(i => i.category === categoryFilter);
+    return Array.from(new Set(pool.map(i => i.subCategory).filter(Boolean))).sort();
   }, [items, categoryFilter]);
+
+  const filteredItems = useMemo(() => {
+    return items.filter(i =>
+      (categoryFilter === 'all' || i.category === categoryFilter) &&
+      (subCategoryFilter === 'all' || i.subCategory === subCategoryFilter)
+    );
+  }, [items, categoryFilter, subCategoryFilter]);
 
   useEffect(() => {
     if (open) setTimeout(() => skuRef.current?.focus(), 50);
