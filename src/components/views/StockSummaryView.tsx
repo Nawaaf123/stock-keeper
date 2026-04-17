@@ -66,6 +66,8 @@ export function StockSummaryView({ items, orders, transactions }: StockSummaryVi
         runningStock += entry.type === 'receive' ? entry.qty : -entry.qty;
         return { ...entry, remainingAfter: runningStock };
       });
+      // Display latest first
+      entriesWithRemaining.reverse();
 
       return {
         id: item.id,
