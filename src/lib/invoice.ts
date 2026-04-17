@@ -1,9 +1,9 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
-import { Order } from '@/types/inventory';
+import { Order, Wholesaler } from '@/types/inventory';
 
-export function downloadInvoice(order: Order) {
+export function downloadInvoice(order: Order, wholesaler?: Wholesaler) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -26,11 +26,21 @@ export function downloadInvoice(order: Order) {
   doc.setFontSize(12);
   doc.text(order.shopName, 14, 49);
 
-  // Items table
+  let nextY = 55;
+  const address = wholesaler?.address?.trim();
+  if (address) {
+    doc.setFontSize(10);
+    doc.setTextColor(90);
+    const lines = doc.splitTextToSize(address, pageWidth - 28);
+    doc.text(lines, 14, nextY);
+    nextY += lines.length * 5;
+    doc.setTextColor(0);
+  }
+
+  // Items table (no warehouse column)
   const rows = order.items.map((it) => [
     it.itemSku,
     it.itemName,
-    it.warehouseName,
     String(it.quantity),
     `$${it.unitPrice.toFixed(2)}`,
     `$${(it.unitPrice * it.quantity).toFixed(2)}`,
@@ -40,16 +50,16 @@ export function downloadInvoice(order: Order) {
   const totalUnits = order.items.reduce((s, i) => s + i.quantity, 0);
 
   autoTable(doc, {
-    startY: 58,
-    head: [['SKU', 'Product', 'Warehouse', 'Qty', 'Unit Price', 'Line Total']],
+    startY: nextY + 5,
+    head: [['SKU', 'Product', 'Qty', 'Unit Price', 'Line Total']],
     body: rows,
     theme: 'striped',
     headStyles: { fillColor: [38, 138, 130], textColor: 255, fontStyle: 'bold' },
     styles: { fontSize: 9, cellPadding: 3 },
     columnStyles: {
+      2: { halign: 'right' },
       3: { halign: 'right' },
       4: { halign: 'right' },
-      5: { halign: 'right' },
     },
   });
 
