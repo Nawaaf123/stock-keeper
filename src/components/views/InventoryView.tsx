@@ -203,13 +203,13 @@ export function InventoryView({
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground">Inventory</h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Manage products across all warehouses
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
           <input
             type="file"
             ref={fileInputRef}
@@ -217,21 +217,21 @@ export function InventoryView({
             accept=".csv,.xlsx,.xls"
             className="hidden"
           />
-          <Button variant="outline" onClick={handleImportClick} className="gap-2">
-            <Upload className="w-4 h-4" />
-            Import Products
+          <Button variant="outline" onClick={handleImportClick} className="gap-2 min-w-0">
+            <Upload className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">Import</span>
           </Button>
-          <Button variant="outline" onClick={() => setTransferDialogOpen(true)} className="gap-2">
-            <ArrowLeftRight className="w-4 h-4" />
-            Transfer Stock
+          <Button variant="outline" onClick={() => setTransferDialogOpen(true)} className="gap-2 min-w-0">
+            <ArrowLeftRight className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">Transfer</span>
           </Button>
-          <Button variant="outline" onClick={() => setReceiveDialogOpen(true)} className="gap-2">
-            <PackagePlus className="w-4 h-4" />
-            Receive Stock
+          <Button variant="outline" onClick={() => setReceiveDialogOpen(true)} className="gap-2 min-w-0">
+            <PackagePlus className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">Receive</span>
           </Button>
-          <Button onClick={() => setDialogOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Add Item
+          <Button onClick={() => setDialogOpen(true)} className="gap-2 min-w-0">
+            <Plus className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">Add Item</span>
           </Button>
         </div>
       </div>

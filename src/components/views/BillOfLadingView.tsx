@@ -94,12 +94,12 @@ export function BillOfLadingView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground">Bill of Lading</h1>
-          <p className="text-muted-foreground">Upload and manage your shipping documents</p>
+          <p className="text-muted-foreground text-sm sm:text-base">Upload and manage your shipping documents</p>
         </div>
-        <Button onClick={() => setUploadDialogOpen(true)}>
+        <Button onClick={() => setUploadDialogOpen(true)} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Upload Document
         </Button>

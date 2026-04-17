@@ -143,32 +143,34 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground">Orders</h1>
-          <p className="text-muted-foreground">Manage outgoing orders and track shipment history</p>
+          <p className="text-muted-foreground text-sm sm:text-base">Manage outgoing orders and track shipment history</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={() => setDialogOpen(true)} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Create Order
         </Button>
       </div>
 
       <Tabs defaultValue="orders" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="orders" className="flex items-center gap-2">
-            <Package className="w-4 h-4" />
-            Orders
-          </TabsTrigger>
-          <TabsTrigger value="shop-history" className="flex items-center gap-2">
-            <Store className="w-4 h-4" />
-            By Shop
-          </TabsTrigger>
-          <TabsTrigger value="product-history" className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" />
-            By Product
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+          <TabsList className="w-max">
+            <TabsTrigger value="orders" className="flex items-center gap-2">
+              <Package className="w-4 h-4" />
+              Orders
+            </TabsTrigger>
+            <TabsTrigger value="shop-history" className="flex items-center gap-2">
+              <Store className="w-4 h-4" />
+              By Shop
+            </TabsTrigger>
+            <TabsTrigger value="product-history" className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              By Product
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="orders" className="space-y-6">
           {orders.length === 0 ? (
@@ -203,15 +205,17 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                         <Card>
                           <CollapsibleTrigger asChild>
                             <CardHeader className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors">
-                              <div className="flex items-center justify-between">
-                                <CardTitle className="text-base flex items-center gap-2">
-                                  <Store className="w-4 h-4 text-primary" />
-                                  {order.shopName}
-                                  <span className="text-sm font-normal text-muted-foreground">
-                                    — {order.items.reduce((sum, i) => sum + i.quantity, 0)} units, {order.items.length} {order.items.length === 1 ? 'product' : 'products'}
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <CardTitle className="text-base flex items-start sm:items-center gap-2 min-w-0">
+                                  <Store className="w-4 h-4 text-primary flex-shrink-0 mt-1 sm:mt-0" />
+                                  <span className="min-w-0">
+                                    <span className="break-words">{order.shopName}</span>
+                                    <span className="block sm:inline text-sm font-normal text-muted-foreground sm:ml-1">
+                                      <span className="hidden sm:inline">— </span>{order.items.reduce((sum, i) => sum + i.quantity, 0)} units, {order.items.length} {order.items.length === 1 ? 'product' : 'products'}
+                                    </span>
                                   </span>
                                 </CardTitle>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-shrink-0">
                                   <span className="text-xs text-muted-foreground">
                                     {format(order.date, 'h:mm a')}
                                   </span>
@@ -225,14 +229,14 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                           </CollapsibleTrigger>
                           <CollapsibleContent>
                             <CardContent>
-                              <div className="space-y-1">
+                              <div className="space-y-2">
                                 {order.items.map((item, idx) => (
-                                  <div key={idx} className="grid grid-cols-[1fr_auto_auto_auto] gap-3 text-sm py-1 border-b last:border-0 items-center">
-                                    <span>
+                                  <div key={idx} className="flex flex-col sm:grid sm:grid-cols-[1fr_auto_auto_auto] gap-1 sm:gap-3 text-sm py-2 border-b last:border-0 sm:items-center">
+                                    <span className="min-w-0">
                                       <span className="font-mono text-xs text-muted-foreground mr-2">
                                         {item.itemSku}
                                       </span>
-                                      {item.itemName}
+                                      <span className="break-words">{item.itemName}</span>
                                     </span>
                                     <span className="text-xs text-muted-foreground">
                                       {item.quantity} × ${item.unitPrice.toFixed(2)}
@@ -240,13 +244,13 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                     <span className="text-xs text-muted-foreground">
                                       {item.warehouseName}
                                     </span>
-                                    <span className="font-medium text-right w-20">
+                                    <span className="font-medium sm:text-right sm:w-20">
                                       ${(item.quantity * item.unitPrice).toFixed(2)}
                                     </span>
                                   </div>
                                 ))}
                               </div>
-                              <div className="mt-2 pt-2 border-t flex justify-between text-sm font-medium">
+                              <div className="mt-2 pt-2 border-t flex flex-wrap justify-between gap-2 text-sm font-medium">
                                 <span>Total ({order.items.reduce((sum, i) => sum + i.quantity, 0)} units)</span>
                                 <span>${order.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2)}</span>
                               </div>
