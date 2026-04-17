@@ -17,7 +17,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { InventoryItem, Warehouse } from '@/types/inventory';
-import { Package, Plus, Trash2 } from 'lucide-react';
+import { Package, Plus, Trash2, Upload, FileText, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface ProductEntry {
   itemId: string;
@@ -30,7 +32,7 @@ interface ReceiveStockDialogProps {
   warehouses: Warehouse[];
   item: InventoryItem | null;
   items?: InventoryItem[];
-  onReceive: (itemId: string, warehouseId: string, quantity: number, bolNumber: string) => void;
+  onReceive: (itemId: string, warehouseId: string, quantity: number, bolNumber: string, bolDocumentUrl?: string | null) => void;
 }
 
 export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items = [], onReceive }: ReceiveStockDialogProps) {
@@ -39,6 +41,8 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
   const [productEntries, setProductEntries] = useState<ProductEntry[]>([]);
   const [currentItemId, setCurrentItemId] = useState('');
   const [currentQuantity, setCurrentQuantity] = useState(0);
+  const [bolFile, setBolFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   // If a specific item is passed, use single-item mode
   const isSingleItemMode = !!item;
@@ -49,6 +53,7 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
     setProductEntries([]);
     setCurrentItemId('');
     setCurrentQuantity(0);
+    setBolFile(null);
   };
 
   const handleAddProduct = () => {
@@ -72,13 +77,37 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
     setProductEntries(productEntries.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const uploadBolFile = async (): Promise<string | null> => {
+    if (!bolFile) return null;
+    setUploading(true);
+    try {
+      const ext = bolFile.name.split('.').pop();
+      const path = `${bolNumber.trim().replace(/[^\w-]/g, '_')}_${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('bol-documents').upload(path, bolFile, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from('bol-documents').getPublicUrl(path);
+      return data.publicUrl;
+    } catch (err: any) {
+      toast.error('Failed to upload BOL document: ' + err.message);
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    const bolUrl = await uploadBolFile();
+    if (bolFile && !bolUrl) return; // upload failed, abort
+
     if (isSingleItemMode) {
       // Single item mode
       if (item && warehouseId && currentQuantity > 0 && bolNumber.trim()) {
-        onReceive(item.id, warehouseId, currentQuantity, bolNumber.trim());
+        onReceive(item.id, warehouseId, currentQuantity, bolNumber.trim(), bolUrl);
         onOpenChange(false);
         resetForm();
       }
@@ -86,7 +115,7 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
       // Multi-item mode
       if (warehouseId && bolNumber.trim() && productEntries.length > 0) {
         productEntries.forEach(entry => {
-          onReceive(entry.itemId, warehouseId, entry.quantity, bolNumber.trim());
+          onReceive(entry.itemId, warehouseId, entry.quantity, bolNumber.trim(), bolUrl);
         });
         onOpenChange(false);
         resetForm();
