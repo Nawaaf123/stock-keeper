@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { CreditCard, Search, Plus, Trash2, Download } from 'lucide-react';
+import { CreditCard, Search, Plus, Trash2, Download, ChevronDown, Check, X, Store } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Order, Payment } from '@/types/inventory';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,10 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 
 interface PaymentsViewProps {
@@ -23,33 +24,67 @@ interface PaymentsViewProps {
 }
 
 type StatusFilter = 'all' | 'unpaid' | 'partial' | 'paid';
+type OrderRow = {
+  order: Order;
+  total: number;
+  paid: number;
+  balance: number;
+  status: 'paid' | 'partial' | 'unpaid';
+};
 
 export function PaymentsView({ orders, payments, onAddPayment, onDeletePayment }: PaymentsViewProps) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
-  const [openDialog, setOpenDialog] = useState<string | null>(null);
+  const [openDialog, setOpenDialog] = useState<{ orderId: string; suggested: number } | null>(null);
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');
   const [note, setNote] = useState('');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [selectedWholesaler, setSelectedWholesaler] = useState<string>('all');
 
-  const orderRows = useMemo(() => {
+  // Compute per-order rows
+  const orderRows: OrderRow[] = useMemo(() => {
     return orders.map(o => {
       const total = o.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-      const orderPayments = payments.filter(p => p.orderId === o.id);
-      const paid = orderPayments.reduce((s, p) => s + p.amount, 0);
+      const paid = payments.filter(p => p.orderId === o.id).reduce((s, p) => s + p.amount, 0);
       const balance = total - paid;
       const status: 'paid' | 'partial' | 'unpaid' = balance <= 0.01 ? 'paid' : paid > 0.01 ? 'partial' : 'unpaid';
-      return { order: o, total, paid, balance, status, payments: orderPayments };
-    }).sort((a, b) => b.order.date.getTime() - a.order.date.getTime());
+      return { order: o, total, paid, balance, status };
+    });
   }, [orders, payments]);
 
-  const filteredRows = useMemo(() => {
-    return orderRows.filter(r => {
-      if (filter !== 'all' && r.status !== filter) return false;
-      if (search && !r.order.shopName.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
+  // Group by wholesaler (shopName)
+  const wholesalerGroups = useMemo(() => {
+    const map = new Map<string, OrderRow[]>();
+    orderRows.forEach(r => {
+      const key = r.order.shopName || '—';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
     });
-  }, [orderRows, filter, search]);
+    return Array.from(map.entries())
+      .map(([name, rows]) => {
+        const total = rows.reduce((s, r) => s + r.total, 0);
+        const paid = rows.reduce((s, r) => s + r.paid, 0);
+        const balance = total - paid;
+        const unpaidCount = rows.filter(r => r.status !== 'paid').length;
+        const sortedRows = [...rows].sort((a, b) => b.order.date.getTime() - a.order.date.getTime());
+        return { name, rows: sortedRows, total, paid, balance, unpaidCount };
+      })
+      .sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name));
+  }, [orderRows]);
+
+  const wholesalerNames = useMemo(() => wholesalerGroups.map(g => g.name), [wholesalerGroups]);
+
+  const filteredGroups = useMemo(() => {
+    return wholesalerGroups
+      .filter(g => selectedWholesaler === 'all' || g.name === selectedWholesaler)
+      .filter(g => !search || g.name.toLowerCase().includes(search.toLowerCase()))
+      .map(g => ({
+        ...g,
+        rows: g.rows.filter(r => filter === 'all' || r.status === filter),
+      }))
+      .filter(g => g.rows.length > 0);
+  }, [wholesalerGroups, selectedWholesaler, search, filter]);
 
   const totals = useMemo(() => ({
     total: orderRows.reduce((s, r) => s + r.total, 0),
@@ -58,9 +93,23 @@ export function PaymentsView({ orders, payments, onAddPayment, onDeletePayment }
     unpaidCount: orderRows.filter(r => r.status !== 'paid').length,
   }), [orderRows]);
 
-  const openFor = (orderId: string, suggestedBalance: number) => {
-    setOpenDialog(orderId);
-    setAmount(suggestedBalance > 0 ? suggestedBalance.toFixed(2) : '');
+  const handleMarkPaid = async (row: OrderRow) => {
+    if (row.balance <= 0.01) return;
+    await onAddPayment(row.order.id, row.balance, 'cash', 'Marked as paid');
+    toast.success(`Invoice for ${row.order.shopName} marked as paid`);
+  };
+
+  const handleMarkUnpaid = async (row: OrderRow) => {
+    const orderPayments = payments.filter(p => p.orderId === row.order.id);
+    if (orderPayments.length === 0) return;
+    if (!confirm(`Remove all ${orderPayments.length} payment(s) for this invoice?`)) return;
+    for (const p of orderPayments) await onDeletePayment(p.id);
+    toast.success('Invoice marked as unpaid');
+  };
+
+  const openRecordDialog = (orderId: string, suggested: number) => {
+    setOpenDialog({ orderId, suggested });
+    setAmount(suggested > 0 ? suggested.toFixed(2) : '');
     setMethod('cash');
     setNote('');
   };
@@ -69,7 +118,7 @@ export function PaymentsView({ orders, payments, onAddPayment, onDeletePayment }
     if (!openDialog) return;
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) { toast.error('Enter a valid amount'); return; }
-    await onAddPayment(openDialog, amt, method, note);
+    await onAddPayment(openDialog.orderId, amt, method, note);
     toast.success('Payment recorded');
     setOpenDialog(null);
   };
@@ -77,11 +126,15 @@ export function PaymentsView({ orders, payments, onAddPayment, onDeletePayment }
   const handleExport = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['Shop', 'Order Date', 'Order Total', 'Paid', 'Balance', 'Status'],
-      ...orderRows.map(r => [r.order.shopName, format(r.order.date, 'yyyy-MM-dd'), r.total, r.paid, r.balance, r.status]),
-    ]), 'Order Balances');
+      ['Wholesaler', 'Total Purchased', 'Paid', 'Balance', 'Unpaid Invoices'],
+      ...wholesalerGroups.map(g => [g.name, g.total, g.paid, g.balance, g.unpaidCount]),
+    ]), 'Wholesaler Summary');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['Date', 'Shop', 'Amount', 'Method', 'Note'],
+      ['Wholesaler', 'Order Date', 'Order Total', 'Paid', 'Balance', 'Status'],
+      ...orderRows.map(r => [r.order.shopName, format(r.order.date, 'yyyy-MM-dd'), r.total, r.paid, r.balance, r.status]),
+    ]), 'Invoices');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+      ['Date', 'Wholesaler', 'Amount', 'Method', 'Note'],
       ...payments.map(p => {
         const o = orders.find(o => o.id === p.orderId);
         return [format(p.paymentDate, 'yyyy-MM-dd'), o?.shopName ?? '-', p.amount, p.method, p.note];
@@ -101,7 +154,7 @@ export function PaymentsView({ orders, payments, onAddPayment, onDeletePayment }
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Payments</h1>
-          <p className="text-muted-foreground">Track customer payments and outstanding balances per order</p>
+          <p className="text-muted-foreground">Track invoices grouped by wholesaler with running balances</p>
         </div>
         <Button onClick={handleExport} variant="outline">
           <Download className="w-4 h-4 mr-2" />Export to Excel
@@ -112,16 +165,28 @@ export function PaymentsView({ orders, payments, onAddPayment, onDeletePayment }
         <StatTile label="Total Invoiced" value={`$${totals.total.toFixed(2)}`} />
         <StatTile label="Total Received" value={`$${totals.paid.toFixed(2)}`} accent="green" />
         <StatTile label="Outstanding" value={`$${totals.outstanding.toFixed(2)}`} accent="red" />
-        <StatTile label="Unpaid / Partial Orders" value={totals.unpaidCount.toString()} />
+        <StatTile label="Unpaid / Partial Invoices" value={totals.unpaidCount.toString()} />
       </div>
 
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />Order Balances
+              <CreditCard className="w-5 h-5" />Wholesaler Balances
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={selectedWholesaler} onValueChange={setSelectedWholesaler}>
+                <SelectTrigger className="w-56">
+                  <Store className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="All wholesalers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All wholesalers</SelectItem>
+                  {wholesalerNames.map(n => (
+                    <SelectItem key={n} value={n}>{n}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Tabs value={filter} onValueChange={(v) => setFilter(v as StatusFilter)}>
                 <TabsList>
                   <TabsTrigger value="all">All</TabsTrigger>
@@ -130,51 +195,126 @@ export function PaymentsView({ orders, payments, onAddPayment, onDeletePayment }
                   <TabsTrigger value="paid">Paid</TabsTrigger>
                 </TabsList>
               </Tabs>
-              <div className="relative w-56">
+              <div className="relative w-48">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search shop..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+                <Input placeholder="Search wholesaler..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
               </div>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>Shop</TableHead>
-                  <TableHead>Order Date</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Paid</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRows.map(r => (
-                  <TableRow key={r.order.id} className="hover:bg-muted/30">
-                    <TableCell className="font-medium">{r.order.shopName}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{format(r.order.date, 'dd MMM yyyy')}</TableCell>
-                    <TableCell className="text-right font-semibold">${r.total.toFixed(2)}</TableCell>
-                    <TableCell className="text-right text-green-600 font-semibold">${r.paid.toFixed(2)}</TableCell>
-                    <TableCell className={`text-right font-semibold ${r.balance > 0.01 ? 'text-red-600' : 'text-muted-foreground'}`}>
-                      ${r.balance.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-center">{statusBadge(r.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => openFor(r.order.id, r.balance)} disabled={r.status === 'paid'}>
-                        <Plus className="w-3 h-3 mr-1" />Record
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filteredRows.length === 0 && (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No orders match</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+        <CardContent className="space-y-3">
+          {filteredGroups.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">No wholesalers match the current filters</div>
+          )}
+          {filteredGroups.map(g => {
+            const isOpen = expanded[g.name] ?? (g.balance > 0.01 || selectedWholesaler !== 'all');
+            const headerStatus: 'paid' | 'partial' | 'unpaid' =
+              g.balance <= 0.01 ? 'paid' : g.paid > 0.01 ? 'partial' : 'unpaid';
+            return (
+              <Collapsible
+                key={g.name}
+                open={isOpen}
+                onOpenChange={(o) => setExpanded(prev => ({ ...prev, [g.name]: o }))}
+                className="border rounded-lg overflow-hidden bg-card"
+              >
+                <CollapsibleTrigger asChild>
+                  <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left">
+                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+                    <Store className="w-4 h-4 text-primary" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold truncate">{g.name}</span>
+                        {statusBadge(headerStatus)}
+                        <Badge variant="secondary" className="text-xs">{g.rows.length} invoice{g.rows.length !== 1 ? 's' : ''}</Badge>
+                      </div>
+                    </div>
+                    <div className="hidden sm:flex items-center gap-6 text-sm">
+                      <div className="text-right">
+                        <div className="text-xs text-muted-foreground">Total Purchased</div>
+                        <div className="font-semibold">${g.total.toFixed(2)}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-muted-foreground">Paid</div>
+                        <div className="font-semibold text-green-600">${g.paid.toFixed(2)}</div>
+                      </div>
+                      <div className="text-right min-w-[90px]">
+                        <div className="text-xs text-muted-foreground">Balance</div>
+                        <div className={`font-bold ${g.balance > 0.01 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                          ${g.balance.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="border-t">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/30">
+                          <TableHead>Invoice Date</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                          <TableHead className="text-right">Paid</TableHead>
+                          <TableHead className="text-right">Balance</TableHead>
+                          <TableHead className="text-center">Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {g.rows.map(r => (
+                          <TableRow key={r.order.id} className="hover:bg-muted/30">
+                            <TableCell className="text-sm">
+                              <div className="font-medium">{format(r.order.date, 'dd MMM yyyy')}</div>
+                              <div className="text-xs text-muted-foreground">#{r.order.id.slice(0, 8)}</div>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">${r.total.toFixed(2)}</TableCell>
+                            <TableCell className="text-right text-green-600 font-semibold">${r.paid.toFixed(2)}</TableCell>
+                            <TableCell className={`text-right font-semibold ${r.balance > 0.01 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                              ${r.balance.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-center">{statusBadge(r.status)}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                {r.status !== 'paid' ? (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleMarkPaid(r)}
+                                    className="h-7 bg-green-600 hover:bg-green-700 text-white"
+                                    title="Mark fully paid"
+                                  >
+                                    <Check className="w-3 h-3 mr-1" />Paid
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleMarkUnpaid(r)}
+                                    className="h-7 text-red-600 border-red-200 hover:bg-red-50"
+                                    title="Remove all payments for this invoice"
+                                  >
+                                    <X className="w-3 h-3 mr-1" />Unpaid
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openRecordDialog(r.order.id, r.balance)}
+                                  disabled={r.status === 'paid'}
+                                  className="h-7"
+                                  title="Record partial payment"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
         </CardContent>
       </Card>
 
@@ -186,7 +326,7 @@ export function PaymentsView({ orders, payments, onAddPayment, onDeletePayment }
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead>Date</TableHead>
-                  <TableHead>Shop</TableHead>
+                  <TableHead>Wholesaler</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Method</TableHead>
                   <TableHead>Note</TableHead>
