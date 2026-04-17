@@ -7,15 +7,16 @@ import { CreateOrderDialog } from '@/components/inventory/CreateOrderDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown } from 'lucide-react';
+import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
+import { downloadInvoice } from '@/lib/invoice';
 
 interface OrdersViewProps {
   orders: Order[];
   items: InventoryItem[];
   warehouses: Warehouse[];
   wholesalers: Wholesaler[];
-  onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number }[]) => void;
+  onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]) => void;
 }
 
 export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrder }: OrdersViewProps) {
@@ -226,22 +227,34 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                             <CardContent>
                               <div className="space-y-1">
                                 {order.items.map((item, idx) => (
-                                  <div key={idx} className="flex justify-between text-sm py-1 border-b last:border-0">
+                                  <div key={idx} className="grid grid-cols-[1fr_auto_auto_auto] gap-3 text-sm py-1 border-b last:border-0 items-center">
                                     <span>
                                       <span className="font-mono text-xs text-muted-foreground mr-2">
                                         {item.itemSku}
                                       </span>
                                       {item.itemName}
                                     </span>
-                                    <span className="text-muted-foreground">
-                                      {item.quantity} from {item.warehouseName}
+                                    <span className="text-xs text-muted-foreground">
+                                      {item.quantity} × ${item.unitPrice.toFixed(2)}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {item.warehouseName}
+                                    </span>
+                                    <span className="font-medium text-right w-20">
+                                      ${(item.quantity * item.unitPrice).toFixed(2)}
                                     </span>
                                   </div>
                                 ))}
                               </div>
                               <div className="mt-2 pt-2 border-t flex justify-between text-sm font-medium">
-                                <span>Total Items</span>
-                                <span>{order.items.reduce((sum, i) => sum + i.quantity, 0)} units</span>
+                                <span>Total ({order.items.reduce((sum, i) => sum + i.quantity, 0)} units)</span>
+                                <span>${order.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2)}</span>
+                              </div>
+                              <div className="mt-3 flex justify-end">
+                                <Button size="sm" variant="outline" onClick={() => downloadInvoice(order)}>
+                                  <FileDown className="w-4 h-4 mr-2" />
+                                  Download Invoice
+                                </Button>
                               </div>
                             </CardContent>
                           </CollapsibleContent>
