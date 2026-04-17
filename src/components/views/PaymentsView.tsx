@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { CreditCard, Search, Plus, Trash2, Download, ChevronDown, Check, X, Store } from 'lucide-react';
+import { CreditCard, Search, Plus, Trash2, Download, ChevronDown, Check, X, Store, FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { Order, Payment } from '@/types/inventory';
+import { Order, Payment, Wholesaler } from '@/types/inventory';
+import { downloadInvoice } from '@/lib/invoice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
