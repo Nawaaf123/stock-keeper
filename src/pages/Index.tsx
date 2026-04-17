@@ -3,7 +3,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { InventoryView } from '@/components/views/InventoryView';
 import { InventoryHistoryView } from '@/components/views/InventoryHistoryView';
 import { WarehousesView } from '@/components/views/WarehousesView';
-import { CategoriesView } from '@/components/views/CategoriesView';
+import { ReportsView } from '@/components/views/ReportsView';
 import { BillOfLadingView } from '@/components/views/BillOfLadingView';
 import { OrdersView } from '@/components/views/OrdersView';
 import { WholesalersView } from '@/components/views/WholesalersView';
@@ -73,8 +73,8 @@ const Index = () => {
         return <InventoryHistoryView transactions={inventory.transactions} />;
       case 'warehouses':
         return <WarehousesView stats={inventory.stats} items={inventory.allItems} warehouses={inventory.warehouses} onUpdateWarehouse={inventory.updateWarehouse} />;
-      case 'categories':
-        return <CategoriesView items={inventory.allItems} />;
+      case 'reports':
+        return <ReportsView orders={inventory.orders} items={inventory.allItems} />;
       case 'bill-of-lading':
         return <BillOfLadingView />;
       default:
