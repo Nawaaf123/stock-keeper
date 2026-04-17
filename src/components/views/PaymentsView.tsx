@@ -20,7 +20,8 @@ import { toast } from 'sonner';
 interface PaymentsViewProps {
   orders: Order[];
   payments: Payment[];
-  onAddPayment: (orderId: string, amount: number, method: string, note: string) => Promise<void>;
+  wholesalers: Wholesaler[];
+  onAddPayment: (orderId: string, amount: number, method: string, note: string, paymentDate?: Date) => Promise<void>;
   onDeletePayment: (id: string) => Promise<void>;
 }
 
