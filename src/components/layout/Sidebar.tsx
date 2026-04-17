@@ -1,6 +1,7 @@
 import { Package, BarChart3, Settings, FileText, History, ShoppingCart, Users, ClipboardList, CreditCard, Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import mrfogLogo from '@/assets/mrfog-logo.png';
 
 interface SidebarProps {
   activeView: string;
@@ -65,8 +66,8 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
           <Menu className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-md bg-sidebar-primary flex items-center justify-center flex-shrink-0">
-            <Package className="w-4 h-4 text-sidebar-primary-foreground" />
+          <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <img src={mrfogLogo} alt="MR Fog" className="w-7 h-7 object-contain" />
           </div>
           <h1 className="font-semibold text-base truncate">{activeLabel}</h1>
         </div>
@@ -92,12 +93,12 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
       >
         <div className="p-4 lg:p-6 border-b border-sidebar-border flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
-              <Package className="w-5 h-5 text-sidebar-primary-foreground" />
+            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <img src={mrfogLogo} alt="MR Fog" className="w-9 h-9 object-contain" />
             </div>
             <div className="min-w-0">
               <h1 className="font-semibold text-lg truncate">Nawaaf Track</h1>
-              <p className="text-xs text-sidebar-foreground/60 truncate">Multi-Warehouse</p>
+              <p className="text-xs text-sidebar-foreground/60 truncate">MR Fog Inventory</p>
             </div>
           </div>
           <button
