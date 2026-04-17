@@ -73,6 +73,7 @@ export type Database = {
       }
       inventory_transactions: {
         Row: {
+          bol_document_url: string | null
           bol_number: string
           created_at: string
           id: string
@@ -82,6 +83,7 @@ export type Database = {
           warehouse_id: string
         }
         Insert: {
+          bol_document_url?: string | null
           bol_number?: string
           created_at?: string
           id?: string
@@ -91,6 +93,7 @@ export type Database = {
           warehouse_id: string
         }
         Update: {
+          bol_document_url?: string | null
           bol_number?: string
           created_at?: string
           id?: string
