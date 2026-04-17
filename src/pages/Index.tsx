@@ -74,7 +74,7 @@ const Index = () => {
       case 'warehouses':
         return <WarehousesView stats={inventory.stats} items={inventory.allItems} warehouses={inventory.warehouses} onUpdateWarehouse={inventory.updateWarehouse} />;
       case 'reports':
-        return <ReportsView orders={inventory.orders} items={inventory.allItems} />;
+        return <ReportsView orders={inventory.orders} items={inventory.allItems} transactions={inventory.transactions} warehouses={inventory.warehouses} />;
       case 'bill-of-lading':
         return <BillOfLadingView />;
       default:
