@@ -153,12 +153,12 @@ export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDe
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground">Payments</h1>
-          <p className="text-muted-foreground">Track invoices grouped by wholesaler with running balances</p>
+          <p className="text-muted-foreground text-sm sm:text-base">Track invoices grouped by wholesaler with running balances</p>
         </div>
-        <Button onClick={handleExport} variant="outline">
+        <Button onClick={handleExport} variant="outline" className="w-full sm:w-auto">
           <Download className="w-4 h-4 mr-2" />Export to Excel
         </Button>
       </div>
@@ -167,19 +167,19 @@ export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDe
         <StatTile label="Total Invoiced" value={`$${totals.total.toFixed(2)}`} />
         <StatTile label="Total Received" value={`$${totals.paid.toFixed(2)}`} accent="green" />
         <StatTile label="Outstanding" value={`$${totals.outstanding.toFixed(2)}`} accent="red" />
-        <StatTile label="Unpaid / Partial Invoices" value={totals.unpaidCount.toString()} />
+        <StatTile label="Unpaid / Partial" value={totals.unpaidCount.toString()} />
       </div>
 
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col gap-3">
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="w-5 h-5" />Wholesaler Balances
             </CardTitle>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2">
               <Select value={selectedWholesaler} onValueChange={setSelectedWholesaler}>
-                <SelectTrigger className="w-56">
-                  <Store className="w-4 h-4 mr-2 text-muted-foreground" />
+                <SelectTrigger className="w-full sm:w-56">
+                  <Store className="w-4 h-4 mr-2 text-muted-foreground flex-shrink-0" />
                   <SelectValue placeholder="All wholesalers" />
                 </SelectTrigger>
                 <SelectContent>
@@ -189,15 +189,17 @@ export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDe
                   ))}
                 </SelectContent>
               </Select>
-              <Tabs value={filter} onValueChange={(v) => setFilter(v as StatusFilter)}>
-                <TabsList>
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="unpaid">Unpaid</TabsTrigger>
-                  <TabsTrigger value="partial">Partial</TabsTrigger>
-                  <TabsTrigger value="paid">Paid</TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <div className="relative w-48">
+              <div className="overflow-x-auto -mx-1 px-1">
+                <Tabs value={filter} onValueChange={(v) => setFilter(v as StatusFilter)}>
+                  <TabsList className="w-max">
+                    <TabsTrigger value="all">All</TabsTrigger>
+                    <TabsTrigger value="unpaid">Unpaid</TabsTrigger>
+                    <TabsTrigger value="partial">Partial</TabsTrigger>
+                    <TabsTrigger value="paid">Paid</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+              <div className="relative w-full sm:w-48">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search wholesaler..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
               </div>
@@ -220,17 +222,33 @@ export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDe
                 className="border rounded-lg overflow-hidden bg-card"
               >
                 <CollapsibleTrigger asChild>
-                  <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left">
-                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? '' : '-rotate-90'}`} />
-                    <Store className="w-4 h-4 text-primary" />
+                  <button className="w-full flex items-start sm:items-center gap-3 px-3 sm:px-4 py-3 hover:bg-muted/50 transition-colors text-left">
+                    <ChevronDown className={`w-4 h-4 mt-1 sm:mt-0 text-muted-foreground transition-transform flex-shrink-0 ${isOpen ? '' : '-rotate-90'}`} />
+                    <Store className="w-4 h-4 mt-1 sm:mt-0 text-primary flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold truncate">{g.name}</span>
                         {statusBadge(headerStatus)}
                         <Badge variant="secondary" className="text-xs">{g.rows.length} invoice{g.rows.length !== 1 ? 's' : ''}</Badge>
                       </div>
+                      <div className="sm:hidden mt-2 grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <div className="text-muted-foreground">Total</div>
+                          <div className="font-semibold">${g.total.toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Paid</div>
+                          <div className="font-semibold text-green-600">${g.paid.toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Balance</div>
+                          <div className={`font-bold ${g.balance > 0.01 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                            ${g.balance.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="hidden sm:flex items-center gap-6 text-sm">
+                    <div className="hidden sm:flex items-center gap-6 text-sm flex-shrink-0">
                       <div className="text-right">
                         <div className="text-xs text-muted-foreground">Total Purchased</div>
                         <div className="font-semibold">${g.total.toFixed(2)}</div>
@@ -249,7 +267,7 @@ export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDe
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="border-t">
+                  <div className="border-t overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/30">
