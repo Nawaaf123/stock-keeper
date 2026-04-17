@@ -13,6 +13,7 @@ interface OrderItemEntry {
   itemId: string;
   warehouseId: string;
   quantity: number;
+  unitPrice: number;
 }
 
 interface CreateOrderDialogProps {
@@ -21,7 +22,7 @@ interface CreateOrderDialogProps {
   items: InventoryItem[];
   warehouses: Warehouse[];
   wholesalers: Wholesaler[];
-  onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number }[]) => void;
+  onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]) => void;
 }
 
 export function CreateOrderDialog({ open, onOpenChange, items, warehouses, wholesalers, onCreateOrder }: CreateOrderDialogProps) {
