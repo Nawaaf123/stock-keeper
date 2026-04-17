@@ -133,6 +133,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     setCustomShopName('');
     setOrderItems([]);
     setCategoryFilter('all');
+    setSubCategoryFilter('all');
     setSkuInput('');
     setQtyInput('1');
   };
