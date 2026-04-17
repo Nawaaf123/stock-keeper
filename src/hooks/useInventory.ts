@@ -154,6 +154,7 @@ export function useInventory() {
     const refreshOrders = debounce(() => { fetchOrders(); fetchItems(); });
     const refreshWholesalers = debounce(() => { fetchWholesalers(); });
     const refreshWarehouses = debounce(() => { fetchWarehouses(); fetchItems(); });
+    const refreshPayments = debounce(() => { fetchPayments(); });
 
     const channel = supabase
       .channel('inventory-realtime')
@@ -164,10 +165,11 @@ export function useInventory() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, refreshOrders)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wholesalers' }, refreshWholesalers)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'warehouses' }, refreshWarehouses)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, refreshPayments)
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [fetchItems, fetchTransactions, fetchOrders, fetchWholesalers, fetchWarehouses]);
+  }, [fetchItems, fetchTransactions, fetchOrders, fetchWholesalers, fetchWarehouses, fetchPayments]);
 
   // ─── Filtering & Sorting (client-side on fetched data) ───
   const filteredAndSortedItems = useMemo(() => {
