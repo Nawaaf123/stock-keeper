@@ -28,7 +28,7 @@ interface CreateOrderDialogProps {
 export function CreateOrderDialog({ open, onOpenChange, items, warehouses, wholesalers, onCreateOrder }: CreateOrderDialogProps) {
   const [selectedWholesaler, setSelectedWholesaler] = useState('');
   const [customShopName, setCustomShopName] = useState('');
-  const [orderItems, setOrderItems] = useState<OrderItemEntry[]>([{ itemId: '', warehouseId: '', quantity: 1 }]);
+  const [orderItems, setOrderItems] = useState<OrderItemEntry[]>([{ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 }]);
 
   // Category / subcategory filters that narrow the product pickers
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -66,7 +66,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   }, [subCategories, subCategoryFilter]);
 
   const handleAddItem = () => {
-    setOrderItems([...orderItems, { itemId: '', warehouseId: '', quantity: 1 }]);
+    setOrderItems([...orderItems, { itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 }]);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -77,7 +77,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     const updated = [...orderItems];
     updated[index] = { ...updated[index], [field]: value };
 
-    // Auto-pick the warehouse with most stock when product changes
+    // Auto-pick the warehouse with most stock + default unit price when product changes
     if (field === 'itemId') {
       const item = items.find(i => i.id === value);
       if (item) {
@@ -87,6 +87,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
         } else {
           updated[index].warehouseId = '';
         }
+        updated[index].unitPrice = item.price;
       }
     }
     setOrderItems(updated);
@@ -135,7 +136,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
       updated[existingIdx].quantity += qty;
       setOrderItems(updated);
     } else {
-      const newEntry = { itemId: item.id, warehouseId: best.warehouseId, quantity: qty };
+      const newEntry = { itemId: item.id, warehouseId: best.warehouseId, quantity: qty, unitPrice: item.price };
       // Replace the empty placeholder row if present
       if (orderItems.length === 1 && !orderItems[0].itemId) {
         setOrderItems([newEntry]);
@@ -160,7 +161,9 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
   const handleSubmit = () => {
     if (!isValid()) return;
-    const valid = orderItems.filter(e => e.itemId && e.warehouseId && e.quantity > 0);
+    const valid = orderItems
+      .filter(e => e.itemId && e.warehouseId && e.quantity > 0)
+      .map(e => ({ ...e, unitPrice: Number(e.unitPrice) || 0 }));
     onCreateOrder(getShopName(), valid);
     resetState();
     onOpenChange(false);
@@ -169,7 +172,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   const resetState = () => {
     setSelectedWholesaler('');
     setCustomShopName('');
-    setOrderItems([{ itemId: '', warehouseId: '', quantity: 1 }]);
+    setOrderItems([{ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 }]);
     setCategoryFilter('all');
     setSubCategoryFilter('all');
     setSkuInput('');
@@ -182,6 +185,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   };
 
   const totalUnits = orderItems.reduce((sum, e) => sum + (e.itemId && e.warehouseId ? e.quantity : 0), 0);
+  const totalValue = orderItems.reduce((sum, e) => sum + (e.itemId && e.warehouseId ? e.quantity * (Number(e.unitPrice) || 0) : 0), 0);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
