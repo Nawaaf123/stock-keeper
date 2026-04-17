@@ -134,7 +134,8 @@ export function InventoryHistoryView({ transactions }: InventoryHistoryViewProps
                         </TableBody>
                       </Table>
                     </div>
-                  ))}
+                    );
+                  })}
                 </CardContent>
               </Card>
             );
