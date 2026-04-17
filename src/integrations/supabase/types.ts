@@ -189,6 +189,36 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          method: string
+          note: string
+          order_id: string
+          payment_date: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          method?: string
+          note?: string
+          order_id: string
+          payment_date?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          method?: string
+          note?: string
+          order_id?: string
+          payment_date?: string
+        }
+        Relationships: []
+      }
       sub_categories: {
         Row: {
           category_id: string

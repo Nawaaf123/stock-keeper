@@ -71,3 +71,12 @@ export interface Wholesaler {
   email: string;
   address: string;
 }
+
+export interface Payment {
+  id: string;
+  orderId: string;
+  amount: number;
+  paymentDate: Date;
+  method: string;
+  note: string;
+}
