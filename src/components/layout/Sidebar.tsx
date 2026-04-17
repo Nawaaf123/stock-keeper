@@ -1,4 +1,5 @@
-import { Package, BarChart3, Settings, FileText, History, ShoppingCart, Users, ClipboardList, CreditCard } from 'lucide-react';
+import { Package, BarChart3, Settings, FileText, History, ShoppingCart, Users, ClipboardList, CreditCard, Menu, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -18,44 +19,105 @@ const navItems = [
 ];
 
 export function Sidebar({ activeView, onViewChange }: SidebarProps) {
-  return (
-    <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col h-screen fixed left-0 top-0">
-      <div className="p-6 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center">
-            <Package className="w-5 h-5 text-sidebar-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="font-semibold text-lg">InvenTrack</h1>
-            <p className="text-xs text-sidebar-foreground/60">Multi-Warehouse</p>
-          </div>
-        </div>
-      </div>
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-      <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onViewChange(item.id)}
-            className={cn(
-              'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200',
-              activeView === item.id
-                ? 'bg-sidebar-accent text-sidebar-primary'
-                : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
-            )}
-          >
-            <item.icon className="w-5 h-5" />
-            {item.label}
-          </button>
-        ))}
-      </nav>
+  // Close drawer when view changes
+  useEffect(() => { setMobileOpen(false); }, [activeView]);
 
-      <div className="p-4 border-t border-sidebar-border">
-        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200">
-          <Settings className="w-5 h-5" />
-          Settings
+  // Lock scroll while drawer is open
+  useEffect(() => {
+    if (mobileOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = '';
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
+
+  const activeLabel = navItems.find(n => n.id === activeView)?.label ?? 'InvenTrack';
+
+  const NavList = () => (
+    <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      {navItems.map((item) => (
+        <button
+          key={item.id}
+          onClick={() => onViewChange(item.id)}
+          className={cn(
+            'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 min-h-[44px]',
+            activeView === item.id
+              ? 'bg-sidebar-accent text-sidebar-primary'
+              : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground active:bg-sidebar-accent/70'
+          )}
+        >
+          <item.icon className="w-5 h-5 flex-shrink-0" />
+          <span className="truncate">{item.label}</span>
         </button>
-      </div>
-    </aside>
+      ))}
+    </nav>
+  );
+
+  return (
+    <>
+      {/* Mobile top bar */}
+      <header className="lg:hidden fixed top-0 inset-x-0 z-40 h-14 bg-sidebar text-sidebar-foreground flex items-center px-3 gap-3 border-b border-sidebar-border" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="p-2 -ml-1 rounded-md hover:bg-sidebar-accent/50 active:bg-sidebar-accent min-w-[44px] min-h-[44px] flex items-center justify-center"
+          aria-label="Open menu"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 rounded-md bg-sidebar-primary flex items-center justify-center flex-shrink-0">
+            <Package className="w-4 h-4 text-sidebar-primary-foreground" />
+          </div>
+          <h1 className="font-semibold text-base truncate">{activeLabel}</h1>
+        </div>
+      </header>
+
+      {/* Mobile drawer overlay */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-50 bg-black/60"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar — desktop fixed, mobile slide-in drawer */}
+      <aside
+        className={cn(
+          'bg-sidebar text-sidebar-foreground flex flex-col h-screen fixed left-0 top-0 z-50 transition-transform duration-300 ease-out',
+          'w-72 lg:w-64',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        )}
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
+        <div className="p-4 lg:p-6 border-b border-sidebar-border flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
+              <Package className="w-5 h-5 text-sidebar-primary-foreground" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="font-semibold text-lg truncate">InvenTrack</h1>
+              <p className="text-xs text-sidebar-foreground/60 truncate">Multi-Warehouse</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden p-2 rounded-md hover:bg-sidebar-accent/50 min-w-[40px] min-h-[40px] flex items-center justify-center"
+            aria-label="Close menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <NavList />
+
+        <div className="p-3 border-t border-sidebar-border" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200 min-h-[44px]">
+            <Settings className="w-5 h-5 flex-shrink-0" />
+            Settings
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }
