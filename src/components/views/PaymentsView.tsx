@@ -32,7 +32,7 @@ type OrderRow = {
   status: 'paid' | 'partial' | 'unpaid';
 };
 
-export function PaymentsView({ orders, payments, onAddPayment, onDeletePayment }: PaymentsViewProps) {
+export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDeletePayment }: PaymentsViewProps) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [openDialog, setOpenDialog] = useState<{ orderId: string; suggested: number } | null>(null);
@@ -303,6 +303,15 @@ export function PaymentsView({ orders, payments, onAddPayment, onDeletePayment }
                                   title="Record partial payment"
                                 >
                                   <Plus className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => downloadInvoice(r.order, wholesalers.find(w => w.name === r.order.shopName))}
+                                  className="h-7"
+                                  title="Download invoice PDF"
+                                >
+                                  <FileDown className="w-3 h-3" />
                                 </Button>
                               </div>
                             </TableCell>
