@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { History, Package, Warehouse } from 'lucide-react';
+import { History, Package, Warehouse, FileText } from 'lucide-react';
 import { InventoryTransaction } from '@/types/inventory';
 import {
   Table,
@@ -75,15 +75,28 @@ export function InventoryHistoryView({ transactions }: InventoryHistoryViewProps
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {Object.entries(groupedByBol).map(([bolNumber, bolTransactions]) => (
+                  {Object.entries(groupedByBol).map(([bolNumber, bolTransactions]) => {
+                    const bolDocUrl = bolTransactions.find(t => t.bolDocumentUrl)?.bolDocumentUrl;
+                    return (
                     <div key={bolNumber} className="border rounded-lg overflow-hidden">
-                      <div className="bg-muted/50 px-4 py-2 flex items-center gap-2">
+                      <div className="bg-muted/50 px-4 py-2 flex flex-wrap items-center gap-2">
                         <Badge variant="outline" className="font-mono">
                           BOL: {bolNumber}
                         </Badge>
                         <span className="text-sm text-muted-foreground">
                           {bolTransactions.length} item{bolTransactions.length !== 1 ? 's' : ''}
                         </span>
+                        {bolDocUrl && (
+                          <a
+                            href={bolDocUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                          >
+                            <FileText className="w-3 h-3" />
+                            View BOL document
+                          </a>
+                        )}
                       </div>
                       <Table>
                         <TableHeader>
