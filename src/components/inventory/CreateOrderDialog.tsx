@@ -313,7 +313,9 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
             <div className="flex items-center justify-between">
               <Label>Order Lines ({orderItems.filter(e => e.itemId).length})</Label>
               {totalUnits > 0 && (
-                <span className="text-sm text-muted-foreground">{totalUnits} units total</span>
+                <span className="text-sm text-muted-foreground">
+                  {totalUnits} units · <span className="font-semibold text-foreground">${totalValue.toFixed(2)}</span>
+                </span>
               )}
             </div>
 
@@ -370,17 +372,37 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                         max={availableStock || undefined}
                         value={entry.quantity}
                         onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
-                        className="w-24"
+                        className="w-20"
                         disabled={!entry.warehouseId}
+                        placeholder="Qty"
                       />
+
+                      <div className="relative w-28">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={entry.unitPrice}
+                          onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                          className="pl-6"
+                          disabled={!entry.itemId}
+                          placeholder="Price"
+                        />
+                      </div>
                     </div>
 
                     {entry.itemId && entry.warehouseId && (
-                      <p className="text-xs text-muted-foreground">
-                        Available: {availableStock} units
-                        {entry.quantity > availableStock && (
-                          <span className="text-destructive ml-2">Exceeds available stock!</span>
-                        )}
+                      <p className="text-xs text-muted-foreground flex justify-between">
+                        <span>
+                          Available: {availableStock} units
+                          {entry.quantity > availableStock && (
+                            <span className="text-destructive ml-2">Exceeds available stock!</span>
+                          )}
+                        </span>
+                        <span className="font-medium text-foreground">
+                          Line: ${(entry.quantity * (Number(entry.unitPrice) || 0)).toFixed(2)}
+                        </span>
                       </p>
                     )}
                   </div>
