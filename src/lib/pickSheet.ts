@@ -28,6 +28,7 @@ async function getLogoDataUrl(): Promise<string | null> {
 export async function downloadPickSheet(order: Order, allItems: InventoryItem[] = []) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 36;
 
   // Build qty map from order
@@ -36,22 +37,30 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
     qtyMap.set(it.itemId, (qtyMap.get(it.itemId) ?? 0) + it.quantity);
   }
 
-  // Decide which items to print:
-  // If we have a full inventory list, print every item grouped by category (reference style).
-  // Otherwise fall back to just the order items.
-  const sourceItems: InventoryItem[] = allItems.length
-    ? allItems
-    : order.items.map((oi) => ({
-        id: oi.itemId,
-        name: oi.itemName,
-        sku: oi.itemSku,
-        category: 'Order Items',
-        subCategory: '',
-        stock: [],
-        minStock: 0,
-        price: oi.unitPrice,
-        lastUpdated: new Date(),
-      }));
+  // Only print items that are actually in the order.
+  // When full inventory metadata exists, use it to recover the real category/sub-category.
+  const inventoryById = new Map(allItems.map((item) => [item.id, item]));
+  const sourceItems = Array.from(
+    new Map(
+      order.items.map((oi) => {
+        const inventoryItem = inventoryById.get(oi.itemId);
+        return [
+          oi.itemId,
+          {
+            id: oi.itemId,
+            name: inventoryItem?.name ?? oi.itemName,
+            sku: inventoryItem?.sku ?? oi.itemSku,
+            category: inventoryItem?.category ?? 'Order Items',
+            subCategory: inventoryItem?.subCategory?.trim() || inventoryItem?.category?.trim() || 'Order Items',
+            stock: inventoryItem?.stock ?? [],
+            minStock: inventoryItem?.minStock ?? 0,
+            price: oi.unitPrice,
+            lastUpdated: inventoryItem?.lastUpdated ?? order.date,
+          } satisfies InventoryItem,
+        ];
+      })
+    ).values()
+  );
 
   // Group by sub-category (fall back to category, then Uncategorized)
   const bySubCategory = new Map<string, InventoryItem[]>();
@@ -147,10 +156,27 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
   const leftovers = allSubs.filter((s) => !usedSubs.has(s)).sort();
   for (const s of leftovers) orderedGroups.push([s]);
 
+  const estimateSectionHeight = (itemCount: number) => {
+    const rowCount = Math.ceil(itemCount / 2);
+    const headerHeight = 18;
+    const rowHeight = 14;
+    const tablePadding = 8;
+    return headerHeight + rowCount * rowHeight + tablePadding;
+  };
+
   let isFirstGroup = true;
   for (const group of orderedGroups) {
+    const estimatedGroupHeight = group.reduce((total, sub) => {
+      const list = bySubCategory.get(sub) ?? [];
+      return total + estimateSectionHeight(list.length);
+    }, 0) + Math.max(0, group.length - 1) * 6;
+
     // Force a new page before each group (except the very first, which uses current y)
     if (!isFirstGroup) {
+      doc.addPage();
+      y = margin;
+    } else if (y + estimatedGroupHeight > pageHeight - 90) {
+      // Keep the full grouped block together when the first page header leaves too little room.
       doc.addPage();
       y = margin;
     }
@@ -178,6 +204,7 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
 
     autoTable(doc, {
       startY: y,
+      pageBreak: 'avoid',
       head: [[{ content: String(sub).toUpperCase(), colSpan: 6, styles: { halign: 'center', fillColor: [225, 225, 225], textColor: 20, fontStyle: 'bold', fontSize: 10 } }]],
       body: rows,
       theme: 'grid',
@@ -211,7 +238,7 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
       tableWidth: pageWidth - margin * 2,
     });
 
-      y = (doc as any).lastAutoTable.finalY + 4;
+      y = (doc as any).lastAutoTable.finalY + 6;
     }
   }
 
