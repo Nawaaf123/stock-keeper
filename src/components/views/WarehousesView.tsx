@@ -22,6 +22,42 @@ export function WarehousesView({ stats, items, warehouses, onUpdateWarehouse, on
   const [searchQuery, setSearchQuery] = useState('');
   const [editingWarehouseId, setEditingWarehouseId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [quickEdit, setQuickEdit] = useState(false);
+  const [editingCell, setEditingCell] = useState<string | null>(null);
+  const [cellValue, setCellValue] = useState('');
+  const [savingCell, setSavingCell] = useState<string | null>(null);
+
+  const cellKey = (itemId: string, warehouseId: string) => `${itemId}::${warehouseId}`;
+
+  const startCellEdit = (itemId: string, warehouseId: string, current: number) => {
+    if (!quickEdit || !onUpdateStock) return;
+    setEditingCell(cellKey(itemId, warehouseId));
+    setCellValue(String(current));
+  };
+
+  const saveCellEdit = async (itemId: string, warehouseId: string, current: number) => {
+    if (!onUpdateStock) return;
+    const key = cellKey(itemId, warehouseId);
+    const newQty = parseInt(cellValue);
+    if (isNaN(newQty) || newQty < 0) {
+      toast.error('Enter a valid quantity');
+      return;
+    }
+    if (newQty === current) {
+      setEditingCell(null);
+      return;
+    }
+    setSavingCell(key);
+    try {
+      await onUpdateStock(itemId, warehouseId, newQty);
+      toast.success('Stock updated');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update');
+    } finally {
+      setSavingCell(null);
+      setEditingCell(null);
+    }
+  };
 
   const filteredItems = items.filter(item => {
     if (!searchQuery.trim()) return true;
