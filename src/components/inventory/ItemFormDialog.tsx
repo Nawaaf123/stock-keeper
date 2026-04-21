@@ -171,21 +171,44 @@ export function ItemFormDialog({ open, onOpenChange, item, warehouses, onSubmit,
     setFormData({ ...formData, category: value, subCategory: '' });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitForm = async (keepOpen: boolean) => {
     if (!formData.category) {
-      alert('Please select a category');
+      toast.error('Please select a category');
       return;
     }
     if (item) {
-      onUpdate(item.id, formData);
-    } else {
-      const stockData = Object.entries(initialStock)
-        .filter(([_, qty]) => qty > 0)
-        .map(([warehouseId, quantity]) => ({ warehouseId, quantity }));
-      onSubmit({ ...formData, initialStock: stockData });
+      await onUpdate(item.id, formData);
+      onOpenChange(false);
+      return;
     }
-    onOpenChange(false);
+    const stockData = Object.entries(initialStock)
+      .filter(([_, qty]) => qty > 0)
+      .map(([warehouseId, quantity]) => ({ warehouseId, quantity }));
+    await onSubmit({ ...formData, initialStock: stockData });
+
+    if (keepOpen) {
+      // Keep category/subCategory/minStock for fast repeat entry; clear product-specific fields
+      setFormData(prev => ({
+        ...prev,
+        name: '',
+        sku: '',
+        price: 0,
+      }));
+      setInitialStock({});
+      setAiDescription('');
+      // Focus the name field for the next item
+      setTimeout(() => {
+        const el = document.getElementById('name') as HTMLInputElement | null;
+        el?.focus();
+      }, 50);
+    } else {
+      onOpenChange(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitForm(false);
   };
 
   return (
