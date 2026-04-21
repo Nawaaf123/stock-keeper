@@ -1,0 +1,1 @@
+DELETE FROM categories WHERE name='NOVA' AND id NOT IN (SELECT id FROM categories WHERE name='NOVA' ORDER BY created_at LIMIT 1);
