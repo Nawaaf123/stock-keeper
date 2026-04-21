@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { SearchAndFilter } from '@/components/inventory/SearchAndFilter';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
 import { ItemFormDialog } from '@/components/inventory/ItemFormDialog';
-import { QuickAddBar } from '@/components/inventory/QuickAddBar';
+
 import { ReceiveStockDialog } from '@/components/inventory/ReceiveStockDialog';
 import { ProductDetailDialog } from '@/components/inventory/ProductDetailDialog';
 import { TransferStockDialog } from '@/components/inventory/TransferStockDialog';
@@ -272,8 +272,6 @@ export function InventoryView({
           </div>
         </div>
       )}
-
-      <QuickAddBar onAddItem={onAddItem} />
 
       <SearchAndFilter
         searchQuery={searchQuery}
