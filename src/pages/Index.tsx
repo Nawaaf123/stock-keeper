@@ -52,6 +52,8 @@ const Index = () => {
             warehouses={inventory.warehouses}
             wholesalers={inventory.wholesalers}
             onCreateOrder={inventory.createOrder}
+            onUpdateOrder={inventory.updateOrder}
+            onDeleteOrder={inventory.deleteOrder}
           />
         );
       case 'stock-summary':
