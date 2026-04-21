@@ -546,6 +546,8 @@ export function useInventory() {
     deleteItem,
     transferStock,
     createOrder,
+    deleteOrder,
+    updateOrder,
     addWholesaler,
     updateWholesaler,
     deleteWholesaler,
