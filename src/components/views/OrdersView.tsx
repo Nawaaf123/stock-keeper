@@ -12,9 +12,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown, FileDown, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown, FileDown, Pencil, Trash2, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 import { downloadInvoice } from '@/lib/invoice';
+import { downloadPickSheet } from '@/lib/pickSheet';
 import { toast } from 'sonner';
 
 interface OrdersViewProps {
@@ -265,6 +266,10 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                 <span>${order.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2)}</span>
                               </div>
                               <div className="mt-3 flex justify-end gap-2">
+                                <Button size="sm" variant="default" onClick={() => downloadPickSheet(order)}>
+                                  <ClipboardList className="w-4 h-4 mr-2" />
+                                  Pick Sheet
+                                </Button>
                                 <Button size="sm" variant="outline" onClick={() => downloadInvoice(order, wholesalers.find(w => w.name === order.shopName))}>
                                   <FileDown className="w-4 h-4 mr-2" />
                                   Invoice
