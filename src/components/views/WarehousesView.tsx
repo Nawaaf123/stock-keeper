@@ -85,7 +85,24 @@ export function WarehousesView({ stats, items, warehouses, onUpdateWarehouse, on
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-foreground">Warehouses</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-foreground">Warehouses</h1>
+        {onUpdateStock && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md border bg-card">
+            <Zap className={`h-4 w-4 ${quickEdit ? 'text-primary' : 'text-muted-foreground'}`} />
+            <Label htmlFor="quick-edit" className="text-sm cursor-pointer">
+              Quick stock edit
+            </Label>
+            <Switch id="quick-edit" checked={quickEdit} onCheckedChange={setQuickEdit} />
+          </div>
+        )}
+      </div>
+
+      {quickEdit && (
+        <div className="text-xs text-muted-foreground bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
+          Click any quantity cell to edit. Press <kbd className="px-1.5 py-0.5 bg-muted rounded border text-xs">Enter</kbd> to save, <kbd className="px-1.5 py-0.5 bg-muted rounded border text-xs">Esc</kbd> to cancel. This sets the stock to the entered number — use <span className="font-medium">Receive</span> later for proper BOL tracking.
+        </div>
+      )}
 
       <div className="relative w-full max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
