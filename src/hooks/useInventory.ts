@@ -298,11 +298,26 @@ export function useInventory() {
   };
 
   const updateStock = async (itemId: string, warehouseId: string, newQuantity: number) => {
-    await supabase
+    const qty = Math.max(0, newQuantity);
+    const { data: existing } = await supabase
       .from('warehouse_stock')
-      .update({ quantity: Math.max(0, newQuantity) })
+      .select('id')
       .eq('item_id', itemId)
-      .eq('warehouse_id', warehouseId);
+      .eq('warehouse_id', warehouseId)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await supabase
+        .from('warehouse_stock')
+        .update({ quantity: qty })
+        .eq('id', existing.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('warehouse_stock')
+        .insert({ item_id: itemId, warehouse_id: warehouseId, quantity: qty });
+      if (error) throw error;
+    }
     await fetchItems();
   };
 
