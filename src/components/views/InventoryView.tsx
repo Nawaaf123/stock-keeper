@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react';
-import { Plus, PackagePlus, ArrowLeftRight, Pencil, Check, X, Upload } from 'lucide-react';
+import { Plus, PackagePlus, ArrowLeftRight, Pencil, Check, X, Upload, Zap } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { SearchAndFilter } from '@/components/inventory/SearchAndFilter';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
 import { ItemFormDialog } from '@/components/inventory/ItemFormDialog';
@@ -70,6 +72,7 @@ export function InventoryView({
   const [editingWarehouseId, setEditingWarehouseId] = useState<string | null>(null);
   const [editingWarehouseName, setEditingWarehouseName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [quickEdit, setQuickEdit] = useState(false);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -287,6 +290,27 @@ export function InventoryView({
         warehouses={warehouses}
       />
 
+      <div className="flex items-center justify-between gap-3 px-1">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md border bg-card">
+          <Zap className={`h-4 w-4 ${quickEdit ? 'text-primary' : 'text-muted-foreground'}`} />
+          <Label htmlFor="quick-edit-inv" className="text-sm cursor-pointer">
+            Quick stock edit
+          </Label>
+          <Switch id="quick-edit-inv" checked={quickEdit} onCheckedChange={setQuickEdit} />
+        </div>
+        {quickEdit && (
+          <p className="text-xs text-muted-foreground hidden sm:block">
+            Click any warehouse quantity to edit. Enter saves, Esc cancels.
+          </p>
+        )}
+      </div>
+
+      {quickEdit && (
+        <div className="text-xs text-muted-foreground bg-primary/5 border border-primary/20 rounded-md px-3 py-2 sm:hidden">
+          Click any warehouse quantity to edit. Sets stock directly — use Receive later for proper BOL tracking.
+        </div>
+      )}
+
       <InventoryTable
         items={items}
         warehouses={warehouses}
@@ -297,6 +321,8 @@ export function InventoryView({
         onDelete={handleDelete}
         onReceiveStock={handleReceiveStock}
         onViewDetails={handleViewDetails}
+        quickEdit={quickEdit}
+        onUpdateStock={onUpdateStock}
       />
 
       <ItemFormDialog

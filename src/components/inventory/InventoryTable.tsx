@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { ChevronUp, ChevronDown, Edit2, Trash2, Plus, Eye } from 'lucide-react';
 import { InventoryItem, SortField, SortDirection, Warehouse } from '@/types/inventory';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { getTotalQuantity } from '@/data/mockData';
+import { toast } from 'sonner';
 import {
   Tooltip,
   TooltipContent,
@@ -19,6 +22,8 @@ interface InventoryTableProps {
   onDelete: (id: string) => void;
   onReceiveStock: (item: InventoryItem) => void;
   onViewDetails: (item: InventoryItem) => void;
+  quickEdit?: boolean;
+  onUpdateStock?: (itemId: string, warehouseId: string, newQuantity: number) => void | Promise<void>;
 }
 
 function SortIcon({ field, currentField, direction }: { field: SortField; currentField: SortField; direction: SortDirection }) {
@@ -26,7 +31,42 @@ function SortIcon({ field, currentField, direction }: { field: SortField; curren
   return direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
 }
 
-export function InventoryTable({ items, warehouses, sortField, sortDirection, onSort, onEdit, onDelete, onReceiveStock, onViewDetails }: InventoryTableProps) {
+export function InventoryTable({ items, warehouses, sortField, sortDirection, onSort, onEdit, onDelete, onReceiveStock, onViewDetails, quickEdit = false, onUpdateStock }: InventoryTableProps) {
+  const [editingCell, setEditingCell] = useState<string | null>(null);
+  const [cellValue, setCellValue] = useState('');
+  const [savingCell, setSavingCell] = useState<string | null>(null);
+  const cellKey = (i: string, w: string) => `${i}::${w}`;
+
+  const startEdit = (itemId: string, warehouseId: string, current: number) => {
+    if (!quickEdit || !onUpdateStock) return;
+    setEditingCell(cellKey(itemId, warehouseId));
+    setCellValue(String(current));
+  };
+
+  const saveEdit = async (itemId: string, warehouseId: string, current: number) => {
+    if (!onUpdateStock) return;
+    const key = cellKey(itemId, warehouseId);
+    const newQty = parseInt(cellValue);
+    if (isNaN(newQty) || newQty < 0) {
+      toast.error('Enter a valid quantity');
+      return;
+    }
+    if (newQty === current) {
+      setEditingCell(null);
+      return;
+    }
+    setSavingCell(key);
+    try {
+      await onUpdateStock(itemId, warehouseId, newQty);
+      toast.success('Stock updated');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update');
+    } finally {
+      setSavingCell(null);
+      setEditingCell(null);
+    }
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -99,13 +139,41 @@ export function InventoryTable({ items, warehouses, sortField, sortDirection, on
                       {warehouses.map((wh) => {
                         const stock = item.stock.find((s) => s.warehouseId === wh.id);
                         const qty = stock?.quantity || 0;
+                        const key = cellKey(item.id, wh.id);
+                        const isEditing = editingCell === key;
+                        const isSaving = savingCell === key;
+                        if (isEditing) {
+                          return (
+                            <Input
+                              key={wh.id}
+                              type="number"
+                              min="0"
+                              value={cellValue}
+                              onChange={(e) => setCellValue(e.target.value)}
+                              onBlur={() => saveEdit(item.id, wh.id, qty)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  saveEdit(item.id, wh.id, qty);
+                                }
+                                if (e.key === 'Escape') setEditingCell(null);
+                              }}
+                              autoFocus
+                              onFocus={(e) => e.target.select()}
+                              disabled={isSaving}
+                              className="h-6 w-16 text-center text-xs px-1"
+                            />
+                          );
+                        }
                         return (
                           <Tooltip key={wh.id}>
                             <TooltipTrigger asChild>
                               <span
+                                onClick={() => startEdit(item.id, wh.id, qty)}
                                 className={cn(
                                   'w-16 text-center text-xs tabular-nums',
-                                  qty > 0 ? 'text-foreground' : 'text-muted-foreground/50'
+                                  qty > 0 ? 'text-foreground' : 'text-muted-foreground/50',
+                                  quickEdit && onUpdateStock && 'cursor-pointer hover:bg-primary/10 rounded px-1 py-0.5'
                                 )}
                               >
                                 {qty}
