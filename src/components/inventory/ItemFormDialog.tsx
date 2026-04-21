@@ -171,21 +171,44 @@ export function ItemFormDialog({ open, onOpenChange, item, warehouses, onSubmit,
     setFormData({ ...formData, category: value, subCategory: '' });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitForm = async (keepOpen: boolean) => {
     if (!formData.category) {
-      alert('Please select a category');
+      toast.error('Please select a category');
       return;
     }
     if (item) {
-      onUpdate(item.id, formData);
-    } else {
-      const stockData = Object.entries(initialStock)
-        .filter(([_, qty]) => qty > 0)
-        .map(([warehouseId, quantity]) => ({ warehouseId, quantity }));
-      onSubmit({ ...formData, initialStock: stockData });
+      await onUpdate(item.id, formData);
+      onOpenChange(false);
+      return;
     }
-    onOpenChange(false);
+    const stockData = Object.entries(initialStock)
+      .filter(([_, qty]) => qty > 0)
+      .map(([warehouseId, quantity]) => ({ warehouseId, quantity }));
+    await onSubmit({ ...formData, initialStock: stockData });
+
+    if (keepOpen) {
+      // Keep category/subCategory/minStock for fast repeat entry; clear product-specific fields
+      setFormData(prev => ({
+        ...prev,
+        name: '',
+        sku: '',
+        price: 0,
+      }));
+      setInitialStock({});
+      setAiDescription('');
+      // Focus the name field for the next item
+      setTimeout(() => {
+        const el = document.getElementById('name') as HTMLInputElement | null;
+        el?.focus();
+      }, 50);
+    } else {
+      onOpenChange(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitForm(false);
   };
 
   return (
@@ -308,12 +331,23 @@ export function ItemFormDialog({ open, onOpenChange, item, warehouses, onSubmit,
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
+            {!item && (
+              <Button type="button" variant="secondary" onClick={() => submitForm(true)}>
+                Save & add another
+              </Button>
+            )}
             <Button type="submit">{item ? 'Save Changes' : 'Add Item'}</Button>
           </div>
+          {!item && formData.category && (
+            <p className="text-xs text-muted-foreground text-right">
+              Tip: "Save & add another" keeps <span className="font-medium text-foreground">{formData.category}</span>
+              {formData.subCategory && <> / <span className="font-medium text-foreground">{formData.subCategory}</span></>} selected.
+            </p>
+          )}
         </form>
       </DialogContent>
     </Dialog>
