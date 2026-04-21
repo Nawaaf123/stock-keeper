@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { InventoryItem, Warehouse } from '@/types/inventory';
-import { Search, Pencil, Check, X } from 'lucide-react';
+import { Search, Pencil, Check, X, Zap } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { toast } from 'sonner';
 
 interface WarehousesViewProps {
   stats: {
@@ -12,9 +15,10 @@ interface WarehousesViewProps {
   items: InventoryItem[];
   warehouses: Warehouse[];
   onUpdateWarehouse: (id: string, updates: Partial<Omit<Warehouse, 'id'>>) => void;
+  onUpdateStock?: (itemId: string, warehouseId: string, newQuantity: number) => void | Promise<void>;
 }
 
-export function WarehousesView({ stats, items, warehouses, onUpdateWarehouse }: WarehousesViewProps) {
+export function WarehousesView({ stats, items, warehouses, onUpdateWarehouse, onUpdateStock }: WarehousesViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingWarehouseId, setEditingWarehouseId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
