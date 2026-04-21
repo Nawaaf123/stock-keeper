@@ -273,6 +273,8 @@ export function InventoryView({
         </div>
       )}
 
+      <QuickAddBar onAddItem={onAddItem} />
+
       <SearchAndFilter
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}
