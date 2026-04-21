@@ -163,11 +163,39 @@ export function WarehousesView({ stats, items, warehouses, onUpdateWarehouse, on
                   <TableCell className="font-medium">{item.name}</TableCell>
                   {warehouses.map(wh => {
                     const stock = item.stock.find(s => s.warehouseId === wh.id)?.quantity || 0;
+                    const key = cellKey(item.id, wh.id);
+                    const isEditing = editingCell === key;
+                    const isSaving = savingCell === key;
                     return (
-                      <TableCell key={wh.id} className="text-center">
-                        <span className={stock === 0 ? "text-muted-foreground" : stock < 10 ? "text-red-600 font-semibold" : ""}>
-                          {stock}
-                        </span>
+                      <TableCell
+                        key={wh.id}
+                        className={`text-center ${quickEdit && onUpdateStock ? 'cursor-pointer hover:bg-primary/10' : ''}`}
+                        onClick={() => !isEditing && startCellEdit(item.id, wh.id, stock)}
+                      >
+                        {isEditing ? (
+                          <Input
+                            type="number"
+                            min="0"
+                            value={cellValue}
+                            onChange={(e) => setCellValue(e.target.value)}
+                            onBlur={() => saveCellEdit(item.id, wh.id, stock)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                saveCellEdit(item.id, wh.id, stock);
+                              }
+                              if (e.key === 'Escape') setEditingCell(null);
+                            }}
+                            autoFocus
+                            onFocus={(e) => e.target.select()}
+                            disabled={isSaving}
+                            className="h-7 w-20 mx-auto text-center text-sm"
+                          />
+                        ) : (
+                          <span className={stock === 0 ? "text-muted-foreground" : stock < 10 ? "text-red-600 font-semibold" : ""}>
+                            {stock}
+                          </span>
+                        )}
                       </TableCell>
                     );
                   })}
