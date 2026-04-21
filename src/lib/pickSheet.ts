@@ -116,10 +116,49 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
   y += 14;
 
   // ---- Sub-category sections ----
-  const subCategories = Array.from(bySubCategory.keys()).sort();
+  // Define forced page groups: each group renders on its own page, in order.
+  // Matching is case-insensitive and trims whitespace.
+  const forcedGroups: string[][] = [
+    ['Aura Original', 'Aura Splash'],
+    ['Switch 5500', 'Switch 15000'],
+    ['Switch Pod Kit', 'Switch Pod Pod'],
+    ['Nova Original', 'Nova Blue Razz Steezy'],
+    ['Nova New'],
+  ];
 
-  for (const sub of subCategories) {
-    const list = bySubCategory.get(sub)!;
+  const norm = (s: string) => s.trim().toLowerCase();
+  const allSubs = Array.from(bySubCategory.keys());
+  const usedSubs = new Set<string>();
+
+  // Resolve each forced group to actual sub-category keys present in the map
+  const orderedGroups: string[][] = [];
+  for (const grp of forcedGroups) {
+    const resolved: string[] = [];
+    for (const wanted of grp) {
+      const match = allSubs.find((s) => norm(s) === norm(wanted));
+      if (match && !usedSubs.has(match)) {
+        resolved.push(match);
+        usedSubs.add(match);
+      }
+    }
+    if (resolved.length) orderedGroups.push(resolved);
+  }
+  // Remaining sub-categories: each on its own page (alphabetical)
+  const leftovers = allSubs.filter((s) => !usedSubs.has(s)).sort();
+  for (const s of leftovers) orderedGroups.push([s]);
+
+  let isFirstGroup = true;
+  for (const group of orderedGroups) {
+    // Force a new page before each group (except the very first, which uses current y)
+    if (!isFirstGroup) {
+      doc.addPage();
+      y = margin;
+    }
+    isFirstGroup = false;
+
+    for (let gi = 0; gi < group.length; gi++) {
+      const sub = group[gi];
+      const list = bySubCategory.get(sub)!;
 
     // Build 2-column rows: [sku1, name1, qty1, sku2, name2, qty2]
     const rows: (string | number)[][] = [];
