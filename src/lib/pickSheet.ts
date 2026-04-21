@@ -53,15 +53,15 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
         lastUpdated: new Date(),
       }));
 
-  // Group by category
-  const byCategory = new Map<string, InventoryItem[]>();
+  // Group by sub-category (fall back to category, then Uncategorized)
+  const bySubCategory = new Map<string, InventoryItem[]>();
   for (const it of sourceItems) {
-    const cat = it.category?.trim() || 'Uncategorized';
-    if (!byCategory.has(cat)) byCategory.set(cat, []);
-    byCategory.get(cat)!.push(it);
+    const sub = (it.subCategory?.trim() || it.category?.trim() || 'Uncategorized');
+    if (!bySubCategory.has(sub)) bySubCategory.set(sub, []);
+    bySubCategory.get(sub)!.push(it);
   }
-  // Sort items in each category by SKU for predictable layout
-  for (const list of byCategory.values()) {
+  // Sort items in each sub-category by SKU for predictable layout
+  for (const list of bySubCategory.values()) {
     list.sort((a, b) => a.sku.localeCompare(b.sku, undefined, { numeric: true }));
   }
 
