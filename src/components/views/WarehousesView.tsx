@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { InventoryItem, Warehouse } from '@/types/inventory';
-import { Search, Pencil, Check, X } from 'lucide-react';
+import { Search, Pencil, Check, X, Zap } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { toast } from 'sonner';
 
 interface WarehousesViewProps {
   stats: {
@@ -12,12 +15,49 @@ interface WarehousesViewProps {
   items: InventoryItem[];
   warehouses: Warehouse[];
   onUpdateWarehouse: (id: string, updates: Partial<Omit<Warehouse, 'id'>>) => void;
+  onUpdateStock?: (itemId: string, warehouseId: string, newQuantity: number) => void | Promise<void>;
 }
 
-export function WarehousesView({ stats, items, warehouses, onUpdateWarehouse }: WarehousesViewProps) {
+export function WarehousesView({ stats, items, warehouses, onUpdateWarehouse, onUpdateStock }: WarehousesViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingWarehouseId, setEditingWarehouseId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [quickEdit, setQuickEdit] = useState(false);
+  const [editingCell, setEditingCell] = useState<string | null>(null);
+  const [cellValue, setCellValue] = useState('');
+  const [savingCell, setSavingCell] = useState<string | null>(null);
+
+  const cellKey = (itemId: string, warehouseId: string) => `${itemId}::${warehouseId}`;
+
+  const startCellEdit = (itemId: string, warehouseId: string, current: number) => {
+    if (!quickEdit || !onUpdateStock) return;
+    setEditingCell(cellKey(itemId, warehouseId));
+    setCellValue(String(current));
+  };
+
+  const saveCellEdit = async (itemId: string, warehouseId: string, current: number) => {
+    if (!onUpdateStock) return;
+    const key = cellKey(itemId, warehouseId);
+    const newQty = parseInt(cellValue);
+    if (isNaN(newQty) || newQty < 0) {
+      toast.error('Enter a valid quantity');
+      return;
+    }
+    if (newQty === current) {
+      setEditingCell(null);
+      return;
+    }
+    setSavingCell(key);
+    try {
+      await onUpdateStock(itemId, warehouseId, newQty);
+      toast.success('Stock updated');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update');
+    } finally {
+      setSavingCell(null);
+      setEditingCell(null);
+    }
+  };
 
   const filteredItems = items.filter(item => {
     if (!searchQuery.trim()) return true;
@@ -45,7 +85,24 @@ export function WarehousesView({ stats, items, warehouses, onUpdateWarehouse }: 
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-foreground">Warehouses</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-foreground">Warehouses</h1>
+        {onUpdateStock && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md border bg-card">
+            <Zap className={`h-4 w-4 ${quickEdit ? 'text-primary' : 'text-muted-foreground'}`} />
+            <Label htmlFor="quick-edit" className="text-sm cursor-pointer">
+              Quick stock edit
+            </Label>
+            <Switch id="quick-edit" checked={quickEdit} onCheckedChange={setQuickEdit} />
+          </div>
+        )}
+      </div>
+
+      {quickEdit && (
+        <div className="text-xs text-muted-foreground bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
+          Click any quantity cell to edit. Press <kbd className="px-1.5 py-0.5 bg-muted rounded border text-xs">Enter</kbd> to save, <kbd className="px-1.5 py-0.5 bg-muted rounded border text-xs">Esc</kbd> to cancel. This sets the stock to the entered number — use <span className="font-medium">Receive</span> later for proper BOL tracking.
+        </div>
+      )}
 
       <div className="relative w-full max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -106,11 +163,39 @@ export function WarehousesView({ stats, items, warehouses, onUpdateWarehouse }: 
                   <TableCell className="font-medium">{item.name}</TableCell>
                   {warehouses.map(wh => {
                     const stock = item.stock.find(s => s.warehouseId === wh.id)?.quantity || 0;
+                    const key = cellKey(item.id, wh.id);
+                    const isEditing = editingCell === key;
+                    const isSaving = savingCell === key;
                     return (
-                      <TableCell key={wh.id} className="text-center">
-                        <span className={stock === 0 ? "text-muted-foreground" : stock < 10 ? "text-red-600 font-semibold" : ""}>
-                          {stock}
-                        </span>
+                      <TableCell
+                        key={wh.id}
+                        className={`text-center ${quickEdit && onUpdateStock ? 'cursor-pointer hover:bg-primary/10' : ''}`}
+                        onClick={() => !isEditing && startCellEdit(item.id, wh.id, stock)}
+                      >
+                        {isEditing ? (
+                          <Input
+                            type="number"
+                            min="0"
+                            value={cellValue}
+                            onChange={(e) => setCellValue(e.target.value)}
+                            onBlur={() => saveCellEdit(item.id, wh.id, stock)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                saveCellEdit(item.id, wh.id, stock);
+                              }
+                              if (e.key === 'Escape') setEditingCell(null);
+                            }}
+                            autoFocus
+                            onFocus={(e) => e.target.select()}
+                            disabled={isSaving}
+                            className="h-7 w-20 mx-auto text-center text-sm"
+                          />
+                        ) : (
+                          <span className={stock === 0 ? "text-muted-foreground" : stock < 10 ? "text-red-600 font-semibold" : ""}>
+                            {stock}
+                          </span>
+                        )}
                       </TableCell>
                     );
                   })}
