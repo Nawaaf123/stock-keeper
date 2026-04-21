@@ -164,23 +164,18 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
     return headerHeight + rowCount * rowHeight + tablePadding;
   };
 
-  let isFirstGroup = true;
   for (const group of orderedGroups) {
     const estimatedGroupHeight = group.reduce((total, sub) => {
       const list = bySubCategory.get(sub) ?? [];
       return total + estimateSectionHeight(list.length);
     }, 0) + Math.max(0, group.length - 1) * 6;
 
-    // Force a new page before each group (except the very first, which uses current y)
-    if (!isFirstGroup) {
-      doc.addPage();
-      y = margin;
-    } else if (y + estimatedGroupHeight > pageHeight - 90) {
-      // Keep the full grouped block together when the first page header leaves too little room.
+    // Only break to a new page when the group doesn't fit in the remaining space.
+    // Otherwise, stack groups one after another on the same page.
+    if (y + estimatedGroupHeight > pageHeight - 90 && y > margin + 10) {
       doc.addPage();
       y = margin;
     }
-    isFirstGroup = false;
 
     for (let gi = 0; gi < group.length; gi++) {
       const sub = group[gi];
