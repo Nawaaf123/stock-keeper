@@ -452,6 +452,39 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
         wholesalers={wholesalers}
         onCreateOrder={onCreateOrder}
       />
+
+      <EditOrderDialog
+        open={editOrder !== null}
+        onOpenChange={(o) => { if (!o) setEditOrder(null); }}
+        order={editOrder}
+        items={items}
+        warehouses={warehouses}
+        onUpdateOrder={onUpdateOrder}
+      />
+
+      <AlertDialog open={deleteOrderId !== null} onOpenChange={(o) => { if (!o) setDeleteOrderId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The product quantities from this order will be returned to inventory. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!deleteOrderId) return;
+                await onDeleteOrder(deleteOrderId);
+                toast.success('Order deleted and stock restored');
+                setDeleteOrderId(null);
+              }}
+            >
+              Delete & restore stock
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
