@@ -181,9 +181,10 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
       head: [[{ content: String(sub).toUpperCase(), colSpan: 6, styles: { halign: 'center', fillColor: [225, 225, 225], textColor: 20, fontStyle: 'bold', fontSize: 10 } }]],
       body: rows,
       theme: 'grid',
+      rowPageBreak: 'avoid',
       styles: {
-        fontSize: 9,
-        cellPadding: 2.5,
+        fontSize: 8.5,
+        cellPadding: 1.6,
         valign: 'middle',
         lineColor: [60, 60, 60],
         lineWidth: 0.4,
