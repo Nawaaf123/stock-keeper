@@ -4,12 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CreateOrderDialog } from '@/components/inventory/CreateOrderDialog';
+import { EditOrderDialog } from '@/components/inventory/EditOrderDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown, FileDown } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown, FileDown, Pencil, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { downloadInvoice } from '@/lib/invoice';
+import { toast } from 'sonner';
 
 interface OrdersViewProps {
   orders: Order[];
@@ -17,10 +23,14 @@ interface OrdersViewProps {
   warehouses: Warehouse[];
   wholesalers: Wholesaler[];
   onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]) => void;
+  onUpdateOrder: (orderId: string, shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]) => Promise<void> | void;
+  onDeleteOrder: (orderId: string) => Promise<void> | void;
 }
 
-export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrder }: OrdersViewProps) {
+export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrder, onUpdateOrder, onDeleteOrder }: OrdersViewProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editOrder, setEditOrder] = useState<Order | null>(null);
+  const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
   const [shopFilter, setShopFilter] = useState<string>('all');
   const [productFilter, setProductFilter] = useState<string>('all');
 
@@ -254,10 +264,18 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                 <span>Total ({order.items.reduce((sum, i) => sum + i.quantity, 0)} units)</span>
                                 <span>${order.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2)}</span>
                               </div>
-                              <div className="mt-3 flex justify-end">
+                              <div className="mt-3 flex justify-end gap-2">
                                 <Button size="sm" variant="outline" onClick={() => downloadInvoice(order, wholesalers.find(w => w.name === order.shopName))}>
                                   <FileDown className="w-4 h-4 mr-2" />
-                                  Download Invoice
+                                  Invoice
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => setEditOrder(order)}>
+                                  <Pencil className="w-4 h-4 mr-2" />
+                                  Edit
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => setDeleteOrderId(order.id)}>
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
                                 </Button>
                               </div>
                             </CardContent>
@@ -434,6 +452,39 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
         wholesalers={wholesalers}
         onCreateOrder={onCreateOrder}
       />
+
+      <EditOrderDialog
+        open={editOrder !== null}
+        onOpenChange={(o) => { if (!o) setEditOrder(null); }}
+        order={editOrder}
+        items={items}
+        warehouses={warehouses}
+        onUpdateOrder={onUpdateOrder}
+      />
+
+      <AlertDialog open={deleteOrderId !== null} onOpenChange={(o) => { if (!o) setDeleteOrderId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The product quantities from this order will be returned to inventory. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!deleteOrderId) return;
+                await onDeleteOrder(deleteOrderId);
+                toast.success('Order deleted and stock restored');
+                setDeleteOrderId(null);
+              }}
+            >
+              Delete & restore stock
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

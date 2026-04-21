@@ -384,6 +384,80 @@ export function useInventory() {
     return newOrder.id as string;
   };
 
+  const adjustStockBy = async (itemId: string, warehouseId: string, delta: number) => {
+    const { data: existing } = await supabase
+      .from('warehouse_stock')
+      .select('id, quantity')
+      .eq('item_id', itemId)
+      .eq('warehouse_id', warehouseId)
+      .maybeSingle();
+    if (existing) {
+      await supabase.from('warehouse_stock').update({ quantity: Math.max(0, existing.quantity + delta) }).eq('id', existing.id);
+    } else if (delta > 0) {
+      await supabase.from('warehouse_stock').insert({ item_id: itemId, warehouse_id: warehouseId, quantity: delta });
+    }
+  };
+
+  const deleteOrder = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    // Restore stock for every line
+    for (const line of order.items) {
+      await adjustStockBy(line.itemId, line.warehouseId, line.quantity);
+    }
+    // Delete payments, order_items, then order
+    await (supabase as any).from('payments').delete().eq('order_id', orderId);
+    await supabase.from('order_items').delete().eq('order_id', orderId);
+    await supabase.from('orders').delete().eq('id', orderId);
+    await Promise.all([fetchItems(), fetchOrders(), fetchPayments()]);
+  };
+
+  const updateOrder = async (
+    orderId: string,
+    shopName: string,
+    newItems: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]
+  ) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    // Build a delta map: positive = need to deduct more from stock, negative = restore to stock
+    const key = (i: string, w: string) => `${i}::${w}`;
+    const deltas = new Map<string, { itemId: string; warehouseId: string; delta: number }>();
+
+    for (const old of order.items) {
+      const k = key(old.itemId, old.warehouseId);
+      deltas.set(k, { itemId: old.itemId, warehouseId: old.warehouseId, delta: -old.quantity });
+    }
+    for (const ni of newItems) {
+      const k = key(ni.itemId, ni.warehouseId);
+      const cur = deltas.get(k);
+      if (cur) cur.delta += ni.quantity;
+      else deltas.set(k, { itemId: ni.itemId, warehouseId: ni.warehouseId, delta: ni.quantity });
+    }
+
+    // Apply stock changes: positive delta = deduct from stock, negative = add back
+    for (const { itemId, warehouseId, delta } of deltas.values()) {
+      if (delta !== 0) await adjustStockBy(itemId, warehouseId, -delta);
+    }
+
+    // Replace order_items rows + update shop name
+    await supabase.from('order_items').delete().eq('order_id', orderId);
+    if (newItems.length > 0) {
+      await supabase.from('order_items').insert(
+        newItems.map(ni => ({
+          order_id: orderId,
+          item_id: ni.itemId,
+          warehouse_id: ni.warehouseId,
+          quantity: ni.quantity,
+          unit_price: ni.unitPrice,
+        }))
+      );
+    }
+    await supabase.from('orders').update({ shop_name: shopName }).eq('id', orderId);
+
+    await Promise.all([fetchItems(), fetchOrders()]);
+  };
+
   const addWholesaler = async (wholesaler: Omit<Wholesaler, 'id'>) => {
     await supabase.from('wholesalers').insert({
       name: wholesaler.name,
@@ -472,6 +546,8 @@ export function useInventory() {
     deleteItem,
     transferStock,
     createOrder,
+    deleteOrder,
+    updateOrder,
     addWholesaler,
     updateWholesaler,
     deleteWholesaler,
