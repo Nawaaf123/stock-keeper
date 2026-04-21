@@ -210,11 +210,7 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
       tableWidth: pageWidth - margin * 2,
     });
 
-    y = (doc as any).lastAutoTable.finalY + 4;
-
-    if (y > doc.internal.pageSize.getHeight() - 80) {
-      doc.addPage();
-      y = margin;
+      y = (doc as any).lastAutoTable.finalY + 4;
     }
   }
 
