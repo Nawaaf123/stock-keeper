@@ -4,12 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CreateOrderDialog } from '@/components/inventory/CreateOrderDialog';
+import { EditOrderDialog } from '@/components/inventory/EditOrderDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown, FileDown } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown, FileDown, Pencil, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { downloadInvoice } from '@/lib/invoice';
+import { toast } from 'sonner';
 
 interface OrdersViewProps {
   orders: Order[];
@@ -17,10 +23,14 @@ interface OrdersViewProps {
   warehouses: Warehouse[];
   wholesalers: Wholesaler[];
   onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]) => void;
+  onUpdateOrder: (orderId: string, shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]) => Promise<void> | void;
+  onDeleteOrder: (orderId: string) => Promise<void> | void;
 }
 
-export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrder }: OrdersViewProps) {
+export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrder, onUpdateOrder, onDeleteOrder }: OrdersViewProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editOrder, setEditOrder] = useState<Order | null>(null);
+  const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
   const [shopFilter, setShopFilter] = useState<string>('all');
   const [productFilter, setProductFilter] = useState<string>('all');
 
