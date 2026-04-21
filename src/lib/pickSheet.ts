@@ -212,14 +212,20 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
         lineWidth: 0.4,
         textColor: 20,
       },
-      columnStyles: {
-        0: { cellWidth: 50, fontStyle: 'bold' },
-        1: { cellWidth: 'auto' },
-        2: { cellWidth: 36, halign: 'center', fontStyle: 'bold' },
-        3: { cellWidth: 50, fontStyle: 'bold' },
-        4: { cellWidth: 'auto' },
-        5: { cellWidth: 36, halign: 'center', fontStyle: 'bold' },
-      },
+      columnStyles: (() => {
+        const tableWidth = pageWidth - margin * 2;
+        const skuW = 55;
+        const qtyW = 38;
+        const nameW = (tableWidth - (skuW + qtyW) * 2) / 2;
+        return {
+          0: { cellWidth: skuW, fontStyle: 'bold' },
+          1: { cellWidth: nameW },
+          2: { cellWidth: qtyW, halign: 'center', fontStyle: 'bold' },
+          3: { cellWidth: skuW, fontStyle: 'bold' },
+          4: { cellWidth: nameW },
+          5: { cellWidth: qtyW, halign: 'center', fontStyle: 'bold' },
+        };
+      })(),
       // Highlight qty cells that are pre-filled with the ordered quantity
       didParseCell: (data) => {
         if (data.section === 'body' && (data.column.index === 2 || data.column.index === 5)) {
