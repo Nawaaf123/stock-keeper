@@ -264,10 +264,18 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                 <span>Total ({order.items.reduce((sum, i) => sum + i.quantity, 0)} units)</span>
                                 <span>${order.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2)}</span>
                               </div>
-                              <div className="mt-3 flex justify-end">
+                              <div className="mt-3 flex justify-end gap-2">
                                 <Button size="sm" variant="outline" onClick={() => downloadInvoice(order, wholesalers.find(w => w.name === order.shopName))}>
                                   <FileDown className="w-4 h-4 mr-2" />
-                                  Download Invoice
+                                  Invoice
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => setEditOrder(order)}>
+                                  <Pencil className="w-4 h-4 mr-2" />
+                                  Edit
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => setDeleteOrderId(order.id)}>
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
                                 </Button>
                               </div>
                             </CardContent>
