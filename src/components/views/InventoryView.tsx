@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react';
-import { Plus, PackagePlus, ArrowLeftRight, Pencil, Check, X, Upload } from 'lucide-react';
+import { Plus, PackagePlus, ArrowLeftRight, Pencil, Check, X, Upload, Zap } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { SearchAndFilter } from '@/components/inventory/SearchAndFilter';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
 import { ItemFormDialog } from '@/components/inventory/ItemFormDialog';
@@ -70,6 +72,7 @@ export function InventoryView({
   const [editingWarehouseId, setEditingWarehouseId] = useState<string | null>(null);
   const [editingWarehouseName, setEditingWarehouseName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [quickEdit, setQuickEdit] = useState(false);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
