@@ -53,15 +53,15 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
         lastUpdated: new Date(),
       }));
 
-  // Group by category
-  const byCategory = new Map<string, InventoryItem[]>();
+  // Group by sub-category (fall back to category, then Uncategorized)
+  const bySubCategory = new Map<string, InventoryItem[]>();
   for (const it of sourceItems) {
-    const cat = it.category?.trim() || 'Uncategorized';
-    if (!byCategory.has(cat)) byCategory.set(cat, []);
-    byCategory.get(cat)!.push(it);
+    const sub = (it.subCategory?.trim() || it.category?.trim() || 'Uncategorized');
+    if (!bySubCategory.has(sub)) bySubCategory.set(sub, []);
+    bySubCategory.get(sub)!.push(it);
   }
-  // Sort items in each category by SKU for predictable layout
-  for (const list of byCategory.values()) {
+  // Sort items in each sub-category by SKU for predictable layout
+  for (const list of bySubCategory.values()) {
     list.sort((a, b) => a.sku.localeCompare(b.sku, undefined, { numeric: true }));
   }
 
@@ -115,11 +115,11 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
 
   y += 14;
 
-  // ---- Category sections ----
-  const categories = Array.from(byCategory.keys()).sort();
+  // ---- Sub-category sections ----
+  const subCategories = Array.from(bySubCategory.keys()).sort();
 
-  for (const cat of categories) {
-    const list = byCategory.get(cat)!;
+  for (const sub of subCategories) {
+    const list = bySubCategory.get(sub)!;
 
     // Build 2-column rows: [sku1, name1, qty1, sku2, name2, qty2]
     const rows: (string | number)[][] = [];
@@ -139,12 +139,12 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
 
     autoTable(doc, {
       startY: y,
-      head: [[{ content: cat.toUpperCase(), colSpan: 6, styles: { halign: 'center', fillColor: [225, 225, 225], textColor: 20, fontStyle: 'bold', fontSize: 11 } }]],
+      head: [[{ content: String(sub).toUpperCase(), colSpan: 6, styles: { halign: 'center', fillColor: [225, 225, 225], textColor: 20, fontStyle: 'bold', fontSize: 10 } }]],
       body: rows,
       theme: 'grid',
       styles: {
-        fontSize: 10,
-        cellPadding: 4,
+        fontSize: 9,
+        cellPadding: 2.5,
         valign: 'middle',
         lineColor: [60, 60, 60],
         lineWidth: 0.4,
@@ -153,10 +153,10 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
       columnStyles: {
         0: { cellWidth: 50, fontStyle: 'bold' },
         1: { cellWidth: 'auto' },
-        2: { cellWidth: 40, halign: 'center', fontStyle: 'bold' },
+        2: { cellWidth: 36, halign: 'center', fontStyle: 'bold' },
         3: { cellWidth: 50, fontStyle: 'bold' },
         4: { cellWidth: 'auto' },
-        5: { cellWidth: 40, halign: 'center', fontStyle: 'bold' },
+        5: { cellWidth: 36, halign: 'center', fontStyle: 'bold' },
       },
       // Highlight qty cells that are pre-filled with the ordered quantity
       didParseCell: (data) => {
@@ -171,7 +171,7 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
       tableWidth: pageWidth - margin * 2,
     });
 
-    y = (doc as any).lastAutoTable.finalY + 8;
+    y = (doc as any).lastAutoTable.finalY + 4;
 
     if (y > doc.internal.pageSize.getHeight() - 80) {
       doc.addPage();
