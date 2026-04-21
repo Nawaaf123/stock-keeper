@@ -331,12 +331,23 @@ export function ItemFormDialog({ open, onOpenChange, item, warehouses, onSubmit,
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
+            {!item && (
+              <Button type="button" variant="secondary" onClick={() => submitForm(true)}>
+                Save & add another
+              </Button>
+            )}
             <Button type="submit">{item ? 'Save Changes' : 'Add Item'}</Button>
           </div>
+          {!item && formData.category && (
+            <p className="text-xs text-muted-foreground text-right">
+              Tip: "Save & add another" keeps <span className="font-medium text-foreground">{formData.category}</span>
+              {formData.subCategory && <> / <span className="font-medium text-foreground">{formData.subCategory}</span></>} selected.
+            </p>
+          )}
         </form>
       </DialogContent>
     </Dialog>
