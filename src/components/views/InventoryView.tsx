@@ -6,6 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { SearchAndFilter } from '@/components/inventory/SearchAndFilter';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
 import { ItemFormDialog } from '@/components/inventory/ItemFormDialog';
