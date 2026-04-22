@@ -234,21 +234,49 @@ export function InventoryView({
             <Upload className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">Import</span>
           </Button>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              try {
-                await downloadInventorySheet(allItems);
-                toast.success('Inventory PDF downloaded');
-              } catch (err: any) {
-                toast.error(err?.message || 'Failed to generate PDF');
-              }
-            }}
-            className="gap-2 min-w-0"
-          >
-            <Download className="w-4 h-4 flex-shrink-0" />
-            <span className="truncate">Download PDF</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2 min-w-0">
+                <Download className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">Download PDF</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-popover">
+              <DropdownMenuLabel>Inventory PDF</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={async () => {
+                  try {
+                    await downloadInventorySheet(allItems);
+                    toast.success('Inventory PDF downloaded');
+                  } catch (err: any) {
+                    toast.error(err?.message || 'Failed to generate PDF');
+                  }
+                }}
+              >
+                All warehouses (totals)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                By warehouse
+              </DropdownMenuLabel>
+              {warehouses.map((w) => (
+                <DropdownMenuItem
+                  key={w.id}
+                  onClick={async () => {
+                    try {
+                      await downloadInventorySheet(allItems, { id: w.id, name: w.name });
+                      toast.success(`Inventory PDF (${w.name}) downloaded`);
+                    } catch (err: any) {
+                      toast.error(err?.message || 'Failed to generate PDF');
+                    }
+                  }}
+                >
+                  {w.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" onClick={() => setTransferDialogOpen(true)} className="gap-2 min-w-0">
             <ArrowLeftRight className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">Transfer</span>
