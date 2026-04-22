@@ -17,9 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { InventoryItem, Warehouse } from '@/types/inventory';
-import { Package, Plus, Trash2, Upload, FileText, X } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { Package, Plus, Trash2 } from 'lucide-react';
 
 interface ProductEntry {
   itemId: string;
@@ -41,8 +39,6 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
   const [productEntries, setProductEntries] = useState<ProductEntry[]>([]);
   const [currentItemId, setCurrentItemId] = useState('');
   const [currentQuantity, setCurrentQuantity] = useState(0);
-  const [bolFile, setBolFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
 
   // If a specific item is passed, use single-item mode
   const isSingleItemMode = !!item;
@@ -53,15 +49,12 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
     setProductEntries([]);
     setCurrentItemId('');
     setCurrentQuantity(0);
-    setBolFile(null);
   };
 
   const handleAddProduct = () => {
     if (currentItemId && currentQuantity > 0) {
-      // Check if product already exists in entries
       const existingIndex = productEntries.findIndex(e => e.itemId === currentItemId);
       if (existingIndex >= 0) {
-        // Update quantity
         const updated = [...productEntries];
         updated[existingIndex].quantity += currentQuantity;
         setProductEntries(updated);
@@ -77,45 +70,19 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
     setProductEntries(productEntries.filter((_, i) => i !== index));
   };
 
-  const uploadBolFile = async (): Promise<string | null> => {
-    if (!bolFile) return null;
-    setUploading(true);
-    try {
-      const ext = bolFile.name.split('.').pop();
-      const path = `${bolNumber.trim().replace(/[^\w-]/g, '_')}_${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('bol-documents').upload(path, bolFile, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-      if (error) throw error;
-      const { data } = supabase.storage.from('bol-documents').getPublicUrl(path);
-      return data.publicUrl;
-    } catch (err: any) {
-      toast.error('Failed to upload BOL document: ' + err.message);
-      return null;
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const bolUrl = await uploadBolFile();
-    if (bolFile && !bolUrl) return; // upload failed, abort
-
     if (isSingleItemMode) {
-      // Single item mode
       if (item && warehouseId && currentQuantity > 0 && bolNumber.trim()) {
-        onReceive(item.id, warehouseId, currentQuantity, bolNumber.trim(), bolUrl);
+        onReceive(item.id, warehouseId, currentQuantity, bolNumber.trim(), null);
         onOpenChange(false);
         resetForm();
       }
     } else {
-      // Multi-item mode
       if (warehouseId && bolNumber.trim() && productEntries.length > 0) {
         productEntries.forEach(entry => {
-          onReceive(entry.itemId, warehouseId, entry.quantity, bolNumber.trim(), bolUrl);
+          onReceive(entry.itemId, warehouseId, entry.quantity, bolNumber.trim(), null);
         });
         onOpenChange(false);
         resetForm();
@@ -141,7 +108,6 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          {/* BOL Number - Always first */}
           <div>
             <Label htmlFor="bolNumber">BOL Number</Label>
             <Input
@@ -154,51 +120,6 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
             />
           </div>
 
-          {/* BOL Document Upload */}
-          <div>
-            <Label>BOL Document (optional)</Label>
-            {bolFile ? (
-              <div className="flex items-center justify-between gap-2 border rounded-md px-3 py-2 bg-muted/40">
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileText className="w-4 h-4 text-primary shrink-0" />
-                  <span className="text-sm truncate">{bolFile.name}</span>
-                  <span className="text-xs text-muted-foreground shrink-0">
-                    ({(bolFile.size / 1024).toFixed(0)} KB)
-                  </span>
-                </div>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setBolFile(null)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            ) : (
-              <label
-                htmlFor="bolFile"
-                className="flex items-center justify-center gap-2 border border-dashed rounded-md px-3 py-3 text-sm text-muted-foreground hover:bg-muted/40 cursor-pointer"
-              >
-                <Upload className="w-4 h-4" />
-                Upload scan / PDF
-              </label>
-            )}
-            <input
-              id="bolFile"
-              type="file"
-              accept="image/*,application/pdf"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) {
-                  if (f.size > 20 * 1024 * 1024) {
-                    toast.error('File too large (max 20 MB)');
-                    return;
-                  }
-                  setBolFile(f);
-                }
-                e.target.value = '';
-              }}
-            />
-          </div>
-
-          {/* Warehouse Selection */}
           <div>
             <Label htmlFor="warehouse">Select Warehouse</Label>
             <Select value={warehouseId} onValueChange={setWarehouseId}>
@@ -216,7 +137,6 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
           </div>
 
           {isSingleItemMode ? (
-            // Single item mode
             <>
               {item && (
                 <div className="bg-muted/50 rounded-lg p-4">
@@ -238,9 +158,7 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
               </div>
             </>
           ) : (
-            // Multi-item mode
             <>
-              {/* Added Products List */}
               {productEntries.length > 0 && (
                 <div className="space-y-2">
                   <Label>Products to Receive</Label>
@@ -268,7 +186,6 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
                 </div>
               )}
 
-              {/* Add Product Section */}
               <div className="border border-dashed border-border rounded-lg p-4 space-y-3">
                 <Label className="text-muted-foreground">Add Product</Label>
                 <div className="grid grid-cols-3 gap-2">
@@ -312,7 +229,6 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
             </>
           )}
 
-          {/* Summary */}
           {selectedWarehouse && productEntries.length > 0 && !isSingleItemMode && (
             <div className="bg-primary/10 rounded-lg p-3 text-sm border border-primary/20">
               <p className="font-medium text-primary">
@@ -331,13 +247,12 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
             <Button 
               type="submit" 
               disabled={
-                uploading ||
                 !warehouseId || 
                 !bolNumber.trim() || 
                 (isSingleItemMode ? currentQuantity <= 0 : productEntries.length === 0)
               }
             >
-              {uploading ? 'Uploading…' : 'Receive Stock'}
+              Receive Stock
             </Button>
           </div>
         </form>
