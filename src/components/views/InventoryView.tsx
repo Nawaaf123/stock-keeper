@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import { Plus, PackagePlus, ArrowLeftRight, Pencil, Check, X, Upload, Zap } from 'lucide-react';
+import { Plus, PackagePlus, ArrowLeftRight, Pencil, Check, X, Upload, Zap, Download } from 'lucide-react';
+import { downloadInventorySheet } from '@/lib/inventorySheet';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -224,6 +225,21 @@ export function InventoryView({
           <Button variant="outline" onClick={handleImportClick} className="gap-2 min-w-0">
             <Upload className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">Import</span>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              try {
+                await downloadInventorySheet(allItems);
+                toast.success('Inventory PDF downloaded');
+              } catch (err: any) {
+                toast.error(err?.message || 'Failed to generate PDF');
+              }
+            }}
+            className="gap-2 min-w-0"
+          >
+            <Download className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">Download PDF</span>
           </Button>
           <Button variant="outline" onClick={() => setTransferDialogOpen(true)} className="gap-2 min-w-0">
             <ArrowLeftRight className="w-4 h-4 flex-shrink-0" />
