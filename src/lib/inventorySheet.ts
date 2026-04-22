@@ -24,15 +24,25 @@ async function getLogoDataUrl(): Promise<string | null> {
   }
 }
 
-export async function downloadInventorySheet(allItems: InventoryItem[]) {
+export async function downloadInventorySheet(
+  allItems: InventoryItem[],
+  warehouseFilter?: { id: string; name: string } | null,
+) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 36;
 
-  // Total quantity per item across all warehouses
-  const totalQty = (item: InventoryItem) =>
-    (item.stock ?? []).reduce((s, w) => s + (w.quantity || 0), 0);
+  // Quantity per item — either for a specific warehouse, or summed across all
+  const totalQty = (item: InventoryItem) => {
+    const stock = item.stock ?? [];
+    if (warehouseFilter) {
+      return stock
+        .filter((w) => w.warehouseId === warehouseFilter.id)
+        .reduce((s, w) => s + (w.quantity || 0), 0);
+    }
+    return stock.reduce((s, w) => s + (w.quantity || 0), 0);
+  };
 
   // Group by sub-category (fall back to category, then Uncategorized).
   // Include ALL items, even with 0 stock.
@@ -60,7 +70,8 @@ export async function downloadInventorySheet(allItems: InventoryItem[]) {
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('Inventory Sheet', margin, y);
+  const title = warehouseFilter ? `Inventory Sheet — ${warehouseFilter.name}` : 'Inventory Sheet';
+  doc.text(title, margin, y);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
@@ -196,5 +207,6 @@ export async function downloadInventorySheet(allItems: InventoryItem[]) {
   doc.text(`Total Units: ${totalUnits}`, margin, y + 14);
   doc.text(`Total Products: ${totalLines}`, margin + 180, y + 14);
 
-  doc.save(`inventory-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  const suffix = warehouseFilter ? `-${warehouseFilter.name.replace(/\s+/g, '_')}` : '';
+  doc.save(`inventory${suffix}-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 }
