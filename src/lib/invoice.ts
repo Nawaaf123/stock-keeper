@@ -51,7 +51,7 @@ export function downloadInvoice(order: Order, wholesaler?: Wholesaler) {
 
   autoTable(doc, {
     startY: nextY + 5,
-    head: [['SKU', 'Product', 'Qty', 'Unit Price', 'Line Total']],
+    head: [['SKU', 'Product', 'Qty', 'Case Price', 'Line Total']],
     body: rows,
     theme: 'striped',
     headStyles: { fillColor: [220, 77, 68], textColor: 255, fontStyle: 'bold' },
@@ -66,7 +66,7 @@ export function downloadInvoice(order: Order, wholesaler?: Wholesaler) {
   const finalY = (doc as any).lastAutoTable.finalY || 70;
 
   doc.setFontSize(10);
-  doc.text(`Total Units: ${totalUnits}`, 14, finalY + 10);
+  doc.text(`Total Cases: ${totalUnits}`, 14, finalY + 10);
 
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');

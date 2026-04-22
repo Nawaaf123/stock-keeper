@@ -159,28 +159,28 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
       ['Generated', format(new Date(), 'dd MMM yyyy HH:mm')],
       [],
       ['Total Orders', totals.orderCount],
-      ['Total Units Sold', totals.units],
+      ['Total Cases Sold', totals.units],
       ['Total Revenue', totals.revenue],
       ['Distinct Products', totals.productCount],
     ]), 'Summary');
 
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['Rank', 'SKU', 'Product', 'Category', 'Units Sold', 'Orders', 'Revenue'],
+      ['Rank', 'SKU', 'Product', 'Category', 'Cases Sold', 'Orders', 'Revenue'],
       ...productStats.map((p, i) => [i + 1, p.sku, p.name, p.category, p.qty, p.orderCount, p.revenue]),
     ]), 'Top Products');
 
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['Rank', 'Shop', 'Orders', 'Units', 'Revenue'],
+      ['Rank', 'Shop', 'Orders', 'Cases', 'Revenue'],
       ...wholesalerStats.map((w, i) => [i + 1, w.shop, w.orders, w.units, w.revenue]),
     ]), 'Top Wholesalers');
 
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['Category', 'Distinct Products', 'Units', 'Revenue'],
+      ['Category', 'Distinct Products', 'Cases', 'Revenue'],
       ...categoryStats.map(c => [c.category, c.products, c.units, c.revenue]),
     ]), 'By Category');
 
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['Date', 'Orders', 'Units', 'Revenue'],
+      ['Date', 'Orders', 'Cases', 'Revenue'],
       ...dailyTrend.map(d => [format(d.date, 'yyyy-MM-dd'), d.orders, d.units, d.revenue]),
     ]), 'Daily Trend');
 
@@ -195,7 +195,7 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
     ]), 'Low Stock');
 
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['Order ID', 'Shop', 'Date', 'SKU', 'Product', 'Warehouse', 'Quantity', 'Unit Price', 'Line Total'],
+      ['Order ID', 'Shop', 'Date', 'SKU', 'Product', 'Warehouse', 'Quantity', 'Case Price', 'Line Total'],
       ...filteredOrders.flatMap(o => o.items.map(line => [
         o.id, o.shopName, format(o.date, 'yyyy-MM-dd'),
         line.itemSku, line.itemName, line.warehouseName,
@@ -264,7 +264,7 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <StatTile icon={BarChart3} label="Orders" value={totals.orderCount.toString()} />
-            <StatTile icon={Package} label="Units Sold" value={totals.units.toLocaleString()} />
+            <StatTile icon={Package} label="Cases Sold" value={totals.units.toLocaleString()} />
             <StatTile icon={DollarSign} label="Revenue" value={`$${totals.revenue.toFixed(2)}`} />
             <StatTile icon={TrendingUp} label="Products" value={totals.productCount.toString()} />
           </div>
@@ -284,7 +284,7 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
         <TabsContent value="products">
           <ReportTable
             title="Top Selling Products"
-            headers={['#', 'SKU', 'Product', 'Category', 'Orders', 'Units', 'Revenue']}
+            headers={['#', 'SKU', 'Product', 'Category', 'Orders', 'Cases', 'Revenue']}
             aligns={['left', 'left', 'left', 'left', 'center', 'center', 'right']}
             rows={productStats.map((p, i) => [i + 1, <span className="font-mono text-xs">{p.sku}</span>, <span className="font-medium">{p.name}</span>, <span className="text-muted-foreground text-sm">{p.category}</span>, p.orderCount, <span className="font-semibold">{p.qty}</span>, <span className="font-semibold">${p.revenue.toFixed(2)}</span>])}
             emptyText="No sales in this range"
@@ -294,7 +294,7 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
         <TabsContent value="wholesalers">
           <ReportTable
             title="Top Wholesalers"
-            headers={['#', 'Shop', 'Orders', 'Units', 'Revenue']}
+            headers={['#', 'Shop', 'Orders', 'Cases', 'Revenue']}
             aligns={['left', 'left', 'center', 'center', 'right']}
             rows={wholesalerStats.map((w, i) => [i + 1, <span className="font-medium">{w.shop}</span>, w.orders, <span className="font-semibold">{w.units}</span>, <span className="font-semibold">${w.revenue.toFixed(2)}</span>])}
             emptyText="No wholesalers with orders in this range"
@@ -304,7 +304,7 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
         <TabsContent value="categories">
           <ReportTable
             title="Sales by Category"
-            headers={['Category', 'Distinct Products', 'Units', 'Revenue']}
+            headers={['Category', 'Distinct Products', 'Cases', 'Revenue']}
             aligns={['left', 'center', 'center', 'right']}
             rows={categoryStats.map(c => [<span className="font-medium">{c.category}</span>, c.products, <span className="font-semibold">{c.units}</span>, <span className="font-semibold">${c.revenue.toFixed(2)}</span>])}
             emptyText="No category sales in this range"

@@ -312,7 +312,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                 <tfoot className="bg-muted/30 text-sm">
                   <tr className="border-t">
                     <td colSpan={2} className="px-2 py-1.5 text-muted-foreground text-xs">
-                      {totalUnits} units · {orderItems.length} line{orderItems.length !== 1 ? 's' : ''}
+                      {totalUnits} cases · {orderItems.length} line{orderItems.length !== 1 ? 's' : ''}
                     </td>
                     <td colSpan={3} className="px-2 py-1.5 text-right font-semibold tabular-nums">
                       ${totalValue.toFixed(2)}

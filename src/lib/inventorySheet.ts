@@ -204,7 +204,7 @@ export async function downloadInventorySheet(
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text(`Total Units: ${totalUnits}`, margin, y + 14);
+  doc.text(`Total Cases: ${totalUnits}`, margin, y + 14);
   doc.text(`Total Products: ${totalLines}`, margin + 180, y + 14);
 
   const suffix = warehouseFilter ? `-${warehouseFilter.name.replace(/\s+/g, '_')}` : '';
