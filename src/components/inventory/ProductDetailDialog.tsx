@@ -74,7 +74,7 @@ export function ProductDetailDialog({ open, onOpenChange, item, warehouses, onUp
                 "text-sm font-medium px-3 py-1 rounded-full",
                 isLowStock ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"
               )}>
-                Total: {total} units
+                Total: {total} cases
               </div>
             </div>
 
@@ -139,7 +139,7 @@ export function ProductDetailDialog({ open, onOpenChange, item, warehouses, onUp
           {isLowStock && (
             <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
               <p className="text-sm text-destructive font-medium">
-                ⚠️ Stock is below minimum level ({item.minStock} units required)
+                ⚠️ Stock is below minimum level ({item.minStock} cases required)
               </p>
             </div>
           )}

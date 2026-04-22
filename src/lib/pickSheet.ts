@@ -253,7 +253,7 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text(`Total Units: ${totalUnits}`, margin, y + 10);
+  doc.text(`Total Cases: ${totalUnits}`, margin, y + 10);
   doc.text(`Total Lines: ${order.items.length}`, margin + 160, y + 10);
 
   const sigY = y + 40;

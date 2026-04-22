@@ -203,7 +203,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
                 <tfoot className="bg-muted/30 text-sm">
                   <tr className="border-t">
                     <td colSpan={2} className="px-2 py-1.5 text-muted-foreground text-xs">
-                      {totalUnits} units · {lines.length} line{lines.length !== 1 ? 's' : ''}
+                      {totalUnits} cases · {lines.length} line{lines.length !== 1 ? 's' : ''}
                     </td>
                     <td colSpan={3} className="px-2 py-1.5 text-right font-semibold tabular-nums">
                       ${totalValue.toFixed(2)}

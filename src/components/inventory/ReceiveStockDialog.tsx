@@ -319,7 +319,7 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
                 {productEntries.length} product(s) will be added to {selectedWarehouse.name}
               </p>
               <p className="text-muted-foreground text-xs mt-1">
-                Total units: {productEntries.reduce((sum, e) => sum + e.quantity, 0)}
+                Total cases: {productEntries.reduce((sum, e) => sum + e.quantity, 0)}
               </p>
             </div>
           )}

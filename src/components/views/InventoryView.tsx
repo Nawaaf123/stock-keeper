@@ -205,7 +205,7 @@ export function InventoryView({
 
   const handleReceive = (itemId: string, warehouseId: string, quantity: number, bolNumber: string) => {
     onReceiveStock(itemId, warehouseId, quantity, bolNumber);
-    toast.success(`Added ${quantity} units to inventory (BOL: ${bolNumber})`);
+    toast.success(`Added ${quantity} cases to inventory (BOL: ${bolNumber})`);
   };
 
   const handleDialogChange = (open: boolean) => {

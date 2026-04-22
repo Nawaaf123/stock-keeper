@@ -222,7 +222,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                   <span className="min-w-0">
                                     <span className="break-words">{order.shopName}</span>
                                     <span className="block sm:inline text-sm font-normal text-muted-foreground sm:ml-1">
-                                      <span className="hidden sm:inline">— </span>{order.items.reduce((sum, i) => sum + i.quantity, 0)} units, {order.items.length} {order.items.length === 1 ? 'product' : 'products'}
+                                      <span className="hidden sm:inline">— </span>{order.items.reduce((sum, i) => sum + i.quantity, 0)} cases, {order.items.length} {order.items.length === 1 ? 'product' : 'products'}
                                     </span>
                                   </span>
                                 </CardTitle>
@@ -262,7 +262,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                 ))}
                               </div>
                               <div className="mt-2 pt-2 border-t flex flex-wrap justify-between gap-2 text-sm font-medium">
-                                <span>Total ({order.items.reduce((sum, i) => sum + i.quantity, 0)} units)</span>
+                                <span>Total ({order.items.reduce((sum, i) => sum + i.quantity, 0)} cases)</span>
                                 <span>${order.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2)}</span>
                               </div>
                               <div className="mt-3 flex justify-end gap-2">
@@ -336,7 +336,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                           {shop.totalOrders} orders
                         </Badge>
                         <Badge>
-                          {shop.totalUnits} units shipped
+                          {shop.totalUnits} cases shipped
                         </Badge>
                       </div>
                     </div>
@@ -361,7 +361,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                               <span className="text-muted-foreground text-xs">
                                 {product.orders} {product.orders === 1 ? 'order' : 'orders'}
                               </span>
-                              <Badge variant="secondary">{product.quantity} units</Badge>
+                              <Badge variant="secondary">{product.quantity} cases</Badge>
                             </div>
                           </div>
                         ))}
@@ -414,7 +414,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                         {product.itemName}
                       </CardTitle>
                       <Badge>
-                        {product.totalUnits} units shipped total
+                        {product.totalUnits} cases shipped total
                       </Badge>
                     </div>
                   </CardHeader>
@@ -436,7 +436,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                               <span className="text-muted-foreground text-xs">
                                 Last: {format(shop.lastOrder, 'MMM d')}
                               </span>
-                              <Badge variant="secondary">{shop.quantity} units</Badge>
+                              <Badge variant="secondary">{shop.quantity} cases</Badge>
                             </div>
                           </div>
                         ))}

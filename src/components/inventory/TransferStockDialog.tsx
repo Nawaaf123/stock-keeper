@@ -41,7 +41,7 @@ export function TransferStockDialog({ open, onOpenChange, items, warehouses, onT
     }
 
     if (qty > availableStock) {
-      toast({ title: 'Error', description: `Only ${availableStock} units available in source warehouse`, variant: 'destructive' });
+      toast({ title: 'Error', description: `Only ${availableStock} cases available in source warehouse`, variant: 'destructive' });
       return;
     }
 
@@ -51,7 +51,7 @@ export function TransferStockDialog({ open, onOpenChange, items, warehouses, onT
     }
 
     onTransfer(selectedItemId, fromWarehouseId, toWarehouseId, qty);
-    toast({ title: 'Success', description: `Transferred ${qty} units successfully` });
+    toast({ title: 'Success', description: `Transferred ${qty} cases successfully` });
     
     // Reset form
     setSelectedItemId('');
@@ -143,7 +143,7 @@ export function TransferStockDialog({ open, onOpenChange, items, warehouses, onT
             />
             {fromWarehouseId && (
               <p className="text-xs text-muted-foreground">
-                Available: {availableStock} units
+                Available: {availableStock} cases
               </p>
             )}
           </div>
