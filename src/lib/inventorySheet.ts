@@ -207,5 +207,6 @@ export async function downloadInventorySheet(
   doc.text(`Total Units: ${totalUnits}`, margin, y + 14);
   doc.text(`Total Products: ${totalLines}`, margin + 180, y + 14);
 
-  doc.save(`inventory-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  const suffix = warehouseFilter ? `-${warehouseFilter.name.replace(/\s+/g, '_')}` : '';
+  doc.save(`inventory${suffix}-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 }
