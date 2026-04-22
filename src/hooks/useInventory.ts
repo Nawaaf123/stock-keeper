@@ -350,9 +350,9 @@ export function useInventory() {
       supabase.from('warehouse_stock').select('id, quantity').eq('item_id', itemId).eq('warehouse_id', toWarehouseId).maybeSingle(),
     ]);
     const ops: Promise<any>[] = [];
-    if (fromRes.data) ops.push(supabase.from('warehouse_stock').update({ quantity: Math.max(0, fromRes.data.quantity - quantity) }).eq('id', fromRes.data.id));
-    if (toRes.data) ops.push(supabase.from('warehouse_stock').update({ quantity: toRes.data.quantity + quantity }).eq('id', toRes.data.id));
-    else ops.push(supabase.from('warehouse_stock').insert({ item_id: itemId, warehouse_id: toWarehouseId, quantity }));
+    if (fromRes.data) ops.push(Promise.resolve(supabase.from('warehouse_stock').update({ quantity: Math.max(0, fromRes.data.quantity - quantity) }).eq('id', fromRes.data.id)));
+    if (toRes.data) ops.push(Promise.resolve(supabase.from('warehouse_stock').update({ quantity: toRes.data.quantity + quantity }).eq('id', toRes.data.id)));
+    else ops.push(Promise.resolve(supabase.from('warehouse_stock').insert({ item_id: itemId, warehouse_id: toWarehouseId, quantity })));
     await Promise.all(ops);
   };
 
