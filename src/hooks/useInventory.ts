@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { InventoryItem, SortField, SortDirection, WarehouseStock, InventoryTransaction, Order, OrderItem, Wholesaler, Warehouse, Payment } from '@/types/inventory';
 import { supabase } from '@/integrations/supabase/client';
 import { getTotalQuantity } from '@/data/mockData';
@@ -18,87 +18,109 @@ export function useInventory() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [loading, setLoading] = useState(true);
 
-  // ─── Fetch all data from Supabase ───
+  // Keep latest warehouses/items in refs so fetchers can join client-side without re-creating callbacks
+  const warehousesRef = useRef<Warehouse[]>([]);
+  const itemsRef = useRef<InventoryItem[]>([]);
+  warehousesRef.current = warehousesList;
+  itemsRef.current = items;
+
+  // ─── Fetchers (lean: no nested joins; resolve names client-side) ───
   const fetchWarehouses = useCallback(async () => {
-    const { data } = await supabase.from('warehouses').select('*').order('name');
-    if (data) {
-      setWarehousesList(data.map(w => ({ id: w.id, name: w.name, location: w.location, color: w.color })));
-    }
+    const { data } = await supabase.from('warehouses').select('id,name,location,color').order('name');
+    if (data) setWarehousesList(data.map(w => ({ id: w.id, name: w.name, location: w.location, color: w.color })));
   }, []);
 
   const fetchItems = useCallback(async () => {
-    const { data: itemsData } = await supabase.from('inventory_items').select('*');
-    const { data: stockData } = await supabase.from('warehouse_stock').select('*, warehouses(name)');
-    
-    if (itemsData && stockData) {
-      const mapped: InventoryItem[] = itemsData.map(item => ({
-        id: item.id,
-        name: item.name,
-        sku: item.sku,
-        category: item.category,
-        subCategory: item.sub_category,
-        minStock: item.min_stock,
-        price: Number(item.price),
-        lastUpdated: new Date(item.updated_at),
-        stock: stockData
-          .filter(s => s.item_id === item.id)
-          .map(s => ({
-            warehouseId: s.warehouse_id,
-            warehouseName: (s.warehouses as any)?.name || '',
-            quantity: s.quantity,
-          })),
-      }));
-      setItems(mapped);
+    const [itemsRes, stockRes] = await Promise.all([
+      supabase.from('inventory_items').select('id,name,sku,category,sub_category,min_stock,price,updated_at'),
+      supabase.from('warehouse_stock').select('item_id,warehouse_id,quantity'),
+    ]);
+    const itemsData = itemsRes.data;
+    const stockData = stockRes.data;
+    if (!itemsData || !stockData) return;
+
+    const whName = new Map(warehousesRef.current.map(w => [w.id, w.name]));
+    // Group stock by item_id once
+    const stockByItem = new Map<string, WarehouseStock[]>();
+    for (const s of stockData) {
+      const arr = stockByItem.get(s.item_id) || [];
+      arr.push({
+        warehouseId: s.warehouse_id,
+        warehouseName: whName.get(s.warehouse_id) || '',
+        quantity: s.quantity,
+      });
+      stockByItem.set(s.item_id, arr);
     }
+    setItems(itemsData.map(item => ({
+      id: item.id,
+      name: item.name,
+      sku: item.sku,
+      category: item.category,
+      subCategory: item.sub_category,
+      minStock: item.min_stock,
+      price: Number(item.price),
+      lastUpdated: new Date(item.updated_at),
+      stock: stockByItem.get(item.id) || [],
+    })));
   }, []);
 
   const fetchTransactions = useCallback(async () => {
     const { data } = await supabase
       .from('inventory_transactions')
-      .select('*, inventory_items(name, sku), warehouses(name)')
-      .order('created_at', { ascending: false });
-    if (data) {
-      setTransactions(data.map(t => ({
-        id: t.id,
-        itemId: t.item_id,
-        itemName: (t.inventory_items as any)?.name || '',
-        itemSku: (t.inventory_items as any)?.sku || '',
-        warehouseId: t.warehouse_id,
-        warehouseName: (t.warehouses as any)?.name || '',
-        quantity: t.quantity,
-        bolNumber: t.bol_number,
-        bolDocumentUrl: (t as any).bol_document_url ?? null,
-        date: new Date(t.created_at),
-        type: t.type as 'receive' | 'adjust',
-      })));
-    }
+      .select('id,item_id,warehouse_id,quantity,bol_number,bol_document_url,created_at,type')
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (!data) return;
+    const whName = new Map(warehousesRef.current.map(w => [w.id, w.name]));
+    const itemMap = new Map(itemsRef.current.map(i => [i.id, i]));
+    setTransactions(data.map(t => ({
+      id: t.id,
+      itemId: t.item_id,
+      itemName: itemMap.get(t.item_id)?.name || '',
+      itemSku: itemMap.get(t.item_id)?.sku || '',
+      warehouseId: t.warehouse_id,
+      warehouseName: whName.get(t.warehouse_id) || '',
+      quantity: t.quantity,
+      bolNumber: t.bol_number,
+      bolDocumentUrl: (t as any).bol_document_url ?? null,
+      date: new Date(t.created_at),
+      type: t.type as 'receive' | 'adjust',
+    })));
   }, []);
 
   const fetchOrders = useCallback(async () => {
-    const { data: ordersData } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-    const { data: orderItemsData } = await supabase
-      .from('order_items')
-      .select('*, inventory_items(name, sku), warehouses(name)');
-    
-    if (ordersData && orderItemsData) {
-      setOrders(ordersData.map(o => ({
-        id: o.id,
-        shopName: o.shop_name,
-        date: new Date(o.created_at),
-        status: o.status as 'pending' | 'completed' | 'cancelled',
-        items: orderItemsData
-          .filter(oi => oi.order_id === o.id)
-          .map(oi => ({
-            itemId: oi.item_id,
-            itemName: (oi.inventory_items as any)?.name || '',
-            itemSku: (oi.inventory_items as any)?.sku || '',
-            warehouseId: oi.warehouse_id,
-            warehouseName: (oi.warehouses as any)?.name || '',
-            quantity: oi.quantity,
-            unitPrice: Number((oi as any).unit_price ?? 0),
-          })),
-      })));
+    const [ordersRes, oiRes] = await Promise.all([
+      supabase.from('orders').select('id,shop_name,status,created_at').order('created_at', { ascending: false }),
+      supabase.from('order_items').select('order_id,item_id,warehouse_id,quantity,unit_price'),
+    ]);
+    const ordersData = ordersRes.data;
+    const orderItemsData = oiRes.data;
+    if (!ordersData || !orderItemsData) return;
+
+    const whName = new Map(warehousesRef.current.map(w => [w.id, w.name]));
+    const itemMap = new Map(itemsRef.current.map(i => [i.id, i]));
+    const itemsByOrder = new Map<string, OrderItem[]>();
+    for (const oi of orderItemsData) {
+      const arr = itemsByOrder.get(oi.order_id) || [];
+      const it = itemMap.get(oi.item_id);
+      arr.push({
+        itemId: oi.item_id,
+        itemName: it?.name || '',
+        itemSku: it?.sku || '',
+        warehouseId: oi.warehouse_id,
+        warehouseName: whName.get(oi.warehouse_id) || '',
+        quantity: oi.quantity,
+        unitPrice: Number((oi as any).unit_price ?? 0),
+      });
+      itemsByOrder.set(oi.order_id, arr);
     }
+    setOrders(ordersData.map(o => ({
+      id: o.id,
+      shopName: o.shop_name,
+      date: new Date(o.created_at),
+      status: o.status as 'pending' | 'completed' | 'cancelled',
+      items: itemsByOrder.get(o.id) || [],
+    })));
   }, []);
 
   const fetchWholesalers = useCallback(async () => {
@@ -129,20 +151,22 @@ export function useInventory() {
     }
   }, []);
 
-  // Initial load
+  // Initial load — warehouses first, then everything else can join against them
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      await Promise.all([fetchWarehouses(), fetchItems(), fetchTransactions(), fetchOrders(), fetchWholesalers(), fetchPayments()]);
+      await fetchWarehouses();
+      await Promise.all([fetchItems(), fetchWholesalers(), fetchPayments()]);
+      // Transactions/orders need items resolved for names; run after items
+      await Promise.all([fetchTransactions(), fetchOrders()]);
       setLoading(false);
     };
     loadAll();
   }, [fetchWarehouses, fetchItems, fetchTransactions, fetchOrders, fetchWholesalers, fetchPayments]);
 
-  // ─── Realtime: live sync across all connected users/computers ───
+  // ─── Realtime: debounced, coalesced refetches ───
   useEffect(() => {
-    // Debounce helper to avoid refetch storms when many rows change at once
-    const debounce = (fn: () => void, ms = 200) => {
+    const debounce = (fn: () => void, ms = 400) => {
       let t: ReturnType<typeof setTimeout> | null = null;
       return () => {
         if (t) clearTimeout(t);
@@ -150,12 +174,12 @@ export function useInventory() {
       };
     };
 
-    const refreshItems = debounce(() => { fetchItems(); });
-    const refreshTx = debounce(() => { fetchTransactions(); });
-    const refreshOrders = debounce(() => { fetchOrders(); fetchItems(); });
-    const refreshWholesalers = debounce(() => { fetchWholesalers(); });
-    const refreshWarehouses = debounce(() => { fetchWarehouses(); fetchItems(); });
-    const refreshPayments = debounce(() => { fetchPayments(); });
+    const refreshItems = debounce(() => { fetchItems(); }, 300);
+    const refreshTx = debounce(() => { fetchTransactions(); }, 300);
+    const refreshOrders = debounce(() => { fetchOrders(); }, 300);
+    const refreshWholesalers = debounce(() => { fetchWholesalers(); }, 300);
+    const refreshWarehouses = debounce(() => { fetchWarehouses().then(fetchItems); }, 300);
+    const refreshPayments = debounce(() => { fetchPayments(); }, 300);
 
     const channel = supabase
       .channel('inventory-realtime')
@@ -172,31 +196,26 @@ export function useInventory() {
     return () => { supabase.removeChannel(channel); };
   }, [fetchItems, fetchTransactions, fetchOrders, fetchWholesalers, fetchWarehouses, fetchPayments]);
 
-  // ─── Filtering & Sorting (client-side on fetched data) ───
+  // ─── Filtering & Sorting ───
   const filteredAndSortedItems = useMemo(() => {
-    let result = [...items];
+    let result = items;
 
-    if (searchQuery) {
+    if (searchQuery || categoryFilter !== 'all' || subCategoryFilter !== 'all' || warehouseFilter !== 'all') {
       const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (item) => item.name.toLowerCase().includes(query) || item.sku.toLowerCase().includes(query)
-      );
-    }
-    if (categoryFilter !== 'all') {
-      result = result.filter((item) => item.category === categoryFilter);
-    }
-    if (subCategoryFilter !== 'all') {
-      result = result.filter((item) => item.subCategory === subCategoryFilter);
-    }
-    if (warehouseFilter !== 'all') {
-      result = result.filter((item) => item.stock.some((s) => s.warehouseId === warehouseFilter && s.quantity > 0));
+      result = items.filter((item) => {
+        if (searchQuery && !(item.name.toLowerCase().includes(query) || item.sku.toLowerCase().includes(query))) return false;
+        if (categoryFilter !== 'all' && item.category !== categoryFilter) return false;
+        if (subCategoryFilter !== 'all' && item.subCategory !== subCategoryFilter) return false;
+        if (warehouseFilter !== 'all' && !item.stock.some((s) => s.warehouseId === warehouseFilter && s.quantity > 0)) return false;
+        return true;
+      });
     }
 
-    // When filtering by sub-category, always sort by SKU ascending (numeric-aware)
+    const sorted = [...result];
     if (subCategoryFilter !== 'all') {
-      result.sort((a, b) => a.sku.localeCompare(b.sku, undefined, { numeric: true, sensitivity: 'base' }));
+      sorted.sort((a, b) => a.sku.localeCompare(b.sku, undefined, { numeric: true, sensitivity: 'base' }));
     } else {
-      result.sort((a, b) => {
+      sorted.sort((a, b) => {
         let comparison = 0;
         switch (sortField) {
           case 'name': comparison = a.name.localeCompare(b.name); break;
@@ -207,53 +226,55 @@ export function useInventory() {
         return sortDirection === 'asc' ? comparison : -comparison;
       });
     }
-
-    return result;
+    return sorted;
   }, [items, searchQuery, categoryFilter, subCategoryFilter, warehouseFilter, sortField, sortDirection]);
 
   // ─── Stats ───
   const stats = useMemo(() => {
-    const totalItems = items.reduce((sum, item) => sum + getTotalQuantity(item), 0);
-    const lowStockItems = items.filter((item) => getTotalQuantity(item) < item.minStock);
-    const totalValue = items.reduce((sum, item) => sum + getTotalQuantity(item) * item.price, 0);
-    const uniqueCategories = new Set(items.map((item) => item.category)).size;
+    let totalItems = 0;
+    let totalValue = 0;
+    const categories = new Set<string>();
+    const lowStockItems: InventoryItem[] = [];
+    const whTotals = new Map<string, { qty: number; val: number }>();
+
+    for (const item of items) {
+      let itemTotal = 0;
+      for (const s of item.stock) {
+        itemTotal += s.quantity;
+        const cur = whTotals.get(s.warehouseId) || { qty: 0, val: 0 };
+        cur.qty += s.quantity;
+        cur.val += s.quantity * item.price;
+        whTotals.set(s.warehouseId, cur);
+      }
+      totalItems += itemTotal;
+      totalValue += itemTotal * item.price;
+      categories.add(item.category);
+      if (itemTotal < item.minStock) lowStockItems.push(item);
+    }
 
     const warehouseStats = warehousesList.map((wh) => {
-      const warehouseTotal = items.reduce((sum, item) => {
-        const stock = item.stock.find((s) => s.warehouseId === wh.id);
-        return sum + (stock?.quantity || 0);
-      }, 0);
-      const warehouseValue = items.reduce((sum, item) => {
-        const stock = item.stock.find((s) => s.warehouseId === wh.id);
-        return sum + (stock?.quantity || 0) * item.price;
-      }, 0);
-      return { ...wh, totalItems: warehouseTotal, totalValue: warehouseValue };
+      const t = whTotals.get(wh.id) || { qty: 0, val: 0 };
+      return { ...wh, totalItems: t.qty, totalValue: t.val };
     });
 
-    return { totalItems, lowStockItems, totalValue, uniqueCategories, warehouseStats };
+    return { totalItems, lowStockItems, totalValue, uniqueCategories: categories.size, warehouseStats };
   }, [items, warehousesList]);
 
-  // ─── Mutations ───
+  // ─── Mutations (rely on realtime for refresh; only refetch when realtime can't catch up) ───
   const addItem = async (item: Omit<InventoryItem, 'id' | 'lastUpdated' | 'stock'> & { initialStock?: { warehouseId: string; quantity: number }[] }) => {
     const { data: newItem, error } = await supabase
       .from('inventory_items')
       .insert({ name: item.name, sku: item.sku, category: item.category, sub_category: item.subCategory, min_stock: item.minStock, price: item.price })
       .select()
       .single();
-    
-    if (error || !newItem) {
-      console.error('Failed to add item:', error);
-      throw error || new Error('Failed to add item');
-    }
+    if (error || !newItem) throw error || new Error('Failed to add item');
 
-    // Create warehouse_stock rows for all warehouses
     const stockRows = warehousesList.map(wh => ({
       item_id: newItem.id,
       warehouse_id: wh.id,
       quantity: item.initialStock?.find(s => s.warehouseId === wh.id)?.quantity || 0,
     }));
-    await supabase.from('warehouse_stock').insert(stockRows);
-    await fetchItems();
+    if (stockRows.length > 0) await supabase.from('warehouse_stock').insert(stockRows);
   };
 
   const updateItem = async (id: string, updates: Partial<Omit<InventoryItem, 'stock'>>) => {
@@ -264,13 +285,10 @@ export function useInventory() {
     if (updates.subCategory !== undefined) dbUpdates.sub_category = updates.subCategory;
     if (updates.minStock !== undefined) dbUpdates.min_stock = updates.minStock;
     if (updates.price !== undefined) dbUpdates.price = updates.price;
-
     await supabase.from('inventory_items').update(dbUpdates).eq('id', id);
-    await fetchItems();
   };
 
   const receiveStock = async (itemId: string, warehouseId: string, quantity: number, bolNumber: string, bolDocumentUrl?: string | null) => {
-    // Insert transaction
     await supabase.from('inventory_transactions').insert({
       item_id: itemId,
       warehouse_id: warehouseId,
@@ -280,25 +298,32 @@ export function useInventory() {
       type: 'receive',
     } as any);
 
-    // Update stock quantity
     const { data: existing } = await supabase
       .from('warehouse_stock')
       .select('id, quantity')
       .eq('item_id', itemId)
       .eq('warehouse_id', warehouseId)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       await supabase.from('warehouse_stock').update({ quantity: existing.quantity + quantity }).eq('id', existing.id);
     } else {
       await supabase.from('warehouse_stock').insert({ item_id: itemId, warehouse_id: warehouseId, quantity });
     }
-
-    await Promise.all([fetchItems(), fetchTransactions()]);
   };
 
   const updateStock = async (itemId: string, warehouseId: string, newQuantity: number) => {
     const qty = Math.max(0, newQuantity);
+    // Optimistic local update
+    setItems(prev => prev.map(it => {
+      if (it.id !== itemId) return it;
+      const exists = it.stock.some(s => s.warehouseId === warehouseId);
+      const stock = exists
+        ? it.stock.map(s => s.warehouseId === warehouseId ? { ...s, quantity: qty } : s)
+        : [...it.stock, { warehouseId, warehouseName: warehousesRef.current.find(w => w.id === warehouseId)?.name || '', quantity: qty }];
+      return { ...it, stock };
+    }));
+
     const { data: existing } = await supabase
       .from('warehouse_stock')
       .select('id')
@@ -307,47 +332,28 @@ export function useInventory() {
       .maybeSingle();
 
     if (existing) {
-      const { error } = await supabase
-        .from('warehouse_stock')
-        .update({ quantity: qty })
-        .eq('id', existing.id);
+      const { error } = await supabase.from('warehouse_stock').update({ quantity: qty }).eq('id', existing.id);
       if (error) throw error;
     } else {
-      const { error } = await supabase
-        .from('warehouse_stock')
-        .insert({ item_id: itemId, warehouse_id: warehouseId, quantity: qty });
+      const { error } = await supabase.from('warehouse_stock').insert({ item_id: itemId, warehouse_id: warehouseId, quantity: qty });
       if (error) throw error;
     }
-    await fetchItems();
   };
 
   const deleteItem = async (id: string) => {
     await supabase.from('inventory_items').delete().eq('id', id);
-    await fetchItems();
   };
 
   const transferStock = async (itemId: string, fromWarehouseId: string, toWarehouseId: string, quantity: number) => {
-    const { data: fromStock } = await supabase
-      .from('warehouse_stock')
-      .select('id, quantity')
-      .eq('item_id', itemId)
-      .eq('warehouse_id', fromWarehouseId)
-      .single();
-
-    const { data: toStock } = await supabase
-      .from('warehouse_stock')
-      .select('id, quantity')
-      .eq('item_id', itemId)
-      .eq('warehouse_id', toWarehouseId)
-      .single();
-
-    if (fromStock) {
-      await supabase.from('warehouse_stock').update({ quantity: Math.max(0, fromStock.quantity - quantity) }).eq('id', fromStock.id);
-    }
-    if (toStock) {
-      await supabase.from('warehouse_stock').update({ quantity: toStock.quantity + quantity }).eq('id', toStock.id);
-    }
-    await fetchItems();
+    const [fromRes, toRes] = await Promise.all([
+      supabase.from('warehouse_stock').select('id, quantity').eq('item_id', itemId).eq('warehouse_id', fromWarehouseId).maybeSingle(),
+      supabase.from('warehouse_stock').select('id, quantity').eq('item_id', itemId).eq('warehouse_id', toWarehouseId).maybeSingle(),
+    ]);
+    const ops: Promise<any>[] = [];
+    if (fromRes.data) ops.push(supabase.from('warehouse_stock').update({ quantity: Math.max(0, fromRes.data.quantity - quantity) }).eq('id', fromRes.data.id));
+    if (toRes.data) ops.push(supabase.from('warehouse_stock').update({ quantity: toRes.data.quantity + quantity }).eq('id', toRes.data.id));
+    else ops.push(supabase.from('warehouse_stock').insert({ item_id: itemId, warehouse_id: toWarehouseId, quantity }));
+    await Promise.all(ops);
   };
 
   const createOrder = async (shopName: string, orderItems: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]) => {
@@ -356,7 +362,6 @@ export function useInventory() {
       .insert({ shop_name: shopName, status: 'completed' })
       .select()
       .single();
-
     if (error || !newOrder) return;
 
     const oiRows = orderItems.map(entry => ({
@@ -368,19 +373,16 @@ export function useInventory() {
     }));
     await supabase.from('order_items').insert(oiRows);
 
-    for (const entry of orderItems) {
-      const { data: stock } = await supabase
-        .from('warehouse_stock')
-        .select('id, quantity')
-        .eq('item_id', entry.itemId)
-        .eq('warehouse_id', entry.warehouseId)
-        .single();
-      if (stock) {
-        await supabase.from('warehouse_stock').update({ quantity: Math.max(0, stock.quantity - entry.quantity) }).eq('id', stock.id);
-      }
-    }
+    // Fetch all impacted stock rows in parallel
+    const stockResults = await Promise.all(orderItems.map(entry =>
+      supabase.from('warehouse_stock').select('id, quantity').eq('item_id', entry.itemId).eq('warehouse_id', entry.warehouseId).maybeSingle()
+    ));
+    await Promise.all(stockResults.map((res, i) => {
+      const entry = orderItems[i];
+      if (res.data) return supabase.from('warehouse_stock').update({ quantity: Math.max(0, res.data.quantity - entry.quantity) }).eq('id', res.data.id);
+      return Promise.resolve();
+    }));
 
-    await Promise.all([fetchItems(), fetchOrders()]);
     return newOrder.id as string;
   };
 
@@ -392,24 +394,20 @@ export function useInventory() {
       .eq('warehouse_id', warehouseId)
       .maybeSingle();
     if (existing) {
-      await supabase.from('warehouse_stock').update({ quantity: Math.max(0, existing.quantity + delta) }).eq('id', existing.id);
+      return supabase.from('warehouse_stock').update({ quantity: Math.max(0, existing.quantity + delta) }).eq('id', existing.id);
     } else if (delta > 0) {
-      await supabase.from('warehouse_stock').insert({ item_id: itemId, warehouse_id: warehouseId, quantity: delta });
+      return supabase.from('warehouse_stock').insert({ item_id: itemId, warehouse_id: warehouseId, quantity: delta });
     }
   };
 
   const deleteOrder = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
-    // Restore stock for every line
-    for (const line of order.items) {
-      await adjustStockBy(line.itemId, line.warehouseId, line.quantity);
-    }
-    // Delete payments, order_items, then order
+    // Restore stock in parallel
+    await Promise.all(order.items.map(line => adjustStockBy(line.itemId, line.warehouseId, line.quantity)));
     await (supabase as any).from('payments').delete().eq('order_id', orderId);
     await supabase.from('order_items').delete().eq('order_id', orderId);
     await supabase.from('orders').delete().eq('id', orderId);
-    await Promise.all([fetchItems(), fetchOrders(), fetchPayments()]);
   };
 
   const updateOrder = async (
@@ -420,10 +418,8 @@ export function useInventory() {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
-    // Build a delta map: positive = need to deduct more from stock, negative = restore to stock
     const key = (i: string, w: string) => `${i}::${w}`;
     const deltas = new Map<string, { itemId: string; warehouseId: string; delta: number }>();
-
     for (const old of order.items) {
       const k = key(old.itemId, old.warehouseId);
       deltas.set(k, { itemId: old.itemId, warehouseId: old.warehouseId, delta: -old.quantity });
@@ -435,12 +431,12 @@ export function useInventory() {
       else deltas.set(k, { itemId: ni.itemId, warehouseId: ni.warehouseId, delta: ni.quantity });
     }
 
-    // Apply stock changes: positive delta = deduct from stock, negative = add back
-    for (const { itemId, warehouseId, delta } of deltas.values()) {
-      if (delta !== 0) await adjustStockBy(itemId, warehouseId, -delta);
-    }
+    await Promise.all(
+      Array.from(deltas.values())
+        .filter(d => d.delta !== 0)
+        .map(d => adjustStockBy(d.itemId, d.warehouseId, -d.delta))
+    );
 
-    // Replace order_items rows + update shop name
     await supabase.from('order_items').delete().eq('order_id', orderId);
     if (newItems.length > 0) {
       await supabase.from('order_items').insert(
@@ -454,8 +450,6 @@ export function useInventory() {
       );
     }
     await supabase.from('orders').update({ shop_name: shopName }).eq('id', orderId);
-
-    await Promise.all([fetchItems(), fetchOrders()]);
   };
 
   const addWholesaler = async (wholesaler: Omit<Wholesaler, 'id'>) => {
@@ -466,7 +460,6 @@ export function useInventory() {
       email: wholesaler.email,
       address: wholesaler.address,
     });
-    await fetchWholesalers();
   };
 
   const updateWholesaler = async (id: string, updates: Partial<Omit<Wholesaler, 'id'>>) => {
@@ -476,14 +469,11 @@ export function useInventory() {
     if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
     if (updates.email !== undefined) dbUpdates.email = updates.email;
     if (updates.address !== undefined) dbUpdates.address = updates.address;
-
     await supabase.from('wholesalers').update(dbUpdates).eq('id', id);
-    await fetchWholesalers();
   };
 
   const deleteWholesaler = async (id: string) => {
     await supabase.from('wholesalers').delete().eq('id', id);
-    await fetchWholesalers();
   };
 
   const toggleSort = (field: SortField) => {
@@ -497,7 +487,6 @@ export function useInventory() {
 
   const updateWarehouse = async (id: string, updates: Partial<Omit<Warehouse, 'id'>>) => {
     await supabase.from('warehouses').update(updates).eq('id', id);
-    await Promise.all([fetchWarehouses(), fetchItems()]);
   };
 
   const addPayment = async (orderId: string, amount: number, method: string, note: string, paymentDate?: Date) => {
@@ -508,12 +497,10 @@ export function useInventory() {
       note,
       payment_date: (paymentDate ?? new Date()).toISOString(),
     });
-    await fetchPayments();
   };
 
   const deletePayment = async (id: string) => {
     await (supabase as any).from('payments').delete().eq('id', id);
-    await fetchPayments();
   };
 
   return {
