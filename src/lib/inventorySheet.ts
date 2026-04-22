@@ -70,7 +70,8 @@ export async function downloadInventorySheet(
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('Inventory Sheet', margin, y);
+  const title = warehouseFilter ? `Inventory Sheet — ${warehouseFilter.name}` : 'Inventory Sheet';
+  doc.text(title, margin, y);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
