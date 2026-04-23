@@ -4,8 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import { InventoryItem, Warehouse } from '@/types/inventory';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface TransferStockDialogProps {
@@ -21,6 +24,7 @@ export function TransferStockDialog({ open, onOpenChange, items, warehouses, onT
   const [fromWarehouseId, setFromWarehouseId] = useState('');
   const [toWarehouseId, setToWarehouseId] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
 
   const selectedItem = items.find(i => i.id === selectedItemId);
   const availableStock = selectedItem?.stock.find(s => s.warehouseId === fromWarehouseId)?.quantity || 0;
@@ -78,18 +82,50 @@ export function TransferStockDialog({ open, onOpenChange, items, warehouses, onT
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Select Product</Label>
-            <Select value={selectedItemId} onValueChange={setSelectedItemId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a product" />
-              </SelectTrigger>
-              <SelectContent>
-                {items.map(item => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {item.name} ({item.sku})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={productPickerOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  <span className="truncate">
+                    {selectedItem ? `${selectedItem.name} (${selectedItem.sku})` : 'Search and select a product...'}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover" align="start">
+                <Command>
+                  <CommandInput placeholder="Search by name or SKU..." />
+                  <CommandList>
+                    <CommandEmpty>No product found.</CommandEmpty>
+                    <CommandGroup>
+                      {items.map((item) => (
+                        <CommandItem
+                          key={item.id}
+                          value={`${item.name} ${item.sku}`}
+                          onSelect={() => {
+                            setSelectedItemId(item.id);
+                            setProductPickerOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              selectedItemId === item.id ? 'opacity-100' : 'opacity-0'
+                            )}
+                          />
+                          <span className="truncate">{item.name} ({item.sku})</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="flex items-center gap-3">
