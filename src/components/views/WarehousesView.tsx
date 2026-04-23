@@ -121,7 +121,7 @@ export function WarehousesView({ stats, items, warehouses, onUpdateWarehouse, on
             <TableRow className="bg-muted/50">
               <TableHead className="font-semibold">SKU</TableHead>
               <TableHead className="font-semibold">Product Name</TableHead>
-              {warehouses.map(wh => (
+              {warehouses.map((wh, idx) => (
                 <TableHead key={wh.id} className="font-semibold text-center">
                   {editingWarehouseId === wh.id ? (
                     <div className="flex items-center gap-1">
@@ -144,7 +144,33 @@ export function WarehousesView({ stats, items, warehouses, onUpdateWarehouse, on
                     </div>
                   ) : (
                     <div className="flex items-center justify-center gap-1">
+                      {onReorderWarehouse && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-5 w-5"
+                          disabled={idx === 0}
+                          onClick={() => onReorderWarehouse(wh.id, 'up')}
+                          aria-label="Move left"
+                          title="Move left"
+                        >
+                          <ChevronLeft className="h-3 w-3" />
+                        </Button>
+                      )}
                       {wh.name}
+                      {onReorderWarehouse && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-5 w-5"
+                          disabled={idx === warehouses.length - 1}
+                          onClick={() => onReorderWarehouse(wh.id, 'down')}
+                          aria-label="Move right"
+                          title="Move right"
+                        >
+                          <ChevronRight className="h-3 w-3" />
+                        </Button>
+                      )}
                       <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => handleStartEdit(wh)}>
                         <Pencil className="h-3 w-3" />
                       </Button>
