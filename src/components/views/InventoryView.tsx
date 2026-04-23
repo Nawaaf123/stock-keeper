@@ -16,12 +16,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SearchAndFilter } from '@/components/inventory/SearchAndFilter';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
+import { InventoryCardList } from '@/components/inventory/InventoryCardList';
 import { ItemFormDialog } from '@/components/inventory/ItemFormDialog';
 
 import { ReceiveStockDialog } from '@/components/inventory/ReceiveStockDialog';
 import { ProductDetailDialog } from '@/components/inventory/ProductDetailDialog';
 import { TransferStockDialog } from '@/components/inventory/TransferStockDialog';
 import { InventoryItem, SortField, SortDirection, Warehouse } from '@/types/inventory';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
 interface InventoryViewProps {
