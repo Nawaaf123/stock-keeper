@@ -218,14 +218,7 @@ export function useInventory() {
     }
 
     const sorted = [...result];
-    if (warehouseFilter !== 'all') {
-      sorted.sort((a, b) => {
-        const qa = a.stock.find((s) => s.warehouseId === warehouseFilter)?.quantity || 0;
-        const qb = b.stock.find((s) => s.warehouseId === warehouseFilter)?.quantity || 0;
-        if (qb !== qa) return qb - qa;
-        return a.name.localeCompare(b.name);
-      });
-    } else if (subCategoryFilter !== 'all') {
+    if (subCategoryFilter !== 'all') {
       sorted.sort((a, b) => a.sku.localeCompare(b.sku, undefined, { numeric: true, sensitivity: 'base' }));
     } else {
       sorted.sort((a, b) => {
