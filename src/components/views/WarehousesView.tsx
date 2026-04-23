@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { InventoryItem, Warehouse } from '@/types/inventory';
-import { Search, Pencil, Check, X, Zap } from 'lucide-react';
+import { Search, Pencil, Check, X, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -16,9 +16,10 @@ interface WarehousesViewProps {
   warehouses: Warehouse[];
   onUpdateWarehouse: (id: string, updates: Partial<Omit<Warehouse, 'id'>>) => void;
   onUpdateStock?: (itemId: string, warehouseId: string, newQuantity: number) => void | Promise<void>;
+  onReorderWarehouse?: (id: string, direction: 'up' | 'down') => void | Promise<void>;
 }
 
-export function WarehousesView({ stats, items, warehouses, onUpdateWarehouse, onUpdateStock }: WarehousesViewProps) {
+export function WarehousesView({ stats, items, warehouses, onUpdateWarehouse, onUpdateStock, onReorderWarehouse }: WarehousesViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingWarehouseId, setEditingWarehouseId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
