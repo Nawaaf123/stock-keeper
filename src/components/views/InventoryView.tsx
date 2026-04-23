@@ -16,12 +16,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SearchAndFilter } from '@/components/inventory/SearchAndFilter';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
+import { InventoryCardList } from '@/components/inventory/InventoryCardList';
 import { ItemFormDialog } from '@/components/inventory/ItemFormDialog';
 
 import { ReceiveStockDialog } from '@/components/inventory/ReceiveStockDialog';
 import { ProductDetailDialog } from '@/components/inventory/ProductDetailDialog';
 import { TransferStockDialog } from '@/components/inventory/TransferStockDialog';
 import { InventoryItem, SortField, SortDirection, Warehouse } from '@/types/inventory';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
 interface InventoryViewProps {
@@ -82,6 +84,7 @@ export function InventoryView({
   const [editingWarehouseName, setEditingWarehouseName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [quickEdit, setQuickEdit] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -371,19 +374,30 @@ export function InventoryView({
         </div>
       )}
 
-      <InventoryTable
-        items={items}
-        warehouses={warehouses}
-        sortField={sortField}
-        sortDirection={sortDirection}
-        onSort={onSort}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onReceiveStock={handleReceiveStock}
-        onViewDetails={handleViewDetails}
-        quickEdit={quickEdit}
-        onUpdateStock={onUpdateStock}
-      />
+      {isMobile ? (
+        <InventoryCardList
+          items={items}
+          warehouses={warehouses}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onReceiveStock={handleReceiveStock}
+          onViewDetails={handleViewDetails}
+        />
+      ) : (
+        <InventoryTable
+          items={items}
+          warehouses={warehouses}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSort={onSort}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onReceiveStock={handleReceiveStock}
+          onViewDetails={handleViewDetails}
+          quickEdit={quickEdit}
+          onUpdateStock={onUpdateStock}
+        />
+      )}
 
       <ItemFormDialog
         open={dialogOpen}
