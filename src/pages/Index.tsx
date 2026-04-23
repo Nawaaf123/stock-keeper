@@ -127,13 +127,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Sidebar activeView={activeView} onViewChange={setActiveView} />
       <main className="lg:ml-64 pt-14 lg:pt-0 p-3 sm:p-5 lg:p-8">
-        {inventory.loading ? (
-          <PageSkeleton />
-        ) : (
-          <div key={activeView} className="page-enter">
-            {renderView()}
-          </div>
-        )}
+        {inventory.loading ? <PageSkeleton /> : renderView()}
       </main>
     </div>
   );
