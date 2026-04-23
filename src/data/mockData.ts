@@ -1,10 +1,10 @@
 import { InventoryItem, Category, Warehouse } from '@/types/inventory';
 
 export const warehouses: Warehouse[] = [
-  { id: 'wh-a', name: 'Warehouse A', location: 'New York', color: 'hsl(172, 66%, 40%)' },
-  { id: 'wh-b', name: 'Warehouse B', location: 'Los Angeles', color: 'hsl(221, 83%, 53%)' },
-  { id: 'wh-c', name: 'Warehouse C', location: 'Chicago', color: 'hsl(262, 83%, 58%)' },
-  { id: 'wh-d', name: 'Warehouse D', location: 'Houston', color: 'hsl(38, 92%, 50%)' },
+  { id: 'wh-a', name: 'Warehouse A', location: 'New York', color: 'hsl(172, 66%, 40%)', sortOrder: 1 },
+  { id: 'wh-b', name: 'Warehouse B', location: 'Los Angeles', color: 'hsl(221, 83%, 53%)', sortOrder: 2 },
+  { id: 'wh-c', name: 'Warehouse C', location: 'Chicago', color: 'hsl(262, 83%, 58%)', sortOrder: 3 },
+  { id: 'wh-d', name: 'Warehouse D', location: 'Houston', color: 'hsl(38, 92%, 50%)', sortOrder: 4 },
 ];
 
 export const categories: Category[] = [

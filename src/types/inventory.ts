@@ -21,6 +21,7 @@ export interface Warehouse {
   name: string;
   location: string;
   color: string;
+  sortOrder: number;
 }
 
 export interface Category {
