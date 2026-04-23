@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { PageSkeleton } from '@/components/layout/PageSkeleton';
 import { InventoryView } from '@/components/views/InventoryView';
 import { InventoryHistoryView } from '@/components/views/InventoryHistoryView';
 import { WarehousesView } from '@/components/views/WarehousesView';
@@ -126,7 +127,13 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Sidebar activeView={activeView} onViewChange={setActiveView} />
       <main className="lg:ml-64 pt-14 lg:pt-0 p-3 sm:p-5 lg:p-8">
-        {renderView()}
+        {inventory.loading ? (
+          <PageSkeleton />
+        ) : (
+          <div key={activeView} className="page-enter">
+            {renderView()}
+          </div>
+        )}
       </main>
     </div>
   );
