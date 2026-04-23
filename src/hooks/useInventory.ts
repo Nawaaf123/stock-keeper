@@ -26,8 +26,14 @@ export function useInventory() {
 
   // ─── Fetchers (lean: no nested joins; resolve names client-side) ───
   const fetchWarehouses = useCallback(async () => {
-    const { data } = await supabase.from('warehouses').select('id,name,location,color').order('name');
-    if (data) setWarehousesList(data.map(w => ({ id: w.id, name: w.name, location: w.location, color: w.color })));
+    const { data } = await (supabase as any)
+      .from('warehouses')
+      .select('id,name,location,color,sort_order')
+      .order('sort_order', { ascending: true })
+      .order('name', { ascending: true });
+    if (data) setWarehousesList(data.map((w: any) => ({
+      id: w.id, name: w.name, location: w.location, color: w.color, sortOrder: w.sort_order ?? 0,
+    })));
   }, []);
 
   const fetchItems = useCallback(async () => {
@@ -486,7 +492,32 @@ export function useInventory() {
   };
 
   const updateWarehouse = async (id: string, updates: Partial<Omit<Warehouse, 'id'>>) => {
-    await supabase.from('warehouses').update(updates).eq('id', id);
+    const dbUpdates: any = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.location !== undefined) dbUpdates.location = updates.location;
+    if (updates.color !== undefined) dbUpdates.color = updates.color;
+    if (updates.sortOrder !== undefined) dbUpdates.sort_order = updates.sortOrder;
+    await supabase.from('warehouses').update(dbUpdates).eq('id', id);
+  };
+
+  const reorderWarehouse = async (id: string, direction: 'up' | 'down') => {
+    const sorted = [...warehousesRef.current].sort((a, b) => a.sortOrder - b.sortOrder);
+    const idx = sorted.findIndex(w => w.id === id);
+    if (idx === -1) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    const a = sorted[idx];
+    const b = sorted[swapIdx];
+    // Optimistic local swap
+    setWarehousesList(prev => prev.map(w => {
+      if (w.id === a.id) return { ...w, sortOrder: b.sortOrder };
+      if (w.id === b.id) return { ...w, sortOrder: a.sortOrder };
+      return w;
+    }));
+    await Promise.all([
+      (supabase as any).from('warehouses').update({ sort_order: b.sortOrder }).eq('id', a.id),
+      (supabase as any).from('warehouses').update({ sort_order: a.sortOrder }).eq('id', b.id),
+    ]);
   };
 
   const addPayment = async (orderId: string, amount: number, method: string, note: string, paymentDate?: Date) => {
@@ -539,5 +570,6 @@ export function useInventory() {
     updateWholesaler,
     deleteWholesaler,
     updateWarehouse,
+    reorderWarehouse,
   };
 }
