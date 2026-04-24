@@ -465,6 +465,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
           order={editOrder}
           items={items}
           warehouses={warehouses}
+          wholesalers={wholesalers}
           onUpdateOrder={onUpdateOrder}
         />
       )}

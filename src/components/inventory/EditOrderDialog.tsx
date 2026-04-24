@@ -3,8 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { InventoryItem, Warehouse, Order } from '@/types/inventory';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { InventoryItem, Warehouse, Order, Wholesaler } from '@/types/inventory';
+import { Plus, Trash2, Pencil, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface OrderLine {
@@ -20,6 +23,7 @@ interface EditOrderDialogProps {
   order: Order | null;
   items: InventoryItem[];
   warehouses: Warehouse[];
+  wholesalers: Wholesaler[];
   onUpdateOrder: (
     orderId: string,
     shopName: string,
@@ -27,8 +31,9 @@ interface EditOrderDialogProps {
   ) => Promise<void> | void;
 }
 
-export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, onUpdateOrder }: EditOrderDialogProps) {
+export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, wholesalers, onUpdateOrder }: EditOrderDialogProps) {
   const [shopName, setShopName] = useState('');
+  const [shopPickerOpen, setShopPickerOpen] = useState(false);
   const [lines, setLines] = useState<OrderLine[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
@@ -175,12 +180,51 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
         <div className="px-6 py-3 flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
           {/* Shop + Category + Subcategory in one row */}
           <div className="grid grid-cols-[1fr_150px_150px] gap-2">
-            <Input
-              value={shopName}
-              onChange={(e) => setShopName(e.target.value)}
-              placeholder="Shop / customer name"
-              className="h-9"
-            />
+            <Popover open={shopPickerOpen} onOpenChange={setShopPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  className="h-9 justify-between font-normal"
+                >
+                  <span className="truncate">{shopName || 'Select shop / wholesaler'}</span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-[--radix-popover-trigger-width] min-w-[280px]" align="start">
+                <Command>
+                  <CommandInput
+                    placeholder="Search wholesaler or type custom name..."
+                    value={shopName}
+                    onValueChange={setShopName}
+                  />
+                  <CommandList>
+                    <CommandEmpty>
+                      <button
+                        type="button"
+                        className="text-sm underline"
+                        onClick={() => setShopPickerOpen(false)}
+                      >
+                        Use "{shopName}" as custom name
+                      </button>
+                    </CommandEmpty>
+                    <CommandGroup>
+                      {wholesalers.map((w) => (
+                        <CommandItem
+                          key={w.id}
+                          value={w.name}
+                          onSelect={() => { setShopName(w.name); setShopPickerOpen(false); }}
+                        >
+                          <Check className={cn('mr-2 h-4 w-4', shopName === w.name ? 'opacity-100' : 'opacity-0')} />
+                          {w.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setSubCategoryFilter('all'); }}>
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="All categories" />
