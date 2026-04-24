@@ -96,7 +96,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Pencil className="w-4 h-4" /> Edit Order
@@ -117,11 +117,11 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
                 <thead className="bg-muted/50 text-xs">
                   <tr>
                     <th className="text-left px-2 py-1.5 font-medium">Product</th>
-                    <th className="text-left px-2 py-1.5 font-medium w-32">Warehouse</th>
-                    <th className="text-right px-2 py-1.5 font-medium w-16">Qty</th>
-                    <th className="text-right px-2 py-1.5 font-medium w-20">Price</th>
-                    <th className="text-right px-2 py-1.5 font-medium w-20">Total</th>
-                    <th className="w-8"></th>
+                    <th className="text-left px-2 py-1.5 font-medium w-44">Warehouse</th>
+                    <th className="text-right px-2 py-1.5 font-medium w-24">Qty</th>
+                    <th className="text-right px-2 py-1.5 font-medium w-28">Price</th>
+                    <th className="text-right px-2 py-1.5 font-medium w-28">Total</th>
+                    <th className="w-10"></th>
                   </tr>
                 </thead>
                 <tbody>
