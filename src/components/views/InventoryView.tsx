@@ -284,10 +284,6 @@ export function InventoryView({
             <ArrowLeftRight className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">Transfer</span>
           </Button>
-          <Button variant="outline" onClick={() => setReceiveDialogOpen(true)} className="gap-2 min-w-0">
-            <PackagePlus className="w-4 h-4 flex-shrink-0" />
-            <span className="truncate">Receive</span>
-          </Button>
           <Button onClick={() => setDialogOpen(true)} className="gap-2 min-w-0">
             <Plus className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">Add Item</span>

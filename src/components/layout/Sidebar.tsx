@@ -1,4 +1,4 @@
-import { Package, BarChart3, FileText, History, ShoppingCart, Users, ClipboardList, CreditCard, Menu, X, LogOut, UserCog } from 'lucide-react';
+import { Package, BarChart3, FileText, History, ShoppingCart, Users, ClipboardList, CreditCard, Menu, X, LogOut, UserCog, PackagePlus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import mrfogLogo from '@/assets/mrfog-logo.png';
@@ -11,6 +11,7 @@ interface SidebarProps {
 
 const navItems = [
   { id: 'inventory', label: 'Inventory', icon: Package },
+  { id: 'receivings', label: 'Receivings', icon: PackagePlus },
   { id: 'orders', label: 'Orders', icon: ShoppingCart },
   { id: 'stock-summary', label: 'Stock Summary', icon: ClipboardList },
   { id: 'payments', label: 'Payments', icon: CreditCard },
