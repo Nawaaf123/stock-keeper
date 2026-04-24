@@ -35,6 +35,13 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
   const [skuInput, setSkuInput] = useState('');
   const [qtyInput, setQtyInput] = useState('1');
   const skuRef = useRef<HTMLInputElement>(null);
+  const linesScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (linesScrollRef.current) {
+      linesScrollRef.current.scrollTop = linesScrollRef.current.scrollHeight;
+    }
+  }, [lines.length]);
 
   useEffect(() => {
     if (order) {
@@ -161,7 +168,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3 px-6 pb-24 overflow-y-auto flex-1 min-h-0">
+        <div className="px-6 py-3 flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
           {/* Shop + Category + Subcategory in one row */}
           <div className="grid grid-cols-[1fr_150px_150px] gap-2">
             <Input
@@ -214,128 +221,130 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
           </div>
 
           {lines.length > 0 ? (
-            <div className="border rounded-md overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-xs">
-                  <tr>
-                    <th className="text-left px-2 py-1.5 font-medium">Product</th>
-                    <th className="text-left px-2 py-1.5 font-medium w-44">Warehouse</th>
-                    <th className="text-right px-2 py-1.5 font-medium w-24">Qty</th>
-                    <th className="text-right px-2 py-1.5 font-medium w-28">Price</th>
-                    <th className="text-right px-2 py-1.5 font-medium w-28">Total</th>
-                    <th className="w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.map((entry, idx) => {
-                    const selectedItem = items.find(i => i.id === entry.itemId);
-                    const available = getAvailableStock(entry.itemId, entry.warehouseId);
-                    const exceeds = entry.quantity > available;
-                    const productList = entry.itemId && !filteredItems.find(i => i.id === entry.itemId) && selectedItem
-                      ? [...filteredItems, selectedItem]
-                      : filteredItems;
-                    return (
-                      <tr key={idx} className="border-t">
-                        <td className="px-1 py-1">
-                          <Select value={entry.itemId} onValueChange={(v) => updateLine(idx, 'itemId', v)}>
-                            <SelectTrigger className="h-8 border-0 shadow-none focus:ring-1">
-                              <SelectValue placeholder="Select product" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {productList.map(item => (
-                                <SelectItem key={item.id} value={item.id}>{item.sku} – {item.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="px-1 py-1">
-                          <Select
-                            value={entry.warehouseId}
-                            onValueChange={(v) => updateLine(idx, 'warehouseId', v)}
-                            disabled={!entry.itemId}
-                          >
-                            <SelectTrigger className="h-8 border-0 shadow-none focus:ring-1">
-                              <SelectValue placeholder="—" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {warehouses.map(wh => {
-                                const stock = selectedItem?.stock.find(s => s.warehouseId === wh.id);
-                                const onThisLine = entry.itemId && entry.warehouseId === wh.id
-                                  ? (originalQty.get(`${entry.itemId}::${wh.id}`) || 0) : 0;
-                                const avail = (stock?.quantity || 0) + onThisLine;
-                                return (
-                                  <SelectItem key={wh.id} value={wh.id} disabled={avail === 0}>
-                                    {wh.name} ({avail})
-                                  </SelectItem>
-                                );
-                              })}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="px-1 py-1">
-                          <Input
-                            type="number"
-                            min={1}
-                            value={entry.quantity === 0 ? '' : entry.quantity}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              updateLine(idx, 'quantity', v === '' ? 0 : parseInt(v) || 0);
-                            }}
-                            onFocus={(e) => e.target.select()}
-                            className={`h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1 ${exceeds ? 'text-destructive' : ''}`}
-                            disabled={!entry.warehouseId}
-                          />
-                        </td>
-                        <td className="px-1 py-1">
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={entry.unitPrice === 0 ? '' : entry.unitPrice}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              updateLine(idx, 'unitPrice', v === '' ? 0 : parseFloat(v) || 0);
-                            }}
-                            onFocus={(e) => e.target.select()}
-                            className="h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1"
-                            disabled={!entry.itemId}
-                          />
-                        </td>
-                        <td className="px-2 py-1 text-right tabular-nums">
-                          ${(entry.quantity * (Number(entry.unitPrice) || 0)).toFixed(2)}
-                        </td>
-                        <td className="px-1 py-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeLine(idx)}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </td>
+            <div className="flex-1 min-h-0 flex flex-col gap-3">
+              <div className="border rounded-md overflow-hidden flex-1 min-h-0">
+                <div ref={linesScrollRef} className="max-h-full overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 text-xs sticky top-0 z-10">
+                      <tr>
+                        <th className="text-left px-2 py-1.5 font-medium">Product</th>
+                        <th className="text-left px-2 py-1.5 font-medium w-44">Warehouse</th>
+                        <th className="text-right px-2 py-1.5 font-medium w-24">Qty</th>
+                        <th className="text-right px-2 py-1.5 font-medium w-28">Price</th>
+                        <th className="text-right px-2 py-1.5 font-medium w-28">Total</th>
+                        <th className="w-10"></th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot className="bg-muted/30 text-sm">
-                  <tr className="border-t">
-                    <td colSpan={2} className="px-2 py-1.5 text-muted-foreground text-xs">
-                      {totalUnits} cases · {lines.length} line{lines.length !== 1 ? 's' : ''}
-                    </td>
-                    <td colSpan={3} className="px-2 py-1.5 text-right font-semibold tabular-nums">
-                      ${totalValue.toFixed(2)}
-                    </td>
-                    <td></td>
-                  </tr>
-                </tfoot>
-              </table>
+                    </thead>
+                    <tbody>
+                      {lines.map((entry, idx) => {
+                        const selectedItem = items.find(i => i.id === entry.itemId);
+                        const available = getAvailableStock(entry.itemId, entry.warehouseId);
+                        const exceeds = entry.quantity > available;
+                        const productList = entry.itemId && !filteredItems.find(i => i.id === entry.itemId) && selectedItem
+                          ? [...filteredItems, selectedItem]
+                          : filteredItems;
+                        return (
+                          <tr key={idx} className="border-t">
+                            <td className="px-1 py-1">
+                              <Select value={entry.itemId} onValueChange={(v) => updateLine(idx, 'itemId', v)}>
+                                <SelectTrigger className="h-8 border-0 shadow-none focus:ring-1">
+                                  <SelectValue placeholder="Select product" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {productList.map(item => (
+                                    <SelectItem key={item.id} value={item.id}>{item.sku} – {item.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className="px-1 py-1">
+                              <Select
+                                value={entry.warehouseId}
+                                onValueChange={(v) => updateLine(idx, 'warehouseId', v)}
+                                disabled={!entry.itemId}
+                              >
+                                <SelectTrigger className="h-8 border-0 shadow-none focus:ring-1">
+                                  <SelectValue placeholder="—" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {warehouses.map(wh => {
+                                    const stock = selectedItem?.stock.find(s => s.warehouseId === wh.id);
+                                    const onThisLine = entry.itemId && entry.warehouseId === wh.id
+                                      ? (originalQty.get(`${entry.itemId}::${wh.id}`) || 0) : 0;
+                                    const avail = (stock?.quantity || 0) + onThisLine;
+                                    return (
+                                      <SelectItem key={wh.id} value={wh.id} disabled={avail === 0}>
+                                        {wh.name} ({avail})
+                                      </SelectItem>
+                                    );
+                                  })}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className="px-1 py-1">
+                              <Input
+                                type="number"
+                                min={1}
+                                value={entry.quantity === 0 ? '' : entry.quantity}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  updateLine(idx, 'quantity', v === '' ? 0 : parseInt(v) || 0);
+                                }}
+                                onFocus={(e) => e.target.select()}
+                                className={`h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1 ${exceeds ? 'text-destructive' : ''}`}
+                                disabled={!entry.warehouseId}
+                              />
+                            </td>
+                            <td className="px-1 py-1">
+                              <Input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                value={entry.unitPrice === 0 ? '' : entry.unitPrice}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  updateLine(idx, 'unitPrice', v === '' ? 0 : parseFloat(v) || 0);
+                                }}
+                                onFocus={(e) => e.target.select()}
+                                className="h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1"
+                                disabled={!entry.itemId}
+                              />
+                            </td>
+                            <td className="px-2 py-1 text-right tabular-nums">
+                              ${(entry.quantity * (Number(entry.unitPrice) || 0)).toFixed(2)}
+                            </td>
+                            <td className="px-1 py-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeLine(idx)}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot className="bg-muted/30 text-sm sticky bottom-0">
+                      <tr className="border-t">
+                        <td colSpan={2} className="px-2 py-1.5 text-muted-foreground text-xs">
+                          {totalUnits} cases · {lines.length} line{lines.length !== 1 ? 's' : ''}
+                        </td>
+                        <td colSpan={3} className="px-2 py-1.5 text-right font-semibold tabular-nums">
+                          ${totalValue.toFixed(2)}
+                        </td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              <Button variant="ghost" size="sm" onClick={addLine} className="w-full h-8 text-xs flex-shrink-0">
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add line
+              </Button>
             </div>
           ) : (
             <div className="border border-dashed rounded-md py-6 text-center text-sm text-muted-foreground">
               No lines. <button type="button" className="underline text-foreground" onClick={addLine}>Add a line</button>
             </div>
-          )}
-
-          {lines.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={addLine} className="w-full h-8 text-xs">
-              <Plus className="w-3.5 h-3.5 mr-1" /> Add line
-            </Button>
           )}
         </div>
 
