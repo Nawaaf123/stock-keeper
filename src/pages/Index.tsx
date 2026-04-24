@@ -3,6 +3,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { PageSkeleton } from '@/components/layout/PageSkeleton';
 import { InventoryView } from '@/components/views/InventoryView';
 import { InventoryHistoryView } from '@/components/views/InventoryHistoryView';
+import { ReceivingsView } from '@/components/views/ReceivingsView';
 import { WarehousesView } from '@/components/views/WarehousesView';
 import { ReportsView } from '@/components/views/ReportsView';
 import { BillOfLadingView } from '@/components/views/BillOfLadingView';
@@ -55,6 +56,17 @@ const Index = () => {
             onCreateOrder={inventory.createOrder}
             onUpdateOrder={inventory.updateOrder}
             onDeleteOrder={inventory.deleteOrder}
+          />
+        );
+      case 'receivings':
+        return (
+          <ReceivingsView
+            transactions={inventory.transactions}
+            items={inventory.allItems}
+            warehouses={inventory.warehouses}
+            onReceiveStock={inventory.receiveStock}
+            onUpdateReceiving={inventory.updateReceiving}
+            onDeleteReceiving={inventory.deleteReceiving}
           />
         );
       case 'stock-summary':
