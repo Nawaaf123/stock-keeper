@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,11 @@ interface EditOrderDialogProps {
 export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, onUpdateOrder }: EditOrderDialogProps) {
   const [shopName, setShopName] = useState('');
   const [lines, setLines] = useState<OrderLine[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
+  const [skuInput, setSkuInput] = useState('');
+  const [qtyInput, setQtyInput] = useState('1');
+  const skuRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (order) {
@@ -40,8 +45,29 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
         quantity: i.quantity,
         unitPrice: i.unitPrice,
       })));
+      setCategoryFilter('all');
+      setSubCategoryFilter('all');
+      setSkuInput('');
+      setQtyInput('1');
     }
   }, [order]);
+
+  const categories = useMemo(
+    () => Array.from(new Set(items.map(i => i.category).filter(Boolean))).sort(),
+    [items]
+  );
+
+  const subCategories = useMemo(() => {
+    const pool = categoryFilter === 'all' ? items : items.filter(i => i.category === categoryFilter);
+    return Array.from(new Set(pool.map(i => i.subCategory).filter(Boolean))).sort();
+  }, [items, categoryFilter]);
+
+  const filteredItems = useMemo(() => {
+    return items.filter(i =>
+      (categoryFilter === 'all' || i.category === categoryFilter) &&
+      (subCategoryFilter === 'all' || i.subCategory === subCategoryFilter)
+    );
+  }, [items, categoryFilter, subCategoryFilter]);
 
   // Available stock = current stock + qty already on this order line (since editing returns it)
   const originalQty = useMemo(() => {
@@ -73,6 +99,38 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
   const removeLine = (idx: number) => setLines(lines.filter((_, i) => i !== idx));
   const addLine = () => setLines([...lines, { itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 }]);
 
+  const handleQuickAdd = () => {
+    const sku = skuInput.trim().toLowerCase();
+    if (!sku) return;
+    const qty = Math.max(1, parseInt(qtyInput) || 1);
+
+    const item = items.find(i => i.sku.toLowerCase() === sku)
+      || items.find(i => i.sku.toLowerCase().startsWith(sku))
+      || items.find(i => i.name.toLowerCase().includes(sku));
+
+    if (!item) { toast.error(`No product found for "${skuInput}"`); return; }
+
+    const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
+    const onLines = lines
+      .filter(l => l.itemId === item.id)
+      .reduce((s, l) => s + (l.warehouseId === best?.warehouseId ? l.quantity : 0), 0);
+    const avail = (best?.quantity || 0) + (originalQty.get(`${item.id}::${best?.warehouseId}`) || 0) - onLines;
+    if (!best || avail <= 0) { toast.error(`${item.name} has no stock`); return; }
+
+    const existingIdx = lines.findIndex(e => e.itemId === item.id && e.warehouseId === best.warehouseId);
+    if (existingIdx >= 0) {
+      const updated = [...lines];
+      updated[existingIdx].quantity += qty;
+      setLines(updated);
+    } else {
+      setLines([...lines, { itemId: item.id, warehouseId: best.warehouseId, quantity: qty, unitPrice: item.price }]);
+    }
+
+    setSkuInput('');
+    setQtyInput('1');
+    skuRef.current?.focus();
+  };
+
   const isValid = () => {
     if (!shopName.trim()) return false;
     const valid = lines.filter(l => l.itemId && l.warehouseId && l.quantity > 0);
@@ -96,20 +154,64 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl sm:max-w-5xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl sm:max-w-5xl max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-3 flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <Pencil className="w-4 h-4" /> Edit Order
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <Input
-            value={shopName}
-            onChange={(e) => setShopName(e.target.value)}
-            placeholder="Shop / customer name"
-            className="h-9"
-          />
+        <div className="space-y-3 px-6 overflow-y-auto flex-1 min-h-0">
+          {/* Shop + Category + Subcategory in one row */}
+          <div className="grid grid-cols-[1fr_150px_150px] gap-2">
+            <Input
+              value={shopName}
+              onChange={(e) => setShopName(e.target.value)}
+              placeholder="Shop / customer name"
+              className="h-9"
+            />
+            <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setSubCategoryFilter('all'); }}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All categories</SelectItem>
+                {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={subCategoryFilter} onValueChange={setSubCategoryFilter} disabled={subCategories.length === 0}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="All sub-categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All sub-categories</SelectItem>
+                {subCategories.map(sc => <SelectItem key={sc} value={sc}>{sc}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Quick add SKU bar */}
+          <div className="flex gap-2">
+            <Input
+              ref={skuRef}
+              value={skuInput}
+              onChange={(e) => setSkuInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleQuickAdd(); } }}
+              placeholder="Scan / type SKU or name, press Enter"
+              className="flex-1 h-9"
+            />
+            <Input
+              type="number"
+              min={1}
+              value={qtyInput}
+              onChange={(e) => setQtyInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleQuickAdd(); } }}
+              className="w-16 h-9 no-spinner"
+            />
+            <Button onClick={handleQuickAdd} type="button" size="sm" className="h-9">
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
 
           {lines.length > 0 ? (
             <div className="border rounded-md overflow-hidden">
@@ -129,6 +231,9 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
                     const selectedItem = items.find(i => i.id === entry.itemId);
                     const available = getAvailableStock(entry.itemId, entry.warehouseId);
                     const exceeds = entry.quantity > available;
+                    const productList = entry.itemId && !filteredItems.find(i => i.id === entry.itemId) && selectedItem
+                      ? [...filteredItems, selectedItem]
+                      : filteredItems;
                     return (
                       <tr key={idx} className="border-t">
                         <td className="px-1 py-1">
@@ -137,7 +242,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
                               <SelectValue placeholder="Select product" />
                             </SelectTrigger>
                             <SelectContent>
-                              {items.map(item => (
+                              {productList.map(item => (
                                 <SelectItem key={item.id} value={item.id}>{item.sku} – {item.name}</SelectItem>
                               ))}
                             </SelectContent>
@@ -171,9 +276,13 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
                           <Input
                             type="number"
                             min={1}
-                            value={entry.quantity}
-                            onChange={(e) => updateLine(idx, 'quantity', parseInt(e.target.value) || 1)}
-                            className={`h-8 text-right border-0 shadow-none focus-visible:ring-1 ${exceeds ? 'text-destructive' : ''}`}
+                            value={entry.quantity === 0 ? '' : entry.quantity}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              updateLine(idx, 'quantity', v === '' ? 0 : parseInt(v) || 0);
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            className={`h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1 ${exceeds ? 'text-destructive' : ''}`}
                             disabled={!entry.warehouseId}
                           />
                         </td>
@@ -182,9 +291,13 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
                             type="number"
                             min={0}
                             step="0.01"
-                            value={entry.unitPrice}
-                            onChange={(e) => updateLine(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
-                            className="h-8 text-right border-0 shadow-none focus-visible:ring-1"
+                            value={entry.unitPrice === 0 ? '' : entry.unitPrice}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              updateLine(idx, 'unitPrice', v === '' ? 0 : parseFloat(v) || 0);
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            className="h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1"
                             disabled={!entry.itemId}
                           />
                         </td>
@@ -219,12 +332,14 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
             </div>
           )}
 
-          <Button variant="ghost" size="sm" onClick={addLine} className="w-full h-8 text-xs">
-            <Plus className="w-3.5 h-3.5 mr-1" /> Add line
-          </Button>
+          {lines.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={addLine} className="w-full h-8 text-xs">
+              <Plus className="w-3.5 h-3.5 mr-1" /> Add line
+            </Button>
+          )}
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 px-6 py-4 border-t bg-background flex-shrink-0">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button size="sm" onClick={handleSave} disabled={!isValid()}>Save Changes</Button>
         </DialogFooter>
