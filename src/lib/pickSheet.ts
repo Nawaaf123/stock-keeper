@@ -252,13 +252,10 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.text(`Total Cases: ${totalUnits}`, margin, y + 10);
-  doc.text(`Total Lines: ${order.items.length}`, margin + 160, y + 10);
 
   const sigY = y + 40;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.text('Picked by: ____________________________', margin, sigY);
-  doc.text('Date: ______________', margin, sigY + 14);
   doc.text('Checked by: ___________________________', pageWidth / 2 + 10, sigY);
   doc.text('Date: ______________', pageWidth / 2 + 10, sigY + 14);
 
