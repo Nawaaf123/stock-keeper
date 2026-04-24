@@ -34,8 +34,12 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
   const [skuInput, setSkuInput] = useState('');
   const [qtyInput, setQtyInput] = useState('1');
+  const [openProductIdx, setOpenProductIdx] = useState<number | null>(null);
+  const [openWarehouseIdx, setOpenWarehouseIdx] = useState<number | null>(null);
   const skuRef = useRef<HTMLInputElement>(null);
   const linesScrollRef = useRef<HTMLDivElement>(null);
+
+  const itemsById = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
 
   useEffect(() => {
     if (linesScrollRef.current) {
