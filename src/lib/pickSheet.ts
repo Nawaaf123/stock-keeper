@@ -117,10 +117,8 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
   drawCircle(lx + 4, labelY - 3);
   doc.text('Pickup', lx + 12, labelY);
 
-  // Order number on the right
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.text(`Order #: ${order.id.slice(0, 8).toUpperCase()}`, pageWidth - margin, labelY, { align: 'right' });
 
   y += 14;
 
