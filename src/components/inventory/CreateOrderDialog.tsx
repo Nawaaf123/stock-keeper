@@ -145,14 +145,14 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-3 flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <Store className="w-4 h-4" /> Create Order
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="space-y-3 px-6 overflow-y-auto flex-1 min-h-0">
           {/* Shop + Category + Subcategory in one row */}
           <div className="grid grid-cols-[1fr_150px_150px] gap-2">
             <Select value={selectedWholesaler} onValueChange={setSelectedWholesaler}>
