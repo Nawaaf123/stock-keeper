@@ -96,7 +96,7 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
   doc.setFont('helvetica', 'bold');
   doc.text('Date:', pageWidth / 2 + 30, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(format(order.date, 'MMM d, yyyy'), pageWidth / 2 + 65, y);
+  doc.text(format(order.date, 'MM/dd/yy'), pageWidth / 2 + 65, y);
 
   y += 16;
 
@@ -117,10 +117,8 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
   drawCircle(lx + 4, labelY - 3);
   doc.text('Pickup', lx + 12, labelY);
 
-  // Order number on the right
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.text(`Order #: ${order.id.slice(0, 8).toUpperCase()}`, pageWidth - margin, labelY, { align: 'right' });
 
   y += 14;
 
@@ -254,13 +252,10 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.text(`Total Cases: ${totalUnits}`, margin, y + 10);
-  doc.text(`Total Lines: ${order.items.length}`, margin + 160, y + 10);
 
   const sigY = y + 40;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.text('Picked by: ____________________________', margin, sigY);
-  doc.text('Date: ______________', margin, sigY + 14);
   doc.text('Checked by: ___________________________', pageWidth / 2 + 10, sigY);
   doc.text('Date: ______________', pageWidth / 2 + 10, sigY + 14);
 
