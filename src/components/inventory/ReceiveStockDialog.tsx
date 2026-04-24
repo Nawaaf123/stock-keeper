@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -39,9 +39,16 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
   const [productEntries, setProductEntries] = useState<ProductEntry[]>([]);
   const [currentItemId, setCurrentItemId] = useState('');
   const [currentQuantity, setCurrentQuantity] = useState(0);
+  const productsScrollRef = useRef<HTMLDivElement>(null);
 
   // If a specific item is passed, use single-item mode
   const isSingleItemMode = !!item;
+
+  useEffect(() => {
+    if (productsScrollRef.current) {
+      productsScrollRef.current.scrollTop = productsScrollRef.current.scrollHeight;
+    }
+  }, [productEntries.length]);
 
   const resetForm = () => {
     setWarehouseId('');
