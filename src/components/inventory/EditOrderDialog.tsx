@@ -3,8 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { InventoryItem, Warehouse, Order } from '@/types/inventory';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { InventoryItem, Warehouse, Order, Wholesaler } from '@/types/inventory';
+import { Plus, Trash2, Pencil, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface OrderLine {
@@ -20,6 +23,7 @@ interface EditOrderDialogProps {
   order: Order | null;
   items: InventoryItem[];
   warehouses: Warehouse[];
+  wholesalers: Wholesaler[];
   onUpdateOrder: (
     orderId: string,
     shopName: string,
@@ -27,8 +31,9 @@ interface EditOrderDialogProps {
   ) => Promise<void> | void;
 }
 
-export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, onUpdateOrder }: EditOrderDialogProps) {
+export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, wholesalers, onUpdateOrder }: EditOrderDialogProps) {
   const [shopName, setShopName] = useState('');
+  const [shopPickerOpen, setShopPickerOpen] = useState(false);
   const [lines, setLines] = useState<OrderLine[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
