@@ -458,14 +458,16 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
         onCreateOrder={onCreateOrder}
       />
 
-      <EditOrderDialog
-        open={editOrder !== null}
-        onOpenChange={(o) => { if (!o) setEditOrder(null); }}
-        order={editOrder}
-        items={items}
-        warehouses={warehouses}
-        onUpdateOrder={onUpdateOrder}
-      />
+      {editOrder !== null && (
+        <EditOrderDialog
+          open={true}
+          onOpenChange={(o) => { if (!o) setEditOrder(null); }}
+          order={editOrder}
+          items={items}
+          warehouses={warehouses}
+          onUpdateOrder={onUpdateOrder}
+        />
+      )}
 
       <AlertDialog open={deleteOrderId !== null} onOpenChange={(o) => { if (!o) setDeleteOrderId(null); }}>
         <AlertDialogContent>

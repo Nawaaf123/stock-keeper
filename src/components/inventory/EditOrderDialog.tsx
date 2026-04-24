@@ -34,8 +34,12 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
   const [skuInput, setSkuInput] = useState('');
   const [qtyInput, setQtyInput] = useState('1');
+  const [openProductIdx, setOpenProductIdx] = useState<number | null>(null);
+  const [openWarehouseIdx, setOpenWarehouseIdx] = useState<number | null>(null);
   const skuRef = useRef<HTMLInputElement>(null);
   const linesScrollRef = useRef<HTMLDivElement>(null);
+
+  const itemsById = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
 
   useEffect(() => {
     if (linesScrollRef.current) {
@@ -84,7 +88,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
   }, [order]);
 
   const getAvailableStock = (itemId: string, warehouseId: string) => {
-    const item = items.find(i => i.id === itemId);
+    const item = itemsById.get(itemId);
     const current = item?.stock.find(s => s.warehouseId === warehouseId)?.quantity || 0;
     return current + (originalQty.get(`${itemId}::${warehouseId}`) || 0);
   };
@@ -93,7 +97,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
     const next = [...lines];
     next[idx] = { ...next[idx], [field]: value };
     if (field === 'itemId') {
-      const item = items.find(i => i.id === value);
+      const item = itemsById.get(value as string);
       if (item) {
         next[idx].unitPrice = item.price;
         const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
@@ -237,18 +241,29 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
                     </thead>
                     <tbody>
                       {lines.map((entry, idx) => {
-                        const selectedItem = items.find(i => i.id === entry.itemId);
+                        const selectedItem = entry.itemId ? itemsById.get(entry.itemId) : undefined;
                         const available = getAvailableStock(entry.itemId, entry.warehouseId);
                         const exceeds = entry.quantity > available;
-                        const productList = entry.itemId && !filteredItems.find(i => i.id === entry.itemId) && selectedItem
-                          ? [...filteredItems, selectedItem]
-                          : filteredItems;
+                        const isProductOpen = openProductIdx === idx;
+                        const isWhOpen = openWarehouseIdx === idx;
+                        const productList = isProductOpen
+                          ? (entry.itemId && !filteredItems.find(i => i.id === entry.itemId) && selectedItem
+                              ? [...filteredItems, selectedItem]
+                              : filteredItems)
+                          : [];
                         return (
                           <tr key={idx} className="border-t">
                             <td className="px-1 py-1">
-                              <Select value={entry.itemId} onValueChange={(v) => updateLine(idx, 'itemId', v)}>
+                              <Select
+                                value={entry.itemId}
+                                onValueChange={(v) => updateLine(idx, 'itemId', v)}
+                                open={isProductOpen}
+                                onOpenChange={(o) => setOpenProductIdx(o ? idx : null)}
+                              >
                                 <SelectTrigger className="h-8 border-0 shadow-none focus:ring-1">
-                                  <SelectValue placeholder="Select product" />
+                                  <SelectValue placeholder="Select product">
+                                    {selectedItem ? `${selectedItem.sku} – ${selectedItem.name}` : 'Select product'}
+                                  </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                   {productList.map(item => (
@@ -262,12 +277,16 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
                                 value={entry.warehouseId}
                                 onValueChange={(v) => updateLine(idx, 'warehouseId', v)}
                                 disabled={!entry.itemId}
+                                open={isWhOpen}
+                                onOpenChange={(o) => setOpenWarehouseIdx(o ? idx : null)}
                               >
                                 <SelectTrigger className="h-8 border-0 shadow-none focus:ring-1">
-                                  <SelectValue placeholder="—" />
+                                  <SelectValue placeholder="—">
+                                    {warehouses.find(w => w.id === entry.warehouseId)?.name || '—'}
+                                  </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {warehouses.map(wh => {
+                                  {isWhOpen && warehouses.map(wh => {
                                     const stock = selectedItem?.stock.find(s => s.warehouseId === wh.id);
                                     const onThisLine = entry.itemId && entry.warehouseId === wh.id
                                       ? (originalQty.get(`${entry.itemId}::${wh.id}`) || 0) : 0;
