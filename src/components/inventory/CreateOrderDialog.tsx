@@ -145,7 +145,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-5xl sm:max-w-5xl h-[90vh] max-h-[90vh] sm:h-[90vh] sm:max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-5xl sm:max-w-5xl h-[90vh] max-h-[90vh] sm:h-[90vh] sm:max-h-[90vh] !grid-cols-1 !gap-0 !overflow-hidden sm:!overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-3 flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <Store className="w-4 h-4" /> Create Order
