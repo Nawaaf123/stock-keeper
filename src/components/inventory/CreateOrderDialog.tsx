@@ -280,8 +280,12 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                           <Input
                             type="number"
                             min={1}
-                            value={entry.quantity}
-                            onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
+                            value={entry.quantity === 0 ? '' : entry.quantity}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              handleItemChange(index, 'quantity', v === '' ? 0 : parseInt(v) || 0);
+                            }}
+                            onFocus={(e) => e.target.select()}
                             className={`h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1 ${exceeds ? 'text-destructive' : ''}`}
                             disabled={!entry.warehouseId}
                           />
@@ -291,8 +295,12 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                             type="number"
                             min={0}
                             step="0.01"
-                            value={entry.unitPrice}
-                            onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                            value={entry.unitPrice === 0 ? '' : entry.unitPrice}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              handleItemChange(index, 'unitPrice', v === '' ? 0 : parseFloat(v) || 0);
+                            }}
+                            onFocus={(e) => e.target.select()}
                             className="h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1"
                             disabled={!entry.itemId}
                           />
