@@ -478,38 +478,102 @@ export function useInventory() {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
+    // Compute net stock delta per (item, warehouse). Positive delta = stock should INCREASE
+    // (e.g. removing/reducing an order line returns stock); negative = stock decreases.
     const key = (i: string, w: string) => `${i}::${w}`;
     const deltas = new Map<string, { itemId: string; warehouseId: string; delta: number }>();
     for (const old of order.items) {
       const k = key(old.itemId, old.warehouseId);
-      deltas.set(k, { itemId: old.itemId, warehouseId: old.warehouseId, delta: -old.quantity });
+      // Old line being removed → stock returns (+)
+      deltas.set(k, { itemId: old.itemId, warehouseId: old.warehouseId, delta: old.quantity });
     }
     for (const ni of newItems) {
       const k = key(ni.itemId, ni.warehouseId);
       const cur = deltas.get(k);
-      if (cur) cur.delta += ni.quantity;
-      else deltas.set(k, { itemId: ni.itemId, warehouseId: ni.warehouseId, delta: ni.quantity });
+      // New line consumes stock (−)
+      if (cur) cur.delta -= ni.quantity;
+      else deltas.set(k, { itemId: ni.itemId, warehouseId: ni.warehouseId, delta: -ni.quantity });
     }
 
-    await Promise.all(
-      Array.from(deltas.values())
-        .filter(d => d.delta !== 0)
-        .map(d => adjustStockBy(d.itemId, d.warehouseId, -d.delta))
-    );
+    // Resolve current quantities locally — no per-row SELECT round-trip
+    const itemsNow = itemsRef.current;
+    const stockUpdates: { itemId: string; warehouseId: string; newQty: number }[] = [];
+    for (const d of deltas.values()) {
+      if (d.delta === 0) continue;
+      const item = itemsNow.find(i => i.id === d.itemId);
+      const current = item?.stock.find(s => s.warehouseId === d.warehouseId)?.quantity || 0;
+      stockUpdates.push({ itemId: d.itemId, warehouseId: d.warehouseId, newQty: Math.max(0, current + d.delta) });
+    }
 
-    await supabase.from('order_items').delete().eq('order_id', orderId);
-    if (newItems.length > 0) {
-      await supabase.from('order_items').insert(
-        newItems.map(ni => ({
-          order_id: orderId,
-          item_id: ni.itemId,
-          warehouse_id: ni.warehouseId,
+    // Optimistic local update so the UI reflects new stock immediately
+    if (stockUpdates.length > 0) {
+      setItems(prev => prev.map(it => {
+        const updates = stockUpdates.filter(u => u.itemId === it.id);
+        if (updates.length === 0) return it;
+        const stockMap = new Map(it.stock.map(s => [s.warehouseId, s]));
+        for (const u of updates) {
+          const existing = stockMap.get(u.warehouseId);
+          if (existing) stockMap.set(u.warehouseId, { ...existing, quantity: u.newQty });
+          else {
+            const wh = warehousesRef.current.find(w => w.id === u.warehouseId);
+            stockMap.set(u.warehouseId, { warehouseId: u.warehouseId, warehouseName: wh?.name || '', quantity: u.newQty });
+          }
+        }
+        return { ...it, stock: Array.from(stockMap.values()) };
+      }));
+    }
+
+    // Optimistic order update so the dialog closes against fresh local state
+    setOrders(prev => prev.map(o => o.id === orderId ? {
+      ...o,
+      shopName,
+      items: newItems.map(ni => {
+        const item = itemsNow.find(i => i.id === ni.itemId);
+        const wh = warehousesRef.current.find(w => w.id === ni.warehouseId);
+        return {
+          itemId: ni.itemId,
+          itemName: item?.name || '',
+          itemSku: item?.sku || '',
+          warehouseId: ni.warehouseId,
+          warehouseName: wh?.name || '',
           quantity: ni.quantity,
-          unit_price: ni.unitPrice,
-        }))
+          unitPrice: ni.unitPrice,
+        };
+      }),
+    } : o));
+
+    // Fire all DB writes in parallel — single round trip per table
+    const ops: Promise<any>[] = [];
+
+    // Bulk update warehouse_stock rows
+    for (const u of stockUpdates) {
+      ops.push(
+        (supabase as any)
+          .from('warehouse_stock')
+          .update({ quantity: u.newQty })
+          .eq('item_id', u.itemId)
+          .eq('warehouse_id', u.warehouseId)
       );
     }
-    await supabase.from('orders').update({ shop_name: shopName }).eq('id', orderId);
+
+    // Replace order_items (delete + insert) and update order shop name in parallel
+    ops.push(
+      supabase.from('order_items').delete().eq('order_id', orderId).then(() => {
+        if (newItems.length === 0) return;
+        return supabase.from('order_items').insert(
+          newItems.map(ni => ({
+            order_id: orderId,
+            item_id: ni.itemId,
+            warehouse_id: ni.warehouseId,
+            quantity: ni.quantity,
+            unit_price: ni.unitPrice,
+          }))
+        );
+      })
+    );
+    ops.push(supabase.from('orders').update({ shop_name: shopName }).eq('id', orderId));
+
+    await Promise.all(ops);
   };
 
   const addWholesaler = async (wholesaler: Omit<Wholesaler, 'id'>) => {
