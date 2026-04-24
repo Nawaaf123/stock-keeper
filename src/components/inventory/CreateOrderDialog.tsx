@@ -225,11 +225,11 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                 <thead className="bg-muted/50 text-xs">
                   <tr>
                     <th className="text-left px-2 py-1.5 font-medium">Product</th>
-                    <th className="text-left px-2 py-1.5 font-medium w-32">Warehouse</th>
-                    <th className="text-right px-2 py-1.5 font-medium w-20">Qty</th>
-                    <th className="text-right px-2 py-1.5 font-medium w-24">Price</th>
-                    <th className="text-right px-2 py-1.5 font-medium w-20">Total</th>
-                    <th className="w-8"></th>
+                    <th className="text-left px-2 py-1.5 font-medium w-44">Warehouse</th>
+                    <th className="text-right px-2 py-1.5 font-medium w-24">Qty</th>
+                    <th className="text-right px-2 py-1.5 font-medium w-28">Price</th>
+                    <th className="text-right px-2 py-1.5 font-medium w-28">Total</th>
+                    <th className="w-10"></th>
                   </tr>
                 </thead>
                 <tbody>
