@@ -543,7 +543,7 @@ export function useInventory() {
     } : o));
 
     // Fire all DB writes in parallel — single round trip per table
-    const ops: Promise<any>[] = [];
+    const ops: PromiseLike<any>[] = [];
 
     // Bulk update warehouse_stock rows
     for (const u of stockUpdates) {
