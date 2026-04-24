@@ -103,8 +103,8 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
 
   return (
     <Dialog open={open} onOpenChange={(open) => { onOpenChange(open); if (!open) resetForm(); }}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] p-0 sm:p-0 flex flex-col overflow-hidden">
+        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2 shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
             Receive Stock
@@ -113,88 +113,105 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
             {isSingleItemMode ? 'Add incoming inventory to a specific warehouse' : 'Add multiple products from a single BOL'}
           </DialogDescription>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <div>
-            <Label htmlFor="bolNumber">BOL Number</Label>
-            <Input
-              id="bolNumber"
-              type="text"
-              value={bolNumber}
-              onChange={(e) => setBolNumber(e.target.value)}
-              placeholder="Enter Bill of Lading number"
-              required
-            />
-          </div>
 
-          <div>
-            <Label htmlFor="warehouse">Select Warehouse</Label>
-            <Select value={warehouseId} onValueChange={setWarehouseId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose warehouse" />
-              </SelectTrigger>
-              <SelectContent>
-                {warehouses.map((wh) => (
-                  <SelectItem key={wh.id} value={wh.id}>
-                    {wh.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-2 space-y-4" ref={productsScrollRef}>
+            <div>
+              <Label htmlFor="bolNumber">BOL Number</Label>
+              <Input
+                id="bolNumber"
+                type="text"
+                value={bolNumber}
+                onChange={(e) => setBolNumber(e.target.value)}
+                placeholder="Enter Bill of Lading number"
+                required
+              />
+            </div>
 
-          {isSingleItemMode ? (
-            <>
-              {item && (
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <p className="font-semibold text-foreground">{item.name}</p>
-                  <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
-                </div>
-              )}
-              <div>
-                <Label htmlFor="quantity">Quantity to Add</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  min="1"
-                  value={currentQuantity || ''}
-                  onChange={(e) => setCurrentQuantity(parseInt(e.target.value) || 0)}
-                  placeholder="Enter quantity"
-                  required
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              {productEntries.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Products to Receive</Label>
-                  <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                    {productEntries.map((entry, index) => {
-                      const product = getItemById(entry.itemId);
-                      return (
-                        <div key={index} className="flex items-center justify-between bg-background rounded p-2">
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{product?.name}</p>
-                            <p className="text-xs text-muted-foreground">SKU: {product?.sku} • Qty: {entry.quantity}</p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveProduct(index)}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      );
-                    })}
+            <div>
+              <Label htmlFor="warehouse">Select Warehouse</Label>
+              <Select value={warehouseId} onValueChange={setWarehouseId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose warehouse" />
+                </SelectTrigger>
+                <SelectContent>
+                  {warehouses.map((wh) => (
+                    <SelectItem key={wh.id} value={wh.id}>
+                      {wh.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {isSingleItemMode ? (
+              <>
+                {item && (
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <p className="font-semibold text-foreground">{item.name}</p>
+                    <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
                   </div>
+                )}
+                <div>
+                  <Label htmlFor="quantity">Quantity to Add</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    min="1"
+                    value={currentQuantity || ''}
+                    onChange={(e) => setCurrentQuantity(parseInt(e.target.value) || 0)}
+                    placeholder="Enter quantity"
+                    required
+                  />
                 </div>
-              )}
+              </>
+            ) : (
+              <>
+                {productEntries.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Products to Receive</Label>
+                    <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+                      {productEntries.map((entry, index) => {
+                        const product = getItemById(entry.itemId);
+                        return (
+                          <div key={index} className="flex items-center justify-between bg-background rounded p-2">
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{product?.name}</p>
+                              <p className="text-xs text-muted-foreground">SKU: {product?.sku} • Qty: {entry.quantity}</p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveProduct(index)}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
-              <div className="border border-dashed border-border rounded-lg p-4 space-y-3">
-                <Label className="text-muted-foreground">Add Product</Label>
+                {selectedWarehouse && productEntries.length > 0 && (
+                  <div className="bg-primary/10 rounded-lg p-3 text-sm border border-primary/20">
+                    <p className="font-medium text-primary">
+                      {productEntries.length} product(s) will be added to {selectedWarehouse.name}
+                    </p>
+                    <p className="text-muted-foreground text-xs mt-1">
+                      Total cases: {productEntries.reduce((sum, e) => sum + e.quantity, 0)}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {!isSingleItemMode && (
+            <div className="border-t bg-background px-4 sm:px-6 py-3 shrink-0">
+              <div className="border border-dashed border-border rounded-lg p-3 space-y-2">
+                <Label className="text-muted-foreground text-xs">Add Product</Label>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="col-span-2">
                     <Select value={currentItemId} onValueChange={setCurrentItemId}>
@@ -233,29 +250,18 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
                   Add Product
                 </Button>
               </div>
-            </>
-          )}
-
-          {selectedWarehouse && productEntries.length > 0 && !isSingleItemMode && (
-            <div className="bg-primary/10 rounded-lg p-3 text-sm border border-primary/20">
-              <p className="font-medium text-primary">
-                {productEntries.length} product(s) will be added to {selectedWarehouse.name}
-              </p>
-              <p className="text-muted-foreground text-xs mt-1">
-                Total cases: {productEntries.reduce((sum, e) => sum + e.quantity, 0)}
-              </p>
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="border-t bg-background flex justify-end gap-3 px-4 sm:px-6 py-3 shrink-0">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={
-                !warehouseId || 
-                !bolNumber.trim() || 
+                !warehouseId ||
+                !bolNumber.trim() ||
                 (isSingleItemMode ? currentQuantity <= 0 : productEntries.length === 0)
               }
             >
