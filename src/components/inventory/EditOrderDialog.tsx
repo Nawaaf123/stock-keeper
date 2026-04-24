@@ -348,12 +348,23 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
                               <Input
                                 type="number"
                                 min={1}
+                                data-qty-index={idx}
                                 value={entry.quantity === 0 ? '' : entry.quantity}
                                 onChange={(e) => {
                                   const v = e.target.value;
                                   updateLine(idx, 'quantity', v === '' ? 0 : parseInt(v) || 0);
                                 }}
                                 onFocus={(e) => e.target.select()}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const dir = e.key === 'ArrowUp' ? -1 : 1;
+                                    const next = document.querySelector<HTMLInputElement>(
+                                      `input[data-qty-index="${idx + dir}"]`
+                                    );
+                                    if (next) { next.focus(); next.select(); }
+                                  }
+                                }}
                                 className={`h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1 ${exceeds ? 'text-destructive' : ''}`}
                                 disabled={!entry.warehouseId}
                               />
