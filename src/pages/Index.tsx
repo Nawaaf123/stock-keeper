@@ -1,18 +1,20 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { PageSkeleton } from '@/components/layout/PageSkeleton';
 import { InventoryView } from '@/components/views/InventoryView';
-import { InventoryHistoryView } from '@/components/views/InventoryHistoryView';
-import { ReceivingsView } from '@/components/views/ReceivingsView';
-import { WarehousesView } from '@/components/views/WarehousesView';
-import { ReportsView } from '@/components/views/ReportsView';
-import { BillOfLadingView } from '@/components/views/BillOfLadingView';
-import { OrdersView } from '@/components/views/OrdersView';
-import { WholesalersView } from '@/components/views/WholesalersView';
-import { StockSummaryView } from '@/components/views/StockSummaryView';
-import { PaymentsView } from '@/components/views/PaymentsView';
-import { UsersView } from '@/components/views/UsersView';
 import { useInventory } from '@/hooks/useInventory';
+
+// Lazy-load non-default views to keep initial bundle small
+const InventoryHistoryView = lazy(() => import('@/components/views/InventoryHistoryView').then(m => ({ default: m.InventoryHistoryView })));
+const ReceivingsView = lazy(() => import('@/components/views/ReceivingsView').then(m => ({ default: m.ReceivingsView })));
+const WarehousesView = lazy(() => import('@/components/views/WarehousesView').then(m => ({ default: m.WarehousesView })));
+const ReportsView = lazy(() => import('@/components/views/ReportsView').then(m => ({ default: m.ReportsView })));
+const BillOfLadingView = lazy(() => import('@/components/views/BillOfLadingView').then(m => ({ default: m.BillOfLadingView })));
+const OrdersView = lazy(() => import('@/components/views/OrdersView').then(m => ({ default: m.OrdersView })));
+const WholesalersView = lazy(() => import('@/components/views/WholesalersView').then(m => ({ default: m.WholesalersView })));
+const StockSummaryView = lazy(() => import('@/components/views/StockSummaryView').then(m => ({ default: m.StockSummaryView })));
+const PaymentsView = lazy(() => import('@/components/views/PaymentsView').then(m => ({ default: m.PaymentsView })));
+const UsersView = lazy(() => import('@/components/views/UsersView').then(m => ({ default: m.UsersView })));
 
 const Index = () => {
   const [activeView, setActiveView] = useState('inventory');
@@ -107,31 +109,7 @@ const Index = () => {
       case 'users':
         return <UsersView />;
       default:
-        return (
-          <InventoryView
-            items={inventory.items}
-            allItems={inventory.allItems}
-            warehouses={inventory.warehouses}
-            searchQuery={inventory.searchQuery}
-            onSearchChange={inventory.setSearchQuery}
-            categoryFilter={inventory.categoryFilter}
-            onCategoryChange={inventory.setCategoryFilter}
-            subCategoryFilter={inventory.subCategoryFilter}
-            onSubCategoryChange={inventory.setSubCategoryFilter}
-            warehouseFilter={inventory.warehouseFilter}
-            onWarehouseChange={inventory.setWarehouseFilter}
-            sortField={inventory.sortField}
-            sortDirection={inventory.sortDirection}
-            onSort={inventory.toggleSort}
-            onAddItem={inventory.addItem}
-            onUpdateItem={inventory.updateItem}
-            onReceiveStock={inventory.receiveStock}
-            onUpdateStock={inventory.updateStock}
-            onDeleteItem={inventory.deleteItem}
-            onTransferStock={inventory.transferStock}
-            onUpdateWarehouse={inventory.updateWarehouse}
-          />
-        );
+        return null;
     }
   };
 
@@ -139,7 +117,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Sidebar activeView={activeView} onViewChange={setActiveView} />
       <main className="lg:ml-64 pt-14 lg:pt-0 p-3 sm:p-5 lg:p-8">
-        {inventory.loading ? <PageSkeleton /> : renderView()}
+        {inventory.loading ? <PageSkeleton /> : <Suspense fallback={<PageSkeleton />}>{renderView()}</Suspense>}
       </main>
     </div>
   );

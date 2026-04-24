@@ -6,11 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getTotalQuantity } from '@/data/mockData';
 import { toast } from 'sonner';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 
 interface InventoryTableProps {
   items: InventoryItem[];
@@ -102,14 +97,9 @@ export function InventoryTable({ items, warehouses, sortField, sortDirection, on
               <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground">
                 <div className="flex items-center justify-center gap-3">
                   {warehouses.map(wh => (
-                    <Tooltip key={wh.id}>
-                      <TooltipTrigger asChild>
-                        <span className="w-16 text-center truncate inline-block" title={wh.name}>
-                          {wh.name}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs">{wh.name}</TooltipContent>
-                    </Tooltip>
+                    <span key={wh.id} className="w-16 text-center truncate inline-block" title={wh.name}>
+                      {wh.name}
+                    </span>
                   ))}
                 </div>
               </th>
@@ -166,23 +156,18 @@ export function InventoryTable({ items, warehouses, sortField, sortDirection, on
                           );
                         }
                         return (
-                          <Tooltip key={wh.id}>
-                            <TooltipTrigger asChild>
-                              <span
-                                onClick={() => startEdit(item.id, wh.id, qty)}
-                                className={cn(
-                                  'w-16 text-center text-xs tabular-nums',
-                                  qty > 0 ? 'text-foreground' : 'text-muted-foreground/50',
-                                  quickEdit && onUpdateStock && 'cursor-pointer hover:bg-primary/10 rounded px-1 py-0.5'
-                                )}
-                              >
-                                {qty}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="text-xs">
-                              {wh.name}: {qty}
-                            </TooltipContent>
-                          </Tooltip>
+                          <span
+                            key={wh.id}
+                            onClick={() => startEdit(item.id, wh.id, qty)}
+                            title={`${wh.name}: ${qty}`}
+                            className={cn(
+                              'w-16 text-center text-xs tabular-nums',
+                              qty > 0 ? 'text-foreground' : 'text-muted-foreground/50',
+                              quickEdit && onUpdateStock && 'cursor-pointer hover:bg-primary/10 rounded px-1 py-0.5'
+                            )}
+                          >
+                            {qty}
+                          </span>
                         );
                       })}
                     </div>
