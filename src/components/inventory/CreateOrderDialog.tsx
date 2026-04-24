@@ -282,7 +282,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                             min={1}
                             value={entry.quantity}
                             onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
-                            className={`h-8 text-right border-0 shadow-none focus-visible:ring-1 ${exceeds ? 'text-destructive' : ''}`}
+                            className={`h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1 ${exceeds ? 'text-destructive' : ''}`}
                             disabled={!entry.warehouseId}
                           />
                         </td>
@@ -293,7 +293,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                             step="0.01"
                             value={entry.unitPrice}
                             onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                            className="h-8 text-right border-0 shadow-none focus-visible:ring-1"
+                            className="h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1"
                             disabled={!entry.itemId}
                           />
                         </td>
