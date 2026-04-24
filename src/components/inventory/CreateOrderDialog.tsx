@@ -352,7 +352,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
           )}
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 px-6 py-4 border-t bg-background flex-shrink-0">
           <Button variant="outline" size="sm" onClick={handleClose}>Cancel</Button>
           <Button size="sm" onClick={handleSubmit} disabled={!isValid()}>Create Order</Button>
         </DialogFooter>
