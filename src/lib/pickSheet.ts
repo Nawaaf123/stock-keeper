@@ -96,7 +96,7 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
   doc.setFont('helvetica', 'bold');
   doc.text('Date:', pageWidth / 2 + 30, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(format(order.date, 'MMM d, yyyy'), pageWidth / 2 + 65, y);
+  doc.text(format(order.date, 'MM/dd/yy'), pageWidth / 2 + 65, y);
 
   y += 16;
 
