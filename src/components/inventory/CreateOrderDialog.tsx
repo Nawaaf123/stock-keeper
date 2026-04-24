@@ -33,6 +33,13 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   const [skuInput, setSkuInput] = useState('');
   const [qtyInput, setQtyInput] = useState('1');
   const skuRef = useRef<HTMLInputElement>(null);
+  const linesScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (linesScrollRef.current) {
+      linesScrollRef.current.scrollTop = linesScrollRef.current.scrollHeight;
+    }
+  }, [orderItems.length]);
 
   const categories = useMemo(
     () => Array.from(new Set(items.map(i => i.category).filter(Boolean))).sort(),
@@ -222,7 +229,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
           {orderItems.length > 0 ? (
             <div className="flex-1 min-h-0 flex flex-col gap-3">
               <div className="border rounded-md overflow-hidden flex-1 min-h-0">
-                <div className="max-h-full overflow-y-auto">
+                <div ref={linesScrollRef} className="max-h-full overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 text-xs sticky top-0 z-10">
                       <tr>
