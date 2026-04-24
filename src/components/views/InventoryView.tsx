@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { Plus, PackagePlus, ArrowLeftRight, Pencil, Check, X, Upload, Zap, Download } from 'lucide-react';
 import { downloadInventorySheet } from '@/lib/inventorySheet';
-import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -95,8 +94,9 @@ export function InventoryView({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
+        const XLSX = await import('xlsx');
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
