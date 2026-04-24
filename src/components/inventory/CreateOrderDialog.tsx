@@ -226,8 +226,8 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                   <tr>
                     <th className="text-left px-2 py-1.5 font-medium">Product</th>
                     <th className="text-left px-2 py-1.5 font-medium w-32">Warehouse</th>
-                    <th className="text-right px-2 py-1.5 font-medium w-16">Qty</th>
-                    <th className="text-right px-2 py-1.5 font-medium w-20">Price</th>
+                    <th className="text-right px-2 py-1.5 font-medium w-20">Qty</th>
+                    <th className="text-right px-2 py-1.5 font-medium w-24">Price</th>
                     <th className="text-right px-2 py-1.5 font-medium w-20">Total</th>
                     <th className="w-8"></th>
                   </tr>
@@ -282,7 +282,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                             min={1}
                             value={entry.quantity}
                             onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
-                            className={`h-8 text-right border-0 shadow-none focus-visible:ring-1 ${exceeds ? 'text-destructive' : ''}`}
+                            className={`h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1 ${exceeds ? 'text-destructive' : ''}`}
                             disabled={!entry.warehouseId}
                           />
                         </td>
@@ -293,7 +293,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                             step="0.01"
                             value={entry.unitPrice}
                             onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                            className="h-8 text-right border-0 shadow-none focus-visible:ring-1"
+                            className="h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1"
                             disabled={!entry.itemId}
                           />
                         </td>
