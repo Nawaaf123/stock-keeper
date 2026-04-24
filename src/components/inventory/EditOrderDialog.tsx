@@ -88,7 +88,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
   }, [order]);
 
   const getAvailableStock = (itemId: string, warehouseId: string) => {
-    const item = items.find(i => i.id === itemId);
+    const item = itemsById.get(itemId);
     const current = item?.stock.find(s => s.warehouseId === warehouseId)?.quantity || 0;
     return current + (originalQty.get(`${itemId}::${warehouseId}`) || 0);
   };
@@ -97,7 +97,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
     const next = [...lines];
     next[idx] = { ...next[idx], [field]: value };
     if (field === 'itemId') {
-      const item = items.find(i => i.id === value);
+      const item = itemsById.get(value as string);
       if (item) {
         next[idx].unitPrice = item.price;
         const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
