@@ -152,7 +152,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3 px-6 overflow-y-auto flex-1 min-h-0">
+        <div className="space-y-3 px-6 pb-24 overflow-y-auto flex-1 min-h-0">
           {/* Shop + Category + Subcategory in one row */}
           <div className="grid grid-cols-[1fr_150px_150px] gap-2">
             <Select value={selectedWholesaler} onValueChange={setSelectedWholesaler}>
