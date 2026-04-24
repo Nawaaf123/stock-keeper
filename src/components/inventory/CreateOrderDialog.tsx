@@ -289,12 +289,29 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                               <Input
                                 type="number"
                                 min={1}
+                                data-qty-index={index}
                                 value={entry.quantity === 0 ? '' : entry.quantity}
                                 onChange={(e) => {
                                   const v = e.target.value;
                                   handleItemChange(index, 'quantity', v === '' ? 0 : parseInt(v) || 0);
                                 }}
                                 onFocus={(e) => e.target.select()}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                                    e.preventDefault();
+                                    const dir = e.key === 'ArrowDown' ? 1 : -1;
+                                    const next = document.querySelector<HTMLInputElement>(
+                                      `input[data-qty-index="${index + dir}"]`
+                                    );
+                                    if (next) { next.focus(); next.select(); }
+                                  } else if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const next = document.querySelector<HTMLInputElement>(
+                                      `input[data-qty-index="${index + 1}"]`
+                                    );
+                                    if (next) { next.focus(); next.select(); }
+                                  }
+                                }}
                                 className={`h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1 ${exceeds ? 'text-destructive' : ''}`}
                                 disabled={!entry.warehouseId}
                               />
