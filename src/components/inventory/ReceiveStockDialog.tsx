@@ -1,23 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { InventoryItem, Warehouse } from '@/types/inventory';
 import { Package, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ProductEntry {
   itemId: string;
@@ -37,238 +25,308 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
   const [warehouseId, setWarehouseId] = useState('');
   const [bolNumber, setBolNumber] = useState('');
   const [productEntries, setProductEntries] = useState<ProductEntry[]>([]);
-  const [currentItemId, setCurrentItemId] = useState('');
-  const [currentQuantity, setCurrentQuantity] = useState(0);
-  const productsScrollRef = useRef<HTMLDivElement>(null);
+  const [singleQuantity, setSingleQuantity] = useState(0);
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
 
-  // If a specific item is passed, use single-item mode
+  const [skuInput, setSkuInput] = useState('');
+  const [qtyInput, setQtyInput] = useState('1');
+  const skuRef = useRef<HTMLInputElement>(null);
+  const linesScrollRef = useRef<HTMLDivElement>(null);
+
   const isSingleItemMode = !!item;
 
   useEffect(() => {
-    if (productsScrollRef.current) {
-      productsScrollRef.current.scrollTop = productsScrollRef.current.scrollHeight;
+    if (linesScrollRef.current) {
+      linesScrollRef.current.scrollTop = linesScrollRef.current.scrollHeight;
     }
   }, [productEntries.length]);
+
+  useEffect(() => {
+    if (open && !isSingleItemMode) setTimeout(() => skuRef.current?.focus(), 50);
+  }, [open, isSingleItemMode]);
+
+  const categories = useMemo(
+    () => Array.from(new Set(items.map(i => i.category).filter(Boolean))).sort(),
+    [items]
+  );
+
+  const subCategories = useMemo(() => {
+    const pool = categoryFilter === 'all' ? items : items.filter(i => i.category === categoryFilter);
+    return Array.from(new Set(pool.map(i => i.subCategory).filter(Boolean))).sort();
+  }, [items, categoryFilter]);
+
+  const filteredItems = useMemo(() => {
+    return items.filter(i =>
+      (categoryFilter === 'all' || i.category === categoryFilter) &&
+      (subCategoryFilter === 'all' || i.subCategory === subCategoryFilter)
+    );
+  }, [items, categoryFilter, subCategoryFilter]);
 
   const resetForm = () => {
     setWarehouseId('');
     setBolNumber('');
     setProductEntries([]);
-    setCurrentItemId('');
-    setCurrentQuantity(0);
+    setSingleQuantity(0);
+    setCategoryFilter('all');
+    setSubCategoryFilter('all');
+    setSkuInput('');
+    setQtyInput('1');
   };
 
-  const handleAddProduct = () => {
-    if (currentItemId && currentQuantity > 0) {
-      const existingIndex = productEntries.findIndex(e => e.itemId === currentItemId);
-      if (existingIndex >= 0) {
-        const updated = [...productEntries];
-        updated[existingIndex].quantity += currentQuantity;
-        setProductEntries(updated);
-      } else {
-        setProductEntries([...productEntries, { itemId: currentItemId, quantity: currentQuantity }]);
-      }
-      setCurrentItemId('');
-      setCurrentQuantity(0);
+  const handleClose = () => { resetForm(); onOpenChange(false); };
+
+  const handleQuickAdd = () => {
+    const sku = skuInput.trim().toLowerCase();
+    if (!sku) return;
+    const qty = Math.max(1, parseInt(qtyInput) || 1);
+
+    const found = items.find(i => i.sku.toLowerCase() === sku)
+      || items.find(i => i.sku.toLowerCase().startsWith(sku))
+      || items.find(i => i.name.toLowerCase().includes(sku));
+
+    if (!found) { toast.error(`No product found for "${skuInput}"`); return; }
+
+    const existingIdx = productEntries.findIndex(e => e.itemId === found.id);
+    if (existingIdx >= 0) {
+      const updated = [...productEntries];
+      updated[existingIdx].quantity += qty;
+      setProductEntries(updated);
+    } else {
+      setProductEntries([...productEntries, { itemId: found.id, quantity: qty }]);
     }
+
+    setSkuInput('');
+    setQtyInput('1');
+    skuRef.current?.focus();
   };
 
-  const handleRemoveProduct = (index: number) => {
+  const handleItemChange = (index: number, field: keyof ProductEntry, value: string | number) => {
+    const updated = [...productEntries];
+    updated[index] = { ...updated[index], [field]: value };
+    setProductEntries(updated);
+  };
+
+  const handleRemove = (index: number) => {
     setProductEntries(productEntries.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmit = () => {
     if (isSingleItemMode) {
-      if (item && warehouseId && currentQuantity > 0 && bolNumber.trim()) {
-        onReceive(item.id, warehouseId, currentQuantity, bolNumber.trim(), null);
-        onOpenChange(false);
-        resetForm();
+      if (item && warehouseId && singleQuantity > 0 && bolNumber.trim()) {
+        onReceive(item.id, warehouseId, singleQuantity, bolNumber.trim(), null);
+        handleClose();
       }
     } else {
-      if (warehouseId && bolNumber.trim() && productEntries.length > 0) {
-        productEntries.forEach(entry => {
-          onReceive(entry.itemId, warehouseId, entry.quantity, bolNumber.trim(), null);
-        });
-        onOpenChange(false);
-        resetForm();
+      const valid = productEntries.filter(e => e.itemId && e.quantity > 0);
+      if (warehouseId && bolNumber.trim() && valid.length > 0) {
+        valid.forEach(e => onReceive(e.itemId, warehouseId, e.quantity, bolNumber.trim(), null));
+        handleClose();
       }
     }
   };
 
-  const selectedWarehouse = warehouses.find((wh) => wh.id === warehouseId);
-  const getItemById = (id: string) => items.find(i => i.id === id);
-  const availableItems = items.filter(i => !productEntries.some(e => e.itemId === i.id));
+  const isValid = isSingleItemMode
+    ? !!warehouseId && !!bolNumber.trim() && singleQuantity > 0
+    : !!warehouseId && !!bolNumber.trim() && productEntries.some(e => e.itemId && e.quantity > 0);
+
+  const totalCases = productEntries.reduce((s, e) => s + (e.itemId ? e.quantity : 0), 0);
 
   return (
-    <Dialog open={open} onOpenChange={(open) => { onOpenChange(open); if (!open) resetForm(); }}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] p-0 sm:p-0 flex flex-col overflow-hidden">
-        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2 shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            <Package className="w-5 h-5 text-primary" />
-            Receive Stock
+    <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
+      <DialogContent className="max-w-5xl sm:max-w-5xl h-[90vh] max-h-[90vh] sm:h-[90vh] sm:max-h-[90vh] !grid-cols-1 !gap-0 !overflow-hidden sm:!overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-3 flex-shrink-0">
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Package className="w-4 h-4 text-primary" /> Receive Stock
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs">
             {isSingleItemMode ? 'Add incoming inventory to a specific warehouse' : 'Add multiple products from a single BOL'}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-2 space-y-4" ref={productsScrollRef}>
-            <div>
-              <Label htmlFor="bolNumber">BOL Number</Label>
-              <Input
-                id="bolNumber"
-                type="text"
-                value={bolNumber}
-                onChange={(e) => setBolNumber(e.target.value)}
-                placeholder="Enter Bill of Lading number"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="warehouse">Select Warehouse</Label>
-              <Select value={warehouseId} onValueChange={setWarehouseId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose warehouse" />
-                </SelectTrigger>
-                <SelectContent>
-                  {warehouses.map((wh) => (
-                    <SelectItem key={wh.id} value={wh.id}>
-                      {wh.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {isSingleItemMode ? (
+        <div className="px-6 py-3 flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
+          {/* BOL + Warehouse + (filters) */}
+          <div className={`grid gap-2 ${isSingleItemMode ? 'grid-cols-2' : 'grid-cols-[1fr_1fr_150px_150px]'}`}>
+            <Input
+              value={bolNumber}
+              onChange={(e) => setBolNumber(e.target.value)}
+              placeholder="BOL Number"
+              className="h-9"
+            />
+            <Select value={warehouseId} onValueChange={setWarehouseId}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Select warehouse" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover">
+                {warehouses.map((wh) => (
+                  <SelectItem key={wh.id} value={wh.id}>{wh.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!isSingleItemMode && (
               <>
-                {item && (
-                  <div className="bg-muted/50 rounded-lg p-4">
-                    <p className="font-semibold text-foreground">{item.name}</p>
-                    <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
-                  </div>
-                )}
-                <div>
-                  <Label htmlFor="quantity">Quantity to Add</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min="1"
-                    value={currentQuantity || ''}
-                    onChange={(e) => setCurrentQuantity(parseInt(e.target.value) || 0)}
-                    placeholder="Enter quantity"
-                    required
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                {productEntries.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Products to Receive</Label>
-                    <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                      {productEntries.map((entry, index) => {
-                        const product = getItemById(entry.itemId);
-                        return (
-                          <div key={index} className="flex items-center justify-between bg-background rounded p-2">
-                            <div className="flex-1">
-                              <p className="font-medium text-sm">{product?.name}</p>
-                              <p className="text-xs text-muted-foreground">SKU: {product?.sku} • Qty: {entry.quantity}</p>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveProduct(index)}
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {selectedWarehouse && productEntries.length > 0 && (
-                  <div className="bg-primary/10 rounded-lg p-3 text-sm border border-primary/20">
-                    <p className="font-medium text-primary">
-                      {productEntries.length} product(s) will be added to {selectedWarehouse.name}
-                    </p>
-                    <p className="text-muted-foreground text-xs mt-1">
-                      Total cases: {productEntries.reduce((sum, e) => sum + e.quantity, 0)}
-                    </p>
-                  </div>
-                )}
+                <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setSubCategoryFilter('all'); }}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="All categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={subCategoryFilter} onValueChange={setSubCategoryFilter} disabled={subCategories.length === 0}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="All sub-categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All sub-categories</SelectItem>
+                    {subCategories.map(sc => <SelectItem key={sc} value={sc}>{sc}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </>
             )}
           </div>
 
-          {!isSingleItemMode && (
-            <div className="border-t bg-background px-4 sm:px-6 py-3 shrink-0">
-              <div className="border border-dashed border-border rounded-lg p-3 space-y-2">
-                <Label className="text-muted-foreground text-xs">Add Product</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-2">
-                    <Select value={currentItemId} onValueChange={setCurrentItemId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select product" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableItems.map((i) => (
-                          <SelectItem key={i.id} value={i.id}>
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground text-xs">{i.sku}</span>
-                              <span>{i.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={currentQuantity || ''}
-                    onChange={(e) => setCurrentQuantity(parseInt(e.target.value) || 0)}
-                    placeholder="Qty"
-                  />
+          {isSingleItemMode ? (
+            <>
+              {item && (
+                <div className="bg-muted/50 rounded-md p-3">
+                  <p className="font-semibold text-foreground text-sm">{item.name}</p>
+                  <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
                 </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="w-full"
-                  onClick={handleAddProduct}
-                  disabled={!currentItemId || currentQuantity <= 0}
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Product
+              )}
+              <div>
+                <label className="text-xs text-muted-foreground">Quantity to Add</label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={singleQuantity || ''}
+                  onChange={(e) => setSingleQuantity(parseInt(e.target.value) || 0)}
+                  placeholder="Enter quantity"
+                  className="h-9 mt-1"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Quick add SKU bar */}
+              <div className="flex gap-2">
+                <Input
+                  ref={skuRef}
+                  value={skuInput}
+                  onChange={(e) => setSkuInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleQuickAdd(); } }}
+                  placeholder="Scan / type SKU or name, press Enter"
+                  className="flex-1 h-9"
+                />
+                <Input
+                  type="number"
+                  min={1}
+                  value={qtyInput}
+                  onChange={(e) => setQtyInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleQuickAdd(); } }}
+                  className="w-16 h-9"
+                />
+                <Button onClick={handleQuickAdd} type="button" size="sm" className="h-9">
+                  <Plus className="w-4 h-4" />
                 </Button>
               </div>
-            </div>
-          )}
 
-          <div className="border-t bg-background flex justify-end gap-3 px-4 sm:px-6 py-3 shrink-0">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={
-                !warehouseId ||
-                !bolNumber.trim() ||
-                (isSingleItemMode ? currentQuantity <= 0 : productEntries.length === 0)
-              }
-            >
-              Receive Stock
-            </Button>
-          </div>
-        </form>
+              {productEntries.length > 0 ? (
+                <div className="flex-1 min-h-0 flex flex-col gap-3">
+                  <div className="border rounded-md overflow-hidden flex-1 min-h-0">
+                    <div ref={linesScrollRef} className="max-h-full overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50 text-xs sticky top-0 z-10">
+                          <tr>
+                            <th className="text-left px-2 py-1.5 font-medium">Product</th>
+                            <th className="text-right px-2 py-1.5 font-medium w-28">Qty</th>
+                            <th className="w-10"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {productEntries.map((entry, index) => {
+                            const selectedItem = items.find(i => i.id === entry.itemId);
+                            const productList = entry.itemId && !filteredItems.find(i => i.id === entry.itemId)
+                              ? [...filteredItems, selectedItem!]
+                              : filteredItems;
+                            return (
+                              <tr key={index} className="border-t">
+                                <td className="px-1 py-1">
+                                  <Select value={entry.itemId} onValueChange={(v) => handleItemChange(index, 'itemId', v)}>
+                                    <SelectTrigger className="h-8 border-0 shadow-none focus:ring-1">
+                                      <SelectValue placeholder="Select product" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {productList.map((i) => (
+                                        <SelectItem key={i.id} value={i.id}>{i.sku} – {i.name}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </td>
+                                <td className="px-1 py-1">
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    value={entry.quantity === 0 ? '' : entry.quantity}
+                                    onChange={(e) => {
+                                      const v = e.target.value;
+                                      handleItemChange(index, 'quantity', v === '' ? 0 : parseInt(v) || 0);
+                                    }}
+                                    onFocus={(e) => e.target.select()}
+                                    className="h-8 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1"
+                                  />
+                                </td>
+                                <td className="px-1 py-1">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemove(index)}>
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot className="bg-muted/30 text-sm sticky bottom-0">
+                          <tr className="border-t">
+                            <td className="px-2 py-1.5 text-muted-foreground text-xs">
+                              {productEntries.length} line{productEntries.length !== 1 ? 's' : ''}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-semibold tabular-nums">
+                              {totalCases} cases
+                            </td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setProductEntries([...productEntries, { itemId: '', quantity: 1 }])}
+                    className="w-full h-8 text-xs flex-shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add line
+                  </Button>
+                </div>
+              ) : (
+                <div className="border border-dashed rounded-md py-6 text-center text-sm text-muted-foreground">
+                  Scan a SKU above or <button
+                    type="button"
+                    className="underline text-foreground"
+                    onClick={() => setProductEntries([{ itemId: '', quantity: 1 }])}
+                  >add a line manually</button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <DialogFooter className="sticky bottom-0 z-10 gap-2 px-6 py-4 border-t bg-background flex-shrink-0">
+          <Button variant="outline" size="sm" onClick={handleClose}>Cancel</Button>
+          <Button size="sm" onClick={handleSubmit} disabled={!isValid}>Receive Stock</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
