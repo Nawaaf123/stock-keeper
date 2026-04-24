@@ -406,6 +406,60 @@ export function useInventory() {
     }
   };
 
+  // ─── Receivings (grouped by BOL number) ───
+  const deleteReceiving = async (bolNumber: string) => {
+    const lines = transactions.filter(t => t.bolNumber === bolNumber);
+    if (lines.length === 0) return;
+    // Reverse stock for each line
+    await Promise.all(lines.map(l => adjustStockBy(l.itemId, l.warehouseId, -l.quantity)));
+    await supabase.from('inventory_transactions').delete().eq('bol_number', bolNumber);
+  };
+
+  const updateReceiving = async (
+    bolNumber: string,
+    newBolNumber: string,
+    newLines: { itemId: string; warehouseId: string; quantity: number }[],
+  ) => {
+    const oldLines = transactions.filter(t => t.bolNumber === bolNumber);
+    const bolDocumentUrl = oldLines[0]?.bolDocumentUrl ?? null;
+
+    const key = (i: string, w: string) => `${i}::${w}`;
+    const deltas = new Map<string, { itemId: string; warehouseId: string; delta: number }>();
+    for (const old of oldLines) {
+      const k = key(old.itemId, old.warehouseId);
+      const cur = deltas.get(k);
+      if (cur) cur.delta -= old.quantity;
+      else deltas.set(k, { itemId: old.itemId, warehouseId: old.warehouseId, delta: -old.quantity });
+    }
+    for (const ni of newLines) {
+      const k = key(ni.itemId, ni.warehouseId);
+      const cur = deltas.get(k);
+      if (cur) cur.delta += ni.quantity;
+      else deltas.set(k, { itemId: ni.itemId, warehouseId: ni.warehouseId, delta: ni.quantity });
+    }
+
+    await Promise.all(
+      Array.from(deltas.values())
+        .filter(d => d.delta !== 0)
+        .map(d => adjustStockBy(d.itemId, d.warehouseId, d.delta))
+    );
+
+    // Replace transaction rows for this BOL
+    await supabase.from('inventory_transactions').delete().eq('bol_number', bolNumber);
+    if (newLines.length > 0) {
+      await supabase.from('inventory_transactions').insert(
+        newLines.map(ni => ({
+          item_id: ni.itemId,
+          warehouse_id: ni.warehouseId,
+          quantity: ni.quantity,
+          bol_number: newBolNumber.trim() || bolNumber,
+          bol_document_url: bolDocumentUrl,
+          type: 'receive',
+        } as any))
+      );
+    }
+  };
+
   const deleteOrder = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
@@ -571,5 +625,7 @@ export function useInventory() {
     deleteWholesaler,
     updateWarehouse,
     reorderWarehouse,
+    updateReceiving,
+    deleteReceiving,
   };
 }
