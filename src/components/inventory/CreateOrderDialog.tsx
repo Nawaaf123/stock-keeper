@@ -338,8 +338,27 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                                                 disabled={totalStock === 0}
                                                 onSelect={() => {
                                                   if (added || totalStock === 0) return;
+                                                  // Capture scroll offset BEFORE inserting so we can keep the
+                                                  // picker row visually anchored after a new line is added above it.
+                                                  const scroller = linesScrollRef.current;
+                                                  const prevScrollTop = scroller?.scrollTop ?? 0;
+                                                  const triggerRow = scroller?.querySelector<HTMLTableRowElement>(
+                                                    `tr[data-line-id="${entry.lineId}"]`
+                                                  );
+                                                  const prevRowTop = triggerRow?.offsetTop ?? 0;
+
                                                   addProductToLines(item.id, index);
-                                                   setOpenProductPickerLineId(entry.lineId);
+                                                  setOpenProductPickerLineId(entry.lineId);
+
+                                                  // After DOM updates, offset scroll so the picker row stays in place.
+                                                  requestAnimationFrame(() => {
+                                                    if (!scroller) return;
+                                                    const newRow = scroller.querySelector<HTMLTableRowElement>(
+                                                      `tr[data-line-id="${entry.lineId}"]`
+                                                    );
+                                                    const newRowTop = newRow?.offsetTop ?? prevRowTop;
+                                                    scroller.scrollTop = prevScrollTop + (newRowTop - prevRowTop);
+                                                  });
                                                 }}
                                               >
                                                 <Check className={`mr-2 h-4 w-4 ${added ? 'opacity-100' : 'opacity-0'}`} />
