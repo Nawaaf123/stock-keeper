@@ -47,6 +47,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
   const [qtyInput, setQtyInput] = useState('1');
   const [openProductIdx, setOpenProductIdx] = useState<number | null>(null);
   const [openWarehouseIdx, setOpenWarehouseIdx] = useState<number | null>(null);
+  const [openProductPickerLineId, setOpenProductPickerLineId] = useState<string | null>(null);
   const skuRef = useRef<HTMLInputElement>(null);
   const linesScrollRef = useRef<HTMLDivElement>(null);
 
