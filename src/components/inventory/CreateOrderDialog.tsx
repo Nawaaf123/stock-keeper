@@ -3,8 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { InventoryItem, Wholesaler, Warehouse } from '@/types/inventory';
-import { Plus, Trash2, Store } from 'lucide-react';
+import { Plus, Trash2, Store, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface OrderItemEntry {
@@ -116,6 +118,27 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     setSkuInput('');
     setQtyInput('1');
     skuRef.current?.focus();
+  };
+
+  // Add a product into the lines list. If `targetIndex` points to an empty line, fill it; otherwise append.
+  // If product already exists in lines (same warehouse), do nothing (toggle off would lose qty/price edits).
+  const addProductToLines = (itemId: string, targetIndex?: number) => {
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+    const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
+    const warehouseId = best && best.quantity > 0 ? best.warehouseId : '';
+
+    setOrderItems((prev) => {
+      const alreadyIdx = prev.findIndex(e => e.itemId === itemId);
+      if (alreadyIdx >= 0) return prev; // already added
+      const newLine: OrderItemEntry = { itemId, warehouseId, quantity: 1, unitPrice: item.price };
+      if (typeof targetIndex === 'number' && prev[targetIndex] && !prev[targetIndex].itemId) {
+        const updated = [...prev];
+        updated[targetIndex] = newLine;
+        return updated;
+      }
+      return [...prev, newLine];
+    });
   };
 
   const isValid = () => {
@@ -253,16 +276,60 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                         return (
                           <tr key={index} className="border-t">
                             <td className="px-1 py-1">
-                              <Select value={entry.itemId} onValueChange={(v) => handleItemChange(index, 'itemId', v)}>
-                                <SelectTrigger className="h-8 border-0 shadow-none focus:ring-1">
-                                  <SelectValue placeholder="Select product" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {productList.map((item) => (
-                                    <SelectItem key={item.id} value={item.id}>{item.sku} – {item.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              {entry.itemId ? (
+                                <Select value={entry.itemId} onValueChange={(v) => handleItemChange(index, 'itemId', v)}>
+                                  <SelectTrigger className="h-8 border-0 shadow-none focus:ring-1">
+                                    <SelectValue placeholder="Select product" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {productList.map((item) => (
+                                      <SelectItem key={item.id} value={item.id}>{item.sku} – {item.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-full justify-between font-normal text-muted-foreground px-2"
+                                    >
+                                      Select product(s)
+                                      <ChevronsUpDown className="w-3.5 h-3.5 opacity-50" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="p-0 w-[420px]" align="start">
+                                    <Command>
+                                      <CommandInput placeholder="Search product by SKU or name..." />
+                                      <CommandList className="max-h-[320px]">
+                                        <CommandEmpty>No product found.</CommandEmpty>
+                                        <CommandGroup>
+                                          {filteredItems.map((item) => {
+                                            const added = orderItems.some(e => e.itemId === item.id);
+                                            const totalStock = item.stock.reduce((s, st) => s + st.quantity, 0);
+                                            return (
+                                              <CommandItem
+                                                key={item.id}
+                                                value={`${item.sku} ${item.name}`}
+                                                disabled={totalStock === 0}
+                                                onSelect={() => {
+                                                  if (added || totalStock === 0) return;
+                                                  addProductToLines(item.id, index);
+                                                }}
+                                              >
+                                                <Check className={`mr-2 h-4 w-4 ${added ? 'opacity-100' : 'opacity-0'}`} />
+                                                <span className="flex-1 truncate">{item.sku} – {item.name}</span>
+                                                <span className="text-xs text-muted-foreground ml-2">{totalStock}</span>
+                                              </CommandItem>
+                                            );
+                                          })}
+                                        </CommandGroup>
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
                             </td>
                             <td className="px-1 py-1">
                               <Select
