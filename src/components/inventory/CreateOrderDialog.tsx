@@ -3,8 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { InventoryItem, Wholesaler, Warehouse } from '@/types/inventory';
-import { Plus, Trash2, Store } from 'lucide-react';
+import { Plus, Trash2, Store, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface OrderItemEntry {
