@@ -756,62 +756,182 @@ export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDe
 
       {/* Distribute Payment Dialog */}
       <Dialog open={!!distributeDialog} onOpenChange={o => !o && !distSubmitting && setDistributeDialog(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Distribute Payment — {distributeDialog?.shopName}</DialogTitle>
             <DialogDescription>
-              Payment will be applied across {distributeDialog?.rows.length ?? 0} pending invoice(s), oldest first.
+              Split a payment across {distributeDialog?.rows.length ?? 0} pending invoice(s) — automatically (oldest first) or manually per invoice.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Total Pending Amount</Label>
-              <div className="text-2xl font-bold text-orange-600">{distributeDialog ? fmt(distributeDialog.totalPending) : '—'}</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-lg border bg-muted/30">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Pending</p>
+                <p className="text-xl font-bold text-orange-600 tabular-nums">
+                  {distributeDialog ? fmt(distributeDialog.totalPending) : '—'}
+                </p>
+              </div>
+              <div className="p-3 rounded-lg border bg-muted/30">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                  {distMode === 'manual' ? 'Allocated' : 'Payment Amount'}
+                </p>
+                <p className="text-xl font-bold text-primary tabular-nums">
+                  {distMode === 'manual' ? fmt(manualTotal) : fmt(parseFloat(distAmount) || 0)}
+                </p>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Payment Amount *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                placeholder="0.00"
-                value={distAmount}
-                onChange={e => setDistAmount(e.target.value)}
-                autoFocus
-                required
-              />
+            {/* Mode toggle */}
+            <div className="inline-flex rounded-md border p-1 bg-muted/40">
+              <button
+                type="button"
+                onClick={() => setDistMode('auto')}
+                className={cn(
+                  'px-3 py-1.5 text-sm rounded-sm transition-colors',
+                  distMode === 'auto' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Auto (oldest first)
+              </button>
+              <button
+                type="button"
+                onClick={() => setDistMode('manual')}
+                className={cn(
+                  'px-3 py-1.5 text-sm rounded-sm transition-colors',
+                  distMode === 'manual' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Manual per invoice
+              </button>
             </div>
 
-            <div className="space-y-2">
-              <Label>Payment Method *</Label>
-              <Select value={distMethod} onValueChange={setDistMethod}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="check">Check</SelectItem>
-                  <SelectItem value="bank">Bank Transfer</SelectItem>
-                  <SelectItem value="card">Card</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {distMethod === 'check' && (
+            {distMode === 'auto' ? (
               <div className="space-y-2">
-                <Label>Check Number</Label>
-                <Input value={distCheckNumber} onChange={e => setDistCheckNumber(e.target.value)} placeholder="Enter check number" />
+                <Label>Payment Amount *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0.00"
+                  value={distAmount}
+                  onChange={e => setDistAmount(e.target.value)}
+                  autoFocus
+                  required
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Allocate per invoice</Label>
+                  {distributeDialog && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const next: Record<string, string> = {};
+                        distributeDialog.rows.forEach(r => {
+                          if (r.balance > 0.01) next[r.order.id] = '';
+                        });
+                        setManualAllocations(next);
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                <div className="border rounded-lg max-h-64 overflow-y-auto">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-background">
+                      <TableRow>
+                        <TableHead>Invoice</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Balance</TableHead>
+                        <TableHead className="w-40">Pay</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {distributeDialog && [...distributeDialog.rows]
+                        .filter(r => r.balance > 0.01)
+                        .sort((a, b) => a.order.date.getTime() - b.order.date.getTime())
+                        .map(r => {
+                          const val = manualAllocations[r.order.id] ?? '';
+                          const num = parseFloat(val) || 0;
+                          const over = num > r.balance + 0.01;
+                          return (
+                            <TableRow key={r.order.id}>
+                              <TableCell className="font-mono text-xs">INV-{r.order.id.slice(0, 8).toUpperCase()}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{format(r.order.date, 'dd MMM yyyy')}</TableCell>
+                              <TableCell className="text-right text-orange-600 font-semibold tabular-nums">{fmt(r.balance)}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max={r.balance}
+                                    placeholder="0.00"
+                                    value={val}
+                                    onChange={e =>
+                                      setManualAllocations(prev => ({ ...prev, [r.order.id]: e.target.value }))
+                                    }
+                                    className={cn('h-8 text-sm', over && 'border-destructive')}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 px-2 text-xs"
+                                    onClick={() =>
+                                      setManualAllocations(prev => ({ ...prev, [r.order.id]: r.balance.toFixed(2) }))
+                                    }
+                                  >
+                                    Max
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                    </TableBody>
+                  </Table>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Enter the amount to apply to each invoice. Use <span className="font-medium">Max</span> to fill the balance.
+                </p>
               </div>
             )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Payment Method *</Label>
+                <Select value={distMethod} onValueChange={setDistMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="check">Check</SelectItem>
+                    <SelectItem value="bank">Bank Transfer</SelectItem>
+                    <SelectItem value="card">Card</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {distMethod === 'check' && (
+                <div className="space-y-2">
+                  <Label>Check Number</Label>
+                  <Input value={distCheckNumber} onChange={e => setDistCheckNumber(e.target.value)} placeholder="Enter check number" />
+                </div>
+              )}
+            </div>
 
             <div className="space-y-2">
               <Label>Notes</Label>
               <Textarea value={distNote} onChange={e => setDistNote(e.target.value)} placeholder="Optional notes" rows={2} />
             </div>
 
-            {distributeDialog && (
+            {distMode === 'auto' && distributeDialog && (
               <div className="bg-muted p-3 rounded-lg space-y-2">
                 <p className="text-sm font-medium">Distribution Preview</p>
                 <p className="text-xs text-muted-foreground">Applied in this order:</p>
