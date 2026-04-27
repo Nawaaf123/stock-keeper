@@ -120,6 +120,27 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     skuRef.current?.focus();
   };
 
+  // Add a product into the lines list. If `targetIndex` points to an empty line, fill it; otherwise append.
+  // If product already exists in lines (same warehouse), do nothing (toggle off would lose qty/price edits).
+  const addProductToLines = (itemId: string, targetIndex?: number) => {
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+    const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
+    const warehouseId = best && best.quantity > 0 ? best.warehouseId : '';
+
+    setOrderItems((prev) => {
+      const alreadyIdx = prev.findIndex(e => e.itemId === itemId);
+      if (alreadyIdx >= 0) return prev; // already added
+      const newLine: OrderItemEntry = { itemId, warehouseId, quantity: 1, unitPrice: item.price };
+      if (typeof targetIndex === 'number' && prev[targetIndex] && !prev[targetIndex].itemId) {
+        const updated = [...prev];
+        updated[targetIndex] = newLine;
+        return updated;
+      }
+      return [...prev, newLine];
+    });
+  };
+
   const isValid = () => {
     if (!getShopName()) return false;
     const valid = orderItems.filter(e => e.itemId && e.warehouseId && e.quantity > 0);
