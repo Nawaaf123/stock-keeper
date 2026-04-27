@@ -120,7 +120,27 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
   };
 
   const removeLine = (idx: number) => setLines(lines.filter((_, i) => i !== idx));
-  const addLine = () => setLines([...lines, { itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 }]);
+  const addLine = () => {
+    const line = createOrderLine({ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 });
+    setLines(prev => [...prev, line]);
+    setOpenProductPickerLineId(line.lineId);
+    return line;
+  };
+
+  const addProductToLines = (itemId: string, popoverRowIndex: number) => {
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+    const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
+    const warehouseId = best && best.quantity > 0 ? best.warehouseId : '';
+    setLines(prev => {
+      if (prev.some(e => e.itemId === itemId)) return prev;
+      const newLine = createOrderLine({ itemId, warehouseId, quantity: 1, unitPrice: item.price });
+      const updated = [...prev];
+      const insertAt = Math.min(Math.max(popoverRowIndex, 0), updated.length);
+      updated.splice(insertAt, 0, newLine);
+      return updated;
+    });
+  };
 
   const handleQuickAdd = () => {
     const sku = skuInput.trim().toLowerCase();
