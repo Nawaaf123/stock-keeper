@@ -284,7 +284,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                         const exceeds = entry.quantity > availableStock;
 
                         return (
-                          <tr key={entry.lineId} className="border-t">
+                          <tr key={entry.lineId} data-line-id={entry.lineId} className="border-t">
                             <td className="px-1 py-1">
                               {entry.itemId ? (
                                 <Select value={entry.itemId} onValueChange={(v) => handleItemChange(index, 'itemId', v)}>
