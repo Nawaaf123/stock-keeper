@@ -7,16 +7,18 @@ import {
   Trash2,
   Download,
   ChevronDown,
+  ChevronRight,
   Check,
-  X,
   Store,
   FileDown,
   DollarSign,
   Wallet,
   AlertCircle,
   FileText,
-  Info,
   History,
+  Filter,
+  Calendar,
+  ChevronsUpDown,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Order, Payment, Wholesaler } from '@/types/inventory';
@@ -26,14 +28,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Progress } from '@/components/ui/progress';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface PaymentsViewProps {
@@ -45,6 +47,7 @@ interface PaymentsViewProps {
 }
 
 type StatusFilter = 'all' | 'unpaid' | 'partial' | 'paid';
+type SortBy = 'balance_desc' | 'balance_asc' | 'name_asc' | 'name_desc';
 type OrderRow = {
   order: Order;
   total: number;
@@ -57,14 +60,32 @@ const fmt = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
 
 export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDeletePayment }: PaymentsViewProps) {
+  // Filters
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<StatusFilter>('all');
-  const [openDialog, setOpenDialog] = useState<{ orderId: string; suggested: number } | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [shopFilter, setShopFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<SortBy>('balance_desc');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [shopComboOpen, setShopComboOpen] = useState(false);
+
+  // Expanded groups
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  // Single-invoice payment dialog
+  const [recordDialog, setRecordDialog] = useState<{ orderId: string; suggested: number; shopName: string } | null>(null);
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');
+  const [checkNumber, setCheckNumber] = useState('');
   const [note, setNote] = useState('');
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [selectedWholesaler, setSelectedWholesaler] = useState<string>('all');
+
+  // Distribute payment dialog (whole wholesaler)
+  const [distributeDialog, setDistributeDialog] = useState<{ shopName: string; rows: OrderRow[]; totalPending: number } | null>(null);
+  const [distAmount, setDistAmount] = useState('');
+  const [distMethod, setDistMethod] = useState('cash');
+  const [distCheckNumber, setDistCheckNumber] = useState('');
+  const [distNote, setDistNote] = useState('');
+  const [distSubmitting, setDistSubmitting] = useState(false);
 
   // Compute per-order rows
   const orderRows: OrderRow[] = useMemo(() => {
@@ -85,30 +106,52 @@ export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDe
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(r);
     });
-    return Array.from(map.entries())
-      .map(([name, rows]) => {
-        const total = rows.reduce((s, r) => s + r.total, 0);
-        const paid = rows.reduce((s, r) => s + r.paid, 0);
-        const balance = total - paid;
-        const unpaidCount = rows.filter(r => r.status !== 'paid').length;
-        const sortedRows = [...rows].sort((a, b) => b.order.date.getTime() - a.order.date.getTime());
-        return { name, rows: sortedRows, total, paid, balance, unpaidCount };
-      })
-      .sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name));
+    return Array.from(map.entries()).map(([name, rows]) => {
+      const total = rows.reduce((s, r) => s + r.total, 0);
+      const paid = rows.reduce((s, r) => s + r.paid, 0);
+      const balance = total - paid;
+      const unpaidCount = rows.filter(r => r.status !== 'paid').length;
+      const sortedRows = [...rows].sort((a, b) => b.order.date.getTime() - a.order.date.getTime());
+      return { name, rows: sortedRows, total, paid, balance, unpaidCount };
+    });
   }, [orderRows]);
 
-  const wholesalerNames = useMemo(() => wholesalerGroups.map(g => g.name), [wholesalerGroups]);
+  const wholesalerNames = useMemo(() => wholesalerGroups.map(g => g.name).sort(), [wholesalerGroups]);
 
   const filteredGroups = useMemo(() => {
-    return wholesalerGroups
-      .filter(g => selectedWholesaler === 'all' || g.name === selectedWholesaler)
+    const fromTs = dateFrom ? new Date(dateFrom + 'T00:00:00').getTime() : null;
+    const toTs = dateTo ? new Date(dateTo + 'T23:59:59.999').getTime() : null;
+
+    let groups = wholesalerGroups
+      .filter(g => shopFilter === 'all' || g.name === shopFilter)
       .filter(g => !search || g.name.toLowerCase().includes(search.toLowerCase()))
       .map(g => ({
         ...g,
-        rows: g.rows.filter(r => filter === 'all' || r.status === filter),
+        rows: g.rows.filter(r => {
+          if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+          const ts = r.order.date.getTime();
+          if (fromTs !== null && ts < fromTs) return false;
+          if (toTs !== null && ts > toTs) return false;
+          return true;
+        }),
       }))
       .filter(g => g.rows.length > 0);
-  }, [wholesalerGroups, selectedWholesaler, search, filter]);
+
+    groups.sort((a, b) => {
+      switch (sortBy) {
+        case 'balance_asc':
+          return a.balance - b.balance;
+        case 'name_asc':
+          return a.name.localeCompare(b.name);
+        case 'name_desc':
+          return b.name.localeCompare(a.name);
+        case 'balance_desc':
+        default:
+          return b.balance - a.balance || a.name.localeCompare(b.name);
+      }
+    });
+    return groups;
+  }, [wholesalerGroups, shopFilter, search, statusFilter, sortBy, dateFrom, dateTo]);
 
   const totals = useMemo(() => {
     const total = orderRows.reduce((s, r) => s + r.total, 0);
@@ -123,37 +166,84 @@ export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDe
     };
   }, [orderRows]);
 
-  const handleMarkPaid = async (row: OrderRow) => {
-    if (row.balance <= 0.01) return;
-    await onAddPayment(row.order.id, row.balance, 'cash', 'Marked as paid');
-    toast.success(`Invoice for ${row.order.shopName} marked as paid`);
+  const hasActiveFilters =
+    !!search || statusFilter !== 'all' || shopFilter !== 'all' || !!dateFrom || !!dateTo || sortBy !== 'balance_desc';
+
+  const handleClearFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setShopFilter('all');
+    setSortBy('balance_desc');
+    setDateFrom('');
+    setDateTo('');
   };
 
-  const handleMarkUnpaid = async (row: OrderRow) => {
-    const orderPayments = payments.filter(p => p.orderId === row.order.id);
-    if (orderPayments.length === 0) return;
-    if (!confirm(`Remove all ${orderPayments.length} payment(s) for this invoice?`)) return;
-    for (const p of orderPayments) await onDeletePayment(p.id);
-    toast.success('Invoice marked as unpaid');
-  };
-
-  const openRecordDialog = (orderId: string, suggested: number) => {
-    setOpenDialog({ orderId, suggested });
+  const openRecordDialog = (orderId: string, suggested: number, shopName: string) => {
+    setRecordDialog({ orderId, suggested, shopName });
     setAmount(suggested > 0 ? suggested.toFixed(2) : '');
     setMethod('cash');
+    setCheckNumber('');
     setNote('');
   };
 
-  const handleSubmit = async () => {
-    if (!openDialog) return;
+  const handleSubmitRecord = async () => {
+    if (!recordDialog) return;
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) {
       toast.error('Enter a valid amount');
       return;
     }
-    await onAddPayment(openDialog.orderId, amt, method, note);
+    const fullNote = method === 'check' && checkNumber ? `Check #${checkNumber}${note ? ` — ${note}` : ''}` : note;
+    await onAddPayment(recordDialog.orderId, amt, method, fullNote);
     toast.success('Payment recorded');
-    setOpenDialog(null);
+    setRecordDialog(null);
+  };
+
+  const openDistributeDialog = (shopName: string, rows: OrderRow[], totalPending: number) => {
+    setDistributeDialog({ shopName, rows, totalPending });
+    setDistAmount('');
+    setDistMethod('cash');
+    setDistCheckNumber('');
+    setDistNote('');
+  };
+
+  const handleSubmitDistribute = async () => {
+    if (!distributeDialog) return;
+    const amt = parseFloat(distAmount);
+    if (!amt || amt <= 0) {
+      toast.error('Enter a valid amount');
+      return;
+    }
+    if (amt > distributeDialog.totalPending + 0.01) {
+      toast.error('Payment amount cannot exceed total pending balance');
+      return;
+    }
+
+    setDistSubmitting(true);
+    try {
+      // Apply oldest first across rows with balance > 0
+      const sorted = [...distributeDialog.rows]
+        .filter(r => r.balance > 0.01)
+        .sort((a, b) => a.order.date.getTime() - b.order.date.getTime());
+
+      let remaining = amt;
+      const fullNote = distMethod === 'check' && distCheckNumber
+        ? `Check #${distCheckNumber}${distNote ? ` — ${distNote}` : ''}`
+        : distNote;
+
+      for (const r of sorted) {
+        if (remaining <= 0.01) break;
+        const apply = Math.min(remaining, r.balance);
+        await onAddPayment(r.order.id, apply, distMethod, fullNote);
+        remaining -= apply;
+      }
+      toast.success(`Payment distributed across invoices for ${distributeDialog.shopName}`);
+      setDistributeDialog(null);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to distribute payment');
+    } finally {
+      setDistSubmitting(false);
+    }
   };
 
   const handleExport = () => {
@@ -189,457 +279,532 @@ export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDe
   };
 
   const statusBadge = (status: 'paid' | 'partial' | 'unpaid') => {
-    if (status === 'paid')
-      return (
-        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 gap-1">
-          <Check className="w-3 h-3" /> Paid
-        </Badge>
-      );
-    if (status === 'partial')
-      return (
-        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 gap-1">
-          <DollarSign className="w-3 h-3" /> Partial
-        </Badge>
-      );
+    const variants: Record<typeof status, 'default' | 'secondary' | 'destructive'> = {
+      paid: 'default',
+      partial: 'secondary',
+      unpaid: 'destructive',
+    };
     return (
-      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 gap-1">
-        <AlertCircle className="w-3 h-3" /> Unpaid
+      <Badge variant={variants[status]}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
   };
 
+  const selectedShop = wholesalerNames.find(n => n === shopFilter);
+
   return (
-    <TooltipProvider delayDuration={200}>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              <CreditCard className="w-6 h-6 text-primary" />
-              Payments & Receivables
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Track who owes you money. Each wholesaler card shows their total purchases, payments received, and outstanding balance.
-            </p>
+    <div className="space-y-4 md:space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+            <CreditCard className="w-6 h-6 text-primary" />
+            Payments & Receivables
+          </h2>
+          <p className="text-sm md:text-base text-muted-foreground">
+            Track wholesaler invoices and record payments
+          </p>
+        </div>
+        <Button variant="outline" onClick={handleExport} className="w-full sm:w-auto">
+          <Download className="mr-2 h-4 w-4" />
+          Export
+        </Button>
+      </div>
+
+      {/* Summary stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <SummaryCard icon={<FileText className="w-4 h-4" />} label="Total Invoiced" value={fmt(totals.total)} />
+        <SummaryCard icon={<Wallet className="w-4 h-4" />} label="Total Received" value={fmt(totals.paid)} accent="green" />
+        <SummaryCard icon={<AlertCircle className="w-4 h-4" />} label="Outstanding" value={fmt(totals.outstanding)} accent="red" />
+        <SummaryCard
+          icon={<DollarSign className="w-4 h-4" />}
+          label="Collection Rate"
+          value={`${totals.collectionRate}%`}
+          progress={totals.collectionRate}
+          hint={`${totals.unpaidCount} invoice${totals.unpaidCount !== 1 ? 's' : ''} open`}
+        />
+      </div>
+
+      {/* Filter card */}
+      <Card className="p-4">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <h3 className="font-semibold">Filters</h3>
+            </div>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                Clear All
+              </Button>
+            )}
           </div>
-          <Button onClick={handleExport} variant="outline" className="w-full sm:w-auto">
-            <Download className="w-4 h-4 mr-2" />
-            Export to Excel
-          </Button>
-        </div>
 
-        {/* How it works helper */}
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-900">
-          <Info className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600" />
-          <div>
-            <span className="font-semibold">Quick guide: </span>
-            Click the green <span className="font-semibold">Paid</span> button to mark an invoice fully paid, or click
-            <span className="inline-flex items-center mx-1 px-1.5 py-0.5 border rounded text-xs"><Plus className="w-3 h-3" /></span>
-            to record a partial payment. Use
-            <span className="inline-flex items-center mx-1 px-1.5 py-0.5 border rounded text-xs"><FileDown className="w-3 h-3" /></span>
-            to download the invoice PDF.
-          </div>
-        </div>
-
-        {/* Summary stat cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <SummaryCard
-            icon={<FileText className="w-4 h-4" />}
-            label="Total Invoiced"
-            value={fmt(totals.total)}
-            hint="Sum of all order values"
-          />
-          <SummaryCard
-            icon={<Wallet className="w-4 h-4" />}
-            label="Total Received"
-            value={fmt(totals.paid)}
-            hint="Money collected so far"
-            accent="green"
-          />
-          <SummaryCard
-            icon={<AlertCircle className="w-4 h-4" />}
-            label="Outstanding Balance"
-            value={fmt(totals.outstanding)}
-            hint="Money still owed to you"
-            accent="red"
-          />
-          <SummaryCard
-            icon={<DollarSign className="w-4 h-4" />}
-            label="Collection Rate"
-            value={`${totals.collectionRate}%`}
-            hint={`${totals.unpaidCount} invoice${totals.unpaidCount !== 1 ? 's' : ''} not fully paid`}
-            progress={totals.collectionRate}
-          />
-        </div>
-
-        {/* Wholesaler balances */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex flex-col gap-3">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Store className="w-5 h-5" />
-                  Wholesaler Balances
-                </CardTitle>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Click any wholesaler to expand and see their individual invoices.
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2">
-                <Select value={selectedWholesaler} onValueChange={setSelectedWholesaler}>
-                  <SelectTrigger className="w-full sm:w-56">
-                    <Store className="w-4 h-4 mr-2 text-muted-foreground flex-shrink-0" />
-                    <SelectValue placeholder="All wholesalers" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All wholesalers</SelectItem>
-                    {wholesalerNames.map(n => (
-                      <SelectItem key={n} value={n}>
-                        {n}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="overflow-x-auto -mx-1 px-1">
-                  <Tabs value={filter} onValueChange={v => setFilter(v as StatusFilter)}>
-                    <TabsList className="w-max">
-                      <TabsTrigger value="all">All</TabsTrigger>
-                      <TabsTrigger value="unpaid">Unpaid</TabsTrigger>
-                      <TabsTrigger value="partial">Partial</TabsTrigger>
-                      <TabsTrigger value="paid">Paid</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-                <div className="relative w-full sm:w-56 sm:ml-auto">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search wholesaler..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="search">Search</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="search"
+                  placeholder="Wholesaler name..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-9"
+                />
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {filteredGroups.length === 0 && (
-              <div className="text-center py-12 px-4 border-2 border-dashed rounded-lg">
-                <Store className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
-                <p className="font-medium text-foreground">No wholesalers match the current filters</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Try changing the status filter or clearing your search.
-                </p>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Payment Status</Label>
+              <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>
+                <SelectTrigger id="status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="unpaid">Unpaid</SelectItem>
+                  <SelectItem value="partial">Partial</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Wholesaler</Label>
+              <Popover open={shopComboOpen} onOpenChange={setShopComboOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={shopComboOpen} className="w-full justify-between font-normal">
+                    {shopFilter === 'all' ? 'All Wholesalers' : selectedShop || 'Select...'}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search wholesalers..." />
+                    <CommandList>
+                      <CommandEmpty>No wholesaler found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="all"
+                          onSelect={() => {
+                            setShopFilter('all');
+                            setShopComboOpen(false);
+                          }}
+                        >
+                          <Check className={cn('mr-2 h-4 w-4', shopFilter === 'all' ? 'opacity-100' : 'opacity-0')} />
+                          All Wholesalers
+                        </CommandItem>
+                        {wholesalerNames.map(n => (
+                          <CommandItem
+                            key={n}
+                            value={n}
+                            onSelect={() => {
+                              setShopFilter(n);
+                              setShopComboOpen(false);
+                            }}
+                          >
+                            <Check className={cn('mr-2 h-4 w-4', shopFilter === n ? 'opacity-100' : 'opacity-0')} />
+                            {n}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="sort">Sort By</Label>
+              <Select value={sortBy} onValueChange={v => setSortBy(v as SortBy)}>
+                <SelectTrigger id="sort">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="balance_desc">Highest Balance</SelectItem>
+                  <SelectItem value="balance_asc">Lowest Balance</SelectItem>
+                  <SelectItem value="name_asc">Name (A→Z)</SelectItem>
+                  <SelectItem value="name_desc">Name (Z→A)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="dateFrom">From Date</Label>
+              <div className="relative">
+                <Input id="dateFrom" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               </div>
-            )}
-            {filteredGroups.map(g => {
-              const isOpen = expanded[g.name] ?? (g.balance > 0.01 || selectedWholesaler !== 'all');
-              const headerStatus: 'paid' | 'partial' | 'unpaid' =
-                g.balance <= 0.01 ? 'paid' : g.paid > 0.01 ? 'partial' : 'unpaid';
-              const pct = g.total > 0 ? Math.round((g.paid / g.total) * 100) : 0;
-              const accentBar =
-                headerStatus === 'paid' ? 'bg-green-500' : headerStatus === 'partial' ? 'bg-orange-500' : 'bg-red-500';
-              return (
-                <Collapsible
-                  key={g.name}
-                  open={isOpen}
-                  onOpenChange={o => setExpanded(prev => ({ ...prev, [g.name]: o }))}
-                  className="border rounded-lg overflow-hidden bg-card"
-                >
-                  <CollapsibleTrigger asChild>
-                    <button className="w-full flex items-stretch text-left hover:bg-muted/40 transition-colors">
-                      <div className={`w-1.5 ${accentBar} flex-shrink-0`} />
-                      <div className="flex-1 flex items-start sm:items-center gap-3 px-3 sm:px-4 py-3">
-                        <ChevronDown
-                          className={`w-4 h-4 mt-1 sm:mt-0 text-muted-foreground transition-transform flex-shrink-0 ${
-                            isOpen ? '' : '-rotate-90'
-                          }`}
-                        />
-                        <Store className="w-4 h-4 mt-1 sm:mt-0 text-primary flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-semibold truncate">{g.name}</span>
-                            {statusBadge(headerStatus)}
-                            <Badge variant="secondary" className="text-xs">
-                              {g.rows.length} invoice{g.rows.length !== 1 ? 's' : ''}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dateTo">To Date</Label>
+              <div className="relative">
+                <Input id="dateTo" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Wholesaler groups */}
+      <div className="space-y-4">
+        {filteredGroups.length === 0 && (
+          <div className="text-center py-12 px-4 border-2 border-dashed rounded-lg">
+            <Store className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
+            <p className="font-medium text-foreground">No wholesalers match the current filters</p>
+            <p className="text-sm text-muted-foreground mt-1">Try changing the status filter or clearing your search.</p>
+          </div>
+        )}
+
+        {filteredGroups.map(g => {
+          const isExpanded = expanded[g.name] ?? (g.balance > 0.01 || shopFilter !== 'all');
+          const pendingRows = g.rows.filter(r => r.balance > 0.01);
+          return (
+            <div key={g.name} className="border rounded-lg">
+              {/* Group header */}
+              <div className="bg-muted p-3 md:p-4">
+                <div className="flex items-start gap-2 md:gap-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setExpanded(prev => ({ ...prev, [g.name]: !isExpanded }))}
+                    className="h-8 w-8 p-0 flex-shrink-0"
+                  >
+                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  </Button>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-base md:text-lg truncate flex items-center gap-2">
+                          <Store className="w-4 h-4 text-primary flex-shrink-0" />
+                          {g.name}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-1 mt-1">
+                          <Badge variant="outline">{g.rows.length} invoice(s)</Badge>
+                          {g.unpaidCount > 0 && (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                              {g.unpaidCount} open
                             </Badge>
-                            {g.unpaidCount > 0 && (
-                              <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
-                                {g.unpaidCount} open
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="mt-2 flex items-center gap-2">
-                            <Progress value={pct} className="h-1.5 flex-1" />
-                            <span className="text-xs text-muted-foreground tabular-nums w-12 text-right">{pct}% paid</span>
-                          </div>
-                          <div className="sm:hidden mt-2 grid grid-cols-3 gap-2 text-xs">
-                            <div>
-                              <div className="text-muted-foreground">Total</div>
-                              <div className="font-semibold">{fmt(g.total)}</div>
-                            </div>
-                            <div>
-                              <div className="text-muted-foreground">Paid</div>
-                              <div className="font-semibold text-green-600">{fmt(g.paid)}</div>
-                            </div>
-                            <div>
-                              <div className="text-muted-foreground">Owes</div>
-                              <div className={`font-bold ${g.balance > 0.01 ? 'text-red-600' : 'text-muted-foreground'}`}>
-                                {fmt(g.balance)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="hidden sm:flex items-center gap-6 text-sm flex-shrink-0">
-                          <div className="text-right">
-                            <div className="text-xs text-muted-foreground">Total Purchased</div>
-                            <div className="font-semibold tabular-nums">{fmt(g.total)}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xs text-muted-foreground">Paid</div>
-                            <div className="font-semibold text-green-600 tabular-nums">{fmt(g.paid)}</div>
-                          </div>
-                          <div className="text-right min-w-[110px]">
-                            <div className="text-xs text-muted-foreground">Owes You</div>
-                            <div
-                              className={`font-bold tabular-nums ${
-                                g.balance > 0.01 ? 'text-red-600' : 'text-muted-foreground'
-                              }`}
-                            >
-                              {fmt(g.balance)}
-                            </div>
-                          </div>
+                          )}
                         </div>
                       </div>
-                    </button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="border-t overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/30">
-                            <TableHead>Invoice Date</TableHead>
-                            <TableHead className="text-right">Total</TableHead>
-                            <TableHead className="text-right">Paid</TableHead>
-                            <TableHead className="text-right">Balance</TableHead>
-                            <TableHead className="text-center">Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {g.rows.map(r => (
-                            <TableRow key={r.order.id} className="hover:bg-muted/30">
-                              <TableCell className="text-sm">
-                                <div className="font-medium">{format(r.order.date, 'dd MMM yyyy')}</div>
-                                <div className="text-xs text-muted-foreground">Invoice #{r.order.id.slice(0, 8)}</div>
-                              </TableCell>
-                              <TableCell className="text-right font-semibold tabular-nums">{fmt(r.total)}</TableCell>
-                              <TableCell className="text-right text-green-600 font-semibold tabular-nums">
-                                {fmt(r.paid)}
-                              </TableCell>
-                              <TableCell
-                                className={`text-right font-semibold tabular-nums ${
-                                  r.balance > 0.01 ? 'text-red-600' : 'text-muted-foreground'
-                                }`}
-                              >
-                                {fmt(r.balance)}
-                              </TableCell>
-                              <TableCell className="text-center">{statusBadge(r.status)}</TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  {r.status !== 'paid' ? (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          size="sm"
-                                          onClick={() => handleMarkPaid(r)}
-                                          className="h-7 bg-green-600 hover:bg-green-700 text-white"
-                                        >
-                                          <Check className="w-3 h-3 mr-1" />
-                                          Paid
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Mark this invoice fully paid ({fmt(r.balance)})</TooltipContent>
-                                    </Tooltip>
-                                  ) : (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => handleMarkUnpaid(r)}
-                                          className="h-7 text-red-600 border-red-200 hover:bg-red-50"
-                                        >
-                                          <X className="w-3 h-3 mr-1" />
-                                          Undo
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Remove all payments for this invoice</TooltipContent>
-                                    </Tooltip>
-                                  )}
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => openRecordDialog(r.order.id, r.balance)}
-                                        disabled={r.status === 'paid'}
-                                        className="h-7"
-                                      >
-                                        <Plus className="w-3 h-3" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Record a partial payment</TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() =>
-                                          downloadInvoice(r.order, wholesalers.find(w => w.name === r.order.shopName))
-                                        }
-                                        className="h-7"
-                                      >
-                                        <FileDown className="w-3 h-3" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Download invoice PDF</TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              );
-            })}
-          </CardContent>
-        </Card>
 
-        {/* Payment history */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
-              <History className="w-5 h-5" />
-              Payment History
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">Every payment received, newest first. Click the trash icon to remove a payment.</p>
-          </CardHeader>
-          <CardContent>
-            <div className="border rounded-lg overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Date</TableHead>
-                    <TableHead>Wholesaler</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Method</TableHead>
-                    <TableHead>Note</TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {payments
-                    .slice()
-                    .sort((a, b) => b.paymentDate.getTime() - a.paymentDate.getTime())
-                    .map(p => {
-                      const o = orders.find(o => o.id === p.orderId);
-                      return (
-                        <TableRow key={p.id} className="hover:bg-muted/30">
-                          <TableCell className="text-sm text-muted-foreground">
-                            {format(p.paymentDate, 'dd MMM yyyy')}
+                      <div className="flex flex-wrap items-center gap-2 md:gap-4">
+                        <div className="text-left sm:text-right">
+                          <p className="text-xs text-muted-foreground">Total</p>
+                          <p className="text-lg md:text-xl font-bold tabular-nums">{fmt(g.total)}</p>
+                        </div>
+                        <div className="text-left sm:text-right">
+                          <p className="text-xs text-muted-foreground">Pending</p>
+                          <p
+                            className={`text-lg md:text-xl font-bold tabular-nums ${
+                              g.balance > 0.01 ? 'text-orange-600' : 'text-green-600'
+                            }`}
+                          >
+                            {fmt(g.balance)}
+                          </p>
+                        </div>
+                        {g.balance > 0.01 && (
+                          <Button
+                            size="sm"
+                            onClick={() => openDistributeDialog(g.name, pendingRows, g.balance)}
+                          >
+                            <DollarSign className="h-4 w-4 mr-1" />
+                            Pay
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Invoices table */}
+              {isExpanded && (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Invoice #</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Paid</TableHead>
+                        <TableHead className="text-right">Pending</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {g.rows.map(r => (
+                        <TableRow key={r.order.id}>
+                          <TableCell className="font-medium">INV-{r.order.id.slice(0, 8).toUpperCase()}</TableCell>
+                          <TableCell className="text-sm">{format(r.order.date, 'dd MMM yyyy')}</TableCell>
+                          <TableCell className="text-right font-semibold tabular-nums">{fmt(r.total)}</TableCell>
+                          <TableCell className="text-right text-green-600 font-semibold tabular-nums">{fmt(r.paid)}</TableCell>
+                          <TableCell
+                            className={`text-right font-semibold tabular-nums ${
+                              r.balance > 0.01 ? 'text-orange-600' : 'text-green-600'
+                            }`}
+                          >
+                            {fmt(r.balance)}
                           </TableCell>
-                          <TableCell className="font-medium">{o?.shopName ?? '—'}</TableCell>
-                          <TableCell className="text-right text-green-600 font-semibold tabular-nums">
-                            {fmt(p.amount)}
-                          </TableCell>
-                          <TableCell className="text-sm capitalize">{p.method}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{p.note || '—'}</TableCell>
-                          <TableCell>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button size="icon" variant="ghost" onClick={() => onDeletePayment(p.id)}>
-                                  <Trash2 className="w-4 h-4 text-muted-foreground" />
+                          <TableCell>{statusBadge(r.status)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              {r.status !== 'paid' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openRecordDialog(r.order.id, r.balance, g.name)}
+                                  title="Record Payment"
+                                >
+                                  <DollarSign className="h-4 w-4" />
                                 </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Delete this payment</TooltipContent>
-                            </Tooltip>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => downloadInvoice(r.order, wholesalers.find(w => w.name === r.order.shopName))}
+                                title="Download PDF"
+                              >
+                                <FileDown className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
-                  {payments.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        No payments recorded yet. Use the green "Paid" button on any invoice above to start.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Record payment dialog */}
-        <Dialog open={!!openDialog} onOpenChange={o => !o && setOpenDialog(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Record Payment</DialogTitle>
-              {openDialog && openDialog.suggested > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Outstanding balance for this invoice: <span className="font-semibold text-foreground">{fmt(openDialog.suggested)}</span>
-                </p>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Amount Received ($)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={amount}
-                  onChange={e => setAmount(e.target.value)}
-                  autoFocus
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Enter the full balance to mark this invoice paid, or any smaller amount for a partial payment.
-                </p>
-              </div>
-              <div>
-                <Label>Payment Method</Label>
-                <Select value={method} onValueChange={setMethod}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="bank">Bank Transfer</SelectItem>
-                    <SelectItem value="card">Card</SelectItem>
-                    <SelectItem value="check">Check</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Note (optional)</Label>
-                <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Reference, check number, etc." />
-              </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpenDialog(null)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmit}>Record Payment</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          );
+        })}
       </div>
-    </TooltipProvider>
+
+      {/* Payment history */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <History className="w-5 h-5" />
+            Payment History
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">Every payment received, newest first.</p>
+        </CardHeader>
+        <CardContent>
+          <div className="border rounded-lg overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead>Date</TableHead>
+                  <TableHead>Wholesaler</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Method</TableHead>
+                  <TableHead>Note</TableHead>
+                  <TableHead className="w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payments
+                  .slice()
+                  .sort((a, b) => b.paymentDate.getTime() - a.paymentDate.getTime())
+                  .map(p => {
+                    const o = orders.find(o => o.id === p.orderId);
+                    return (
+                      <TableRow key={p.id}>
+                        <TableCell className="text-sm text-muted-foreground">{format(p.paymentDate, 'dd MMM yyyy')}</TableCell>
+                        <TableCell className="font-medium">{o?.shopName ?? '—'}</TableCell>
+                        <TableCell className="text-right text-green-600 font-semibold tabular-nums">{fmt(p.amount)}</TableCell>
+                        <TableCell className="text-sm capitalize">{p.method}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{p.note || '—'}</TableCell>
+                        <TableCell>
+                          <Button size="icon" variant="ghost" onClick={() => onDeletePayment(p.id)} title="Delete payment">
+                            <Trash2 className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                {payments.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No payments recorded yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Record Payment Dialog */}
+      <Dialog open={!!recordDialog} onOpenChange={o => !o && setRecordDialog(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Record Payment</DialogTitle>
+            {recordDialog && (
+              <DialogDescription>
+                For {recordDialog.shopName} — Outstanding: <span className="font-semibold text-foreground">{fmt(recordDialog.suggested)}</span>
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Remaining Balance</Label>
+              <div className="text-2xl font-bold text-primary">{recordDialog ? fmt(recordDialog.suggested) : '—'}</div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="amount">Payment Amount *</Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                placeholder="Enter amount"
+                autoFocus
+                required
+              />
+              {recordDialog && (
+                <p className="text-xs text-muted-foreground">Maximum: {fmt(recordDialog.suggested)}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Payment Method *</Label>
+              <Select value={method} onValueChange={setMethod}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="check">Check</SelectItem>
+                  <SelectItem value="bank">Bank Transfer</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {method === 'check' && (
+              <div className="space-y-2">
+                <Label htmlFor="checkNumber">Check Number</Label>
+                <Input id="checkNumber" value={checkNumber} onChange={e => setCheckNumber(e.target.value)} placeholder="Enter check number" />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="note">Notes</Label>
+              <Textarea id="note" value={note} onChange={e => setNote(e.target.value)} placeholder="Optional notes" rows={2} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRecordDialog(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitRecord}>Record Payment</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Distribute Payment Dialog */}
+      <Dialog open={!!distributeDialog} onOpenChange={o => !o && !distSubmitting && setDistributeDialog(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Distribute Payment — {distributeDialog?.shopName}</DialogTitle>
+            <DialogDescription>
+              Payment will be applied across {distributeDialog?.rows.length ?? 0} pending invoice(s), oldest first.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Total Pending Amount</Label>
+              <div className="text-2xl font-bold text-orange-600">{distributeDialog ? fmt(distributeDialog.totalPending) : '—'}</div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Payment Amount *</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="0.00"
+                value={distAmount}
+                onChange={e => setDistAmount(e.target.value)}
+                autoFocus
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Payment Method *</Label>
+              <Select value={distMethod} onValueChange={setDistMethod}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="check">Check</SelectItem>
+                  <SelectItem value="bank">Bank Transfer</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {distMethod === 'check' && (
+              <div className="space-y-2">
+                <Label>Check Number</Label>
+                <Input value={distCheckNumber} onChange={e => setDistCheckNumber(e.target.value)} placeholder="Enter check number" />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea value={distNote} onChange={e => setDistNote(e.target.value)} placeholder="Optional notes" rows={2} />
+            </div>
+
+            {distributeDialog && (
+              <div className="bg-muted p-3 rounded-lg space-y-2">
+                <p className="text-sm font-medium">Distribution Preview</p>
+                <p className="text-xs text-muted-foreground">Applied in this order:</p>
+                <div className="space-y-1">
+                  {[...distributeDialog.rows]
+                    .sort((a, b) => a.order.date.getTime() - b.order.date.getTime())
+                    .slice(0, 3)
+                    .map(r => (
+                      <div key={r.order.id} className="flex items-center justify-between text-xs">
+                        <span>INV-{r.order.id.slice(0, 8).toUpperCase()}</span>
+                        <span className="text-orange-600 font-semibold tabular-nums">{fmt(r.balance)}</span>
+                      </div>
+                    ))}
+                  {distributeDialog.rows.length > 3 && (
+                    <p className="text-xs text-muted-foreground">…and {distributeDialog.rows.length - 3} more</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDistributeDialog(null)} disabled={distSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitDistribute} disabled={distSubmitting}>
+              {distSubmitting ? 'Processing...' : 'Record Payment'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 
@@ -658,8 +823,7 @@ function SummaryCard({
   accent?: 'green' | 'red';
   progress?: number;
 }) {
-  const valueColor =
-    accent === 'green' ? 'text-green-600' : accent === 'red' ? 'text-red-600' : 'text-foreground';
+  const valueColor = accent === 'green' ? 'text-green-600' : accent === 'red' ? 'text-red-600' : 'text-foreground';
   const iconBg =
     accent === 'green'
       ? 'bg-green-100 text-green-700'
