@@ -10,11 +10,17 @@ import { Plus, Trash2, Store, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface OrderItemEntry {
+  lineId: string;
   itemId: string;
   warehouseId: string;
   quantity: number;
   unitPrice: number;
 }
+
+const createOrderLine = (entry: Omit<OrderItemEntry, 'lineId'>): OrderItemEntry => ({
+  lineId: crypto.randomUUID(),
+  ...entry,
+});
 
 interface CreateOrderDialogProps {
   open: boolean;
@@ -29,6 +35,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   const [selectedWholesaler, setSelectedWholesaler] = useState('');
   const [customShopName, setCustomShopName] = useState('');
   const [orderItems, setOrderItems] = useState<OrderItemEntry[]>([]);
+  const [openProductPickerLineId, setOpenProductPickerLineId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
 
@@ -112,7 +119,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
       updated[existingIdx].quantity += qty;
       setOrderItems(updated);
     } else {
-      setOrderItems([...orderItems, { itemId: item.id, warehouseId: best.warehouseId, quantity: qty, unitPrice: item.price }]);
+      setOrderItems([...orderItems, createOrderLine({ itemId: item.id, warehouseId: best.warehouseId, quantity: qty, unitPrice: item.price })]);
     }
 
     setSkuInput('');
@@ -130,7 +137,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
     setOrderItems((prev) => {
       if (prev.some(e => e.itemId === itemId)) return prev; // already added
-      const newLine: OrderItemEntry = { itemId, warehouseId, quantity: 1, unitPrice: item.price };
+      const newLine = createOrderLine({ itemId, warehouseId, quantity: 1, unitPrice: item.price });
       if (typeof popoverRowIndex === 'number' && popoverRowIndex >= 0 && popoverRowIndex < prev.length) {
         const updated = [...prev];
         updated.splice(popoverRowIndex, 0, newLine);
@@ -165,6 +172,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     setSubCategoryFilter('all');
     setSkuInput('');
     setQtyInput('1');
+    setOpenProductPickerLineId(null);
   };
 
   const handleClose = () => { resetState(); onOpenChange(false); };
@@ -273,7 +281,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                         const exceeds = entry.quantity > availableStock;
 
                         return (
-                          <tr key={index} className="border-t">
+                          <tr key={entry.lineId} className="border-t">
                             <td className="px-1 py-1">
                               {entry.itemId ? (
                                 <Select value={entry.itemId} onValueChange={(v) => handleItemChange(index, 'itemId', v)}>
@@ -287,7 +295,10 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                                   </SelectContent>
                                 </Select>
                               ) : (
-                                <Popover>
+                                <Popover
+                                  open={openProductPickerLineId === entry.lineId}
+                                  onOpenChange={(isOpen) => setOpenProductPickerLineId(isOpen ? entry.lineId : null)}
+                                >
                                   <PopoverTrigger asChild>
                                     <Button
                                       variant="ghost"
@@ -315,6 +326,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                                                 onSelect={() => {
                                                   if (added || totalStock === 0) return;
                                                   addProductToLines(item.id, index);
+                                                   setOpenProductPickerLineId(entry.lineId);
                                                 }}
                                               >
                                                 <Check className={`mr-2 h-4 w-4 ${added ? 'opacity-100' : 'opacity-0'}`} />
@@ -427,7 +439,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setOrderItems([...orderItems, { itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 }])}
+                onClick={() => setOrderItems([...orderItems, createOrderLine({ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 })])}
                 className="w-full h-8 text-xs flex-shrink-0"
               >
                 <Plus className="w-3.5 h-3.5 mr-1" /> Add line
@@ -438,7 +450,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
               Scan a SKU above or <button
                 type="button"
                 className="underline text-foreground"
-                onClick={() => setOrderItems([{ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 }])}
+                onClick={() => setOrderItems([createOrderLine({ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 })])}
               >add a line manually</button>
             </div>
           )}
