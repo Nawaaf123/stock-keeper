@@ -119,7 +119,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
       updated[existingIdx].quantity += qty;
       setOrderItems(updated);
     } else {
-      setOrderItems([...orderItems, { itemId: item.id, warehouseId: best.warehouseId, quantity: qty, unitPrice: item.price }]);
+      setOrderItems([...orderItems, createOrderLine({ itemId: item.id, warehouseId: best.warehouseId, quantity: qty, unitPrice: item.price })]);
     }
 
     setSkuInput('');
@@ -137,7 +137,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
     setOrderItems((prev) => {
       if (prev.some(e => e.itemId === itemId)) return prev; // already added
-      const newLine: OrderItemEntry = { itemId, warehouseId, quantity: 1, unitPrice: item.price };
+      const newLine = createOrderLine({ itemId, warehouseId, quantity: 1, unitPrice: item.price });
       if (typeof popoverRowIndex === 'number' && popoverRowIndex >= 0 && popoverRowIndex < prev.length) {
         const updated = [...prev];
         updated.splice(popoverRowIndex, 0, newLine);
@@ -172,6 +172,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     setSubCategoryFilter('all');
     setSkuInput('');
     setQtyInput('1');
+    setOpenProductPickerLineId(null);
   };
 
   const handleClose = () => { resetState(); onOpenChange(false); };
