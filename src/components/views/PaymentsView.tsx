@@ -207,32 +207,68 @@ export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDe
     setDistMethod('cash');
     setDistCheckNumber('');
     setDistNote('');
+    setDistMode('auto');
+    setManualAllocations({});
   };
+
+  const manualTotal = useMemo(() => {
+    return Object.values(manualAllocations).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+  }, [manualAllocations]);
 
   const handleSubmitDistribute = async () => {
     if (!distributeDialog) return;
-    const amt = parseFloat(distAmount);
-    if (!amt || amt <= 0) {
-      toast.error('Enter a valid amount');
-      return;
-    }
-    if (amt > distributeDialog.totalPending + 0.01) {
-      toast.error('Payment amount cannot exceed total pending balance');
-      return;
-    }
+
+    const fullNote = distMethod === 'check' && distCheckNumber
+      ? `Check #${distCheckNumber}${distNote ? ` — ${distNote}` : ''}`
+      : distNote;
 
     setDistSubmitting(true);
     try {
-      // Apply oldest first across rows with balance > 0
+      if (distMode === 'manual') {
+        // Validate per-row allocations
+        const allocations: { row: OrderRow; amount: number }[] = [];
+        for (const r of distributeDialog.rows) {
+          const raw = manualAllocations[r.order.id];
+          const amt = parseFloat(raw || '0');
+          if (!amt || amt <= 0) continue;
+          if (amt > r.balance + 0.01) {
+            toast.error(`Amount for INV-${r.order.id.slice(0, 8).toUpperCase()} exceeds its balance`);
+            setDistSubmitting(false);
+            return;
+          }
+          allocations.push({ row: r, amount: amt });
+        }
+        if (allocations.length === 0) {
+          toast.error('Enter at least one allocation');
+          setDistSubmitting(false);
+          return;
+        }
+        for (const a of allocations) {
+          await onAddPayment(a.row.order.id, a.amount, distMethod, fullNote);
+        }
+        toast.success(`Payment distributed across ${allocations.length} invoice(s) for ${distributeDialog.shopName}`);
+        setDistributeDialog(null);
+        return;
+      }
+
+      // Auto mode: oldest-first
+      const amt = parseFloat(distAmount);
+      if (!amt || amt <= 0) {
+        toast.error('Enter a valid amount');
+        setDistSubmitting(false);
+        return;
+      }
+      if (amt > distributeDialog.totalPending + 0.01) {
+        toast.error('Payment amount cannot exceed total pending balance');
+        setDistSubmitting(false);
+        return;
+      }
+
       const sorted = [...distributeDialog.rows]
         .filter(r => r.balance > 0.01)
         .sort((a, b) => a.order.date.getTime() - b.order.date.getTime());
 
       let remaining = amt;
-      const fullNote = distMethod === 'check' && distCheckNumber
-        ? `Check #${distCheckNumber}${distNote ? ` — ${distNote}` : ''}`
-        : distNote;
-
       for (const r of sorted) {
         if (remaining <= 0.01) break;
         const apply = Math.min(remaining, r.balance);
