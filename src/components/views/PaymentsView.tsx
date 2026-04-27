@@ -86,6 +86,8 @@ export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDe
   const [distCheckNumber, setDistCheckNumber] = useState('');
   const [distNote, setDistNote] = useState('');
   const [distSubmitting, setDistSubmitting] = useState(false);
+  const [distMode, setDistMode] = useState<'auto' | 'manual'>('auto');
+  const [manualAllocations, setManualAllocations] = useState<Record<string, string>>({});
 
   // Compute per-order rows
   const orderRows: OrderRow[] = useMemo(() => {
