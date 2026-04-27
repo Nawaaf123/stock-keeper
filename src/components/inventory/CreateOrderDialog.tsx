@@ -281,7 +281,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                         const exceeds = entry.quantity > availableStock;
 
                         return (
-                          <tr key={index} className="border-t">
+                          <tr key={entry.lineId} className="border-t">
                             <td className="px-1 py-1">
                               {entry.itemId ? (
                                 <Select value={entry.itemId} onValueChange={(v) => handleItemChange(index, 'itemId', v)}>
@@ -295,7 +295,10 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                                   </SelectContent>
                                 </Select>
                               ) : (
-                                <Popover>
+                                <Popover
+                                  open={openProductPickerLineId === entry.lineId}
+                                  onOpenChange={(isOpen) => setOpenProductPickerLineId(isOpen ? entry.lineId : null)}
+                                >
                                   <PopoverTrigger asChild>
                                     <Button
                                       variant="ghost"
@@ -323,6 +326,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                                                 onSelect={() => {
                                                   if (added || totalStock === 0) return;
                                                   addProductToLines(item.id, index);
+                                                   setOpenProductPickerLineId(entry.lineId);
                                                 }}
                                               >
                                                 <Check className={`mr-2 h-4 w-4 ${added ? 'opacity-100' : 'opacity-0'}`} />
@@ -435,7 +439,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setOrderItems([...orderItems, { itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 }])}
+                onClick={() => setOrderItems([...orderItems, createOrderLine({ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 })])}
                 className="w-full h-8 text-xs flex-shrink-0"
               >
                 <Plus className="w-3.5 h-3.5 mr-1" /> Add line
@@ -446,7 +450,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
               Scan a SKU above or <button
                 type="button"
                 className="underline text-foreground"
-                onClick={() => setOrderItems([{ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 }])}
+                onClick={() => setOrderItems([createOrderLine({ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 })])}
               >add a line manually</button>
             </div>
           )}
