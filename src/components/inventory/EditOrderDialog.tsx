@@ -11,11 +11,17 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface OrderLine {
+  lineId: string;
   itemId: string;
   warehouseId: string;
   quantity: number;
   unitPrice: number;
 }
+
+const createOrderLine = (entry: Omit<OrderLine, 'lineId'>): OrderLine => ({
+  lineId: crypto.randomUUID(),
+  ...entry,
+});
 
 interface EditOrderDialogProps {
   open: boolean;
