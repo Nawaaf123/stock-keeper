@@ -45,12 +45,10 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   const linesScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Only auto-scroll to bottom when starting fresh (no picker open). When the user is rapidly
-    // adding via the picker, we manage scroll manually to keep the picker row anchored.
-    if (linesScrollRef.current && !openProductPickerLineId) {
+    if (linesScrollRef.current) {
       linesScrollRef.current.scrollTop = linesScrollRef.current.scrollHeight;
     }
-  }, [orderItems.length, openProductPickerLineId]);
+  }, [orderItems.length]);
 
   const categories = useMemo(
     () => Array.from(new Set(items.map(i => i.category).filter(Boolean))).sort(),
@@ -140,8 +138,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     setOrderItems((prev) => {
       if (prev.some(e => e.itemId === itemId)) return prev; // already added
       const newLine = createOrderLine({ itemId, warehouseId, quantity: 1, unitPrice: item.price });
-      // Insert BEFORE the picker row so the picker stays at the same position (anchoring the popover).
-      if (typeof popoverRowIndex === 'number' && popoverRowIndex >= 0 && popoverRowIndex <= prev.length) {
+      if (typeof popoverRowIndex === 'number' && popoverRowIndex >= 0 && popoverRowIndex < prev.length) {
         const updated = [...prev];
         updated.splice(popoverRowIndex, 0, newLine);
         return updated;
@@ -284,7 +281,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                         const exceeds = entry.quantity > availableStock;
 
                         return (
-                          <tr key={entry.lineId} data-line-id={entry.lineId} className="border-t">
+                          <tr key={entry.lineId} className="border-t">
                             <td className="px-1 py-1">
                               {entry.itemId ? (
                                 <Select value={entry.itemId} onValueChange={(v) => handleItemChange(index, 'itemId', v)}>
@@ -315,10 +312,6 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                                   <PopoverContent
                                     className="p-0 w-[420px]"
                                     align="start"
-                                    side="bottom"
-                                    sideOffset={4}
-                                    avoidCollisions={false}
-                                    sticky="always"
                                     onWheel={(e) => e.stopPropagation()}
                                     onTouchMove={(e) => e.stopPropagation()}
                                   >
@@ -340,27 +333,8 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                                                 disabled={totalStock === 0}
                                                 onSelect={() => {
                                                   if (added || totalStock === 0) return;
-                                                  // Capture scroll offset BEFORE inserting so we can keep the
-                                                  // picker row visually anchored after a new line is added above it.
-                                                  const scroller = linesScrollRef.current;
-                                                  const prevScrollTop = scroller?.scrollTop ?? 0;
-                                                  const triggerRow = scroller?.querySelector<HTMLTableRowElement>(
-                                                    `tr[data-line-id="${entry.lineId}"]`
-                                                  );
-                                                  const prevRowTop = triggerRow?.offsetTop ?? 0;
-
                                                   addProductToLines(item.id, index);
-                                                  setOpenProductPickerLineId(entry.lineId);
-
-                                                  // After DOM updates, offset scroll so the picker row stays in place.
-                                                  requestAnimationFrame(() => {
-                                                    if (!scroller) return;
-                                                    const newRow = scroller.querySelector<HTMLTableRowElement>(
-                                                      `tr[data-line-id="${entry.lineId}"]`
-                                                    );
-                                                    const newRowTop = newRow?.offsetTop ?? prevRowTop;
-                                                    scroller.scrollTop = prevScrollTop + (newRowTop - prevRowTop);
-                                                  });
+                                                   setOpenProductPickerLineId(entry.lineId);
                                                 }}
                                               >
                                                 <Check className={`mr-2 h-4 w-4 ${added ? 'opacity-100' : 'opacity-0'}`} />
