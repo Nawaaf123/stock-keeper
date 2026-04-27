@@ -166,7 +166,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
       updated[existingIdx].quantity += qty;
       setLines(updated);
     } else {
-      setLines([...lines, { itemId: item.id, warehouseId: best.warehouseId, quantity: qty, unitPrice: item.price }]);
+      setLines([...lines, createOrderLine({ itemId: item.id, warehouseId: best.warehouseId, quantity: qty, unitPrice: item.price })]);
     }
 
     setSkuInput('');
