@@ -1,6 +1,6 @@
 {
-  "name": "Nawaaf Track — MR Fog Inventory",
-  "short_name": "Nawaaf Track",
+  "name": "MR FOG",
+  "short_name": "MR FOG",
   "description": "Multi-warehouse inventory, orders, and payments management",
   "start_url": "/",
   "scope": "/",

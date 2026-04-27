@@ -32,7 +32,7 @@ export default function Auth() {
           <div className="mx-auto w-14 h-14 rounded-lg bg-accent flex items-center justify-center mb-2 overflow-hidden">
             <img src={mrfogLogo} alt="MR Fog" className="w-12 h-12 object-contain" />
           </div>
-          <CardTitle>Nawaaf Track</CardTitle>
+          <CardTitle>MR FOG</CardTitle>
           <CardDescription>Sign in to continue</CardDescription>
         </CardHeader>
         <CardContent>

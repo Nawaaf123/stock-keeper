@@ -36,7 +36,7 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
-  const activeLabel = navItems.find(n => n.id === activeView)?.label ?? 'Nawaaf Track';
+  const activeLabel = navItems.find(n => n.id === activeView)?.label ?? 'MR FOG';
 
   const NavList = () => (
     <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
@@ -101,7 +101,7 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
               <img src={mrfogLogo} alt="MR Fog" className="w-9 h-9 object-contain" />
             </div>
             <div className="min-w-0">
-              <h1 className="font-semibold text-lg truncate">Nawaaf Track</h1>
+              <h1 className="font-semibold text-lg truncate">MR FOG</h1>
               <p className="text-xs text-sidebar-foreground/60 truncate">MR Fog Inventory</p>
             </div>
           </div>
