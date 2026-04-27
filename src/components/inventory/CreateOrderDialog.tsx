@@ -309,10 +309,18 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                                       <ChevronsUpDown className="w-3.5 h-3.5 opacity-50" />
                                     </Button>
                                   </PopoverTrigger>
-                                  <PopoverContent className="p-0 w-[420px]" align="start">
+                                  <PopoverContent
+                                    className="p-0 w-[420px]"
+                                    align="start"
+                                    onWheel={(e) => e.stopPropagation()}
+                                    onTouchMove={(e) => e.stopPropagation()}
+                                  >
                                     <Command>
                                       <CommandInput placeholder="Search product by SKU or name..." />
-                                      <CommandList className="max-h-[320px]">
+                                      <CommandList
+                                        className="max-h-[320px] overflow-y-auto overscroll-contain"
+                                        onWheel={(e) => e.stopPropagation()}
+                                      >
                                         <CommandEmpty>No product found.</CommandEmpty>
                                         <CommandGroup>
                                           {filteredItems.map((item) => {
