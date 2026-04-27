@@ -45,10 +45,12 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   const linesScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (linesScrollRef.current) {
+    // Only auto-scroll to bottom when starting fresh (no picker open). When the user is rapidly
+    // adding via the picker, we manage scroll manually to keep the picker row anchored.
+    if (linesScrollRef.current && !openProductPickerLineId) {
       linesScrollRef.current.scrollTop = linesScrollRef.current.scrollHeight;
     }
-  }, [orderItems.length]);
+  }, [orderItems.length, openProductPickerLineId]);
 
   const categories = useMemo(
     () => Array.from(new Set(items.map(i => i.category).filter(Boolean))).sort(),
