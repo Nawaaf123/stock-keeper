@@ -138,7 +138,8 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     setOrderItems((prev) => {
       if (prev.some(e => e.itemId === itemId)) return prev; // already added
       const newLine = createOrderLine({ itemId, warehouseId, quantity: 1, unitPrice: item.price });
-      if (typeof popoverRowIndex === 'number' && popoverRowIndex >= 0 && popoverRowIndex < prev.length) {
+      // Insert BEFORE the picker row so the picker stays at the same position (anchoring the popover).
+      if (typeof popoverRowIndex === 'number' && popoverRowIndex >= 0 && popoverRowIndex <= prev.length) {
         const updated = [...prev];
         updated.splice(popoverRowIndex, 0, newLine);
         return updated;
