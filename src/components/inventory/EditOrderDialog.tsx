@@ -33,7 +33,7 @@ interface EditOrderDialogProps {
   onUpdateOrder: (
     orderId: string,
     shopName: string,
-    items: OrderLine[],
+    items: Omit<OrderLine, 'lineId'>[],
   ) => Promise<void> | void;
 }
 
