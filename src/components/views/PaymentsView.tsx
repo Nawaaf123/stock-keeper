@@ -462,7 +462,7 @@ export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDe
         )}
 
         {filteredGroups.map(g => {
-          const isExpanded = expanded[g.name] ?? (g.balance > 0.01 || shopFilter !== 'all');
+          const isExpanded = expanded[g.name] ?? false;
           const pendingRows = g.rows.filter(r => r.balance > 0.01);
           return (
             <div key={g.name} className="border rounded-lg">
