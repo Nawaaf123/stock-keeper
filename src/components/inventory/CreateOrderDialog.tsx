@@ -120,21 +120,20 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     skuRef.current?.focus();
   };
 
-  // Add a product into the lines list. If `targetIndex` points to an empty line, fill it; otherwise append.
-  // If product already exists in lines (same warehouse), do nothing (toggle off would lose qty/price edits).
-  const addProductToLines = (itemId: string, targetIndex?: number) => {
+  // Add a product into the lines list. Always inserts as a new line ABOVE the popover row (which stays empty
+  // so the popover trigger stays mounted and the popover stays open for the next click).
+  const addProductToLines = (itemId: string, popoverRowIndex?: number) => {
     const item = items.find(i => i.id === itemId);
     if (!item) return;
     const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
     const warehouseId = best && best.quantity > 0 ? best.warehouseId : '';
 
     setOrderItems((prev) => {
-      const alreadyIdx = prev.findIndex(e => e.itemId === itemId);
-      if (alreadyIdx >= 0) return prev; // already added
+      if (prev.some(e => e.itemId === itemId)) return prev; // already added
       const newLine: OrderItemEntry = { itemId, warehouseId, quantity: 1, unitPrice: item.price };
-      if (typeof targetIndex === 'number' && prev[targetIndex] && !prev[targetIndex].itemId) {
+      if (typeof popoverRowIndex === 'number' && popoverRowIndex >= 0 && popoverRowIndex < prev.length) {
         const updated = [...prev];
-        updated[targetIndex] = newLine;
+        updated.splice(popoverRowIndex, 0, newLine);
         return updated;
       }
       return [...prev, newLine];
