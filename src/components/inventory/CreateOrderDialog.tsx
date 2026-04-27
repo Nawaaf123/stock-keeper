@@ -313,6 +313,10 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                                   <PopoverContent
                                     className="p-0 w-[420px]"
                                     align="start"
+                                    side="bottom"
+                                    sideOffset={4}
+                                    avoidCollisions={false}
+                                    sticky="always"
                                     onWheel={(e) => e.stopPropagation()}
                                     onTouchMove={(e) => e.stopPropagation()}
                                   >
