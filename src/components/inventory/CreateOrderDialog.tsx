@@ -10,11 +10,17 @@ import { Plus, Trash2, Store, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface OrderItemEntry {
+  lineId: string;
   itemId: string;
   warehouseId: string;
   quantity: number;
   unitPrice: number;
 }
+
+const createOrderLine = (entry: Omit<OrderItemEntry, 'lineId'>): OrderItemEntry => ({
+  lineId: crypto.randomUUID(),
+  ...entry,
+});
 
 interface CreateOrderDialogProps {
   open: boolean;
@@ -29,6 +35,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   const [selectedWholesaler, setSelectedWholesaler] = useState('');
   const [customShopName, setCustomShopName] = useState('');
   const [orderItems, setOrderItems] = useState<OrderItemEntry[]>([]);
+  const [openProductPickerLineId, setOpenProductPickerLineId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
 
