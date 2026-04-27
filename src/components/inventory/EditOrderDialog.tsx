@@ -61,7 +61,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
   useEffect(() => {
     if (order) {
       setShopName(order.shopName);
-      setLines(order.items.map(i => ({
+      setLines(order.items.map(i => createOrderLine({
         itemId: i.itemId,
         warehouseId: i.warehouseId,
         quantity: i.quantity,
