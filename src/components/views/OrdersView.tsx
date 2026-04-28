@@ -519,6 +519,21 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={previewUrl !== null} onOpenChange={(o) => { if (!o) { if (previewUrl) URL.revokeObjectURL(previewUrl); setPreviewUrl(null); } }}>
+        <DialogContent className="sm:max-w-5xl sm:h-[90vh] sm:p-4 flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{previewTitle || 'Order Sheet Preview'}</DialogTitle>
+          </DialogHeader>
+          {previewUrl && (
+            <iframe
+              src={previewUrl}
+              title="Order Sheet"
+              className="flex-1 w-full h-[75vh] border rounded-md bg-background"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
