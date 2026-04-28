@@ -490,11 +490,7 @@ export function useInventory() {
       else deltas.set(k, { itemId: ni.itemId, warehouseId: ni.warehouseId, delta: ni.quantity });
     }
 
-    await Promise.all(
-      Array.from(deltas.values())
-        .filter(d => d.delta !== 0)
-        .map(d => adjustStockBy(d.itemId, d.warehouseId, d.delta))
-    );
+    await applyStockDeltas(Array.from(deltas.values()));
 
     // Replace transaction rows for this BOL
     await supabase.from('inventory_transactions').delete().eq('bol_number', bolNumber);
