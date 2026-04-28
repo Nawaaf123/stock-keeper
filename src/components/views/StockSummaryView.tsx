@@ -5,7 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ClipboardList, ArrowUp, ArrowDown, Search, ChevronRight, ChevronDown } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ClipboardList, ArrowUp, ArrowDown, Search, ChevronRight, ChevronDown, Warehouse as WarehouseIcon } from 'lucide-react';
 import { getTotalQuantity } from '@/data/mockData';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
