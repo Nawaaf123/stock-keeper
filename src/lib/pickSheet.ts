@@ -30,19 +30,10 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
   doc.save(`order-sheet-${order.shopName.replace(/[^a-z0-9]/gi, '_')}-${order.id.slice(0, 8)}.pdf`);
 }
 
-export async function previewPickSheet(order: Order, allItems: InventoryItem[] = []) {
+export async function previewPickSheet(order: Order, allItems: InventoryItem[] = []): Promise<string> {
   const doc = await buildPickSheetDoc(order, allItems);
   const blob = doc.output('blob');
-  const url = URL.createObjectURL(blob);
-  // Open in same tab to avoid Brave/popup blockers; user can use back button to return.
-  const win = window.open('', '_blank');
-  if (win) {
-    win.location.href = url;
-  } else {
-    // Fallback: navigate current tab
-    window.location.href = url;
-  }
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return URL.createObjectURL(blob);
 }
 
 async function buildPickSheetDoc(order: Order, allItems: InventoryItem[] = []) {
