@@ -270,5 +270,5 @@ async function buildPickSheetDoc(order: Order, allItems: InventoryItem[] = []) {
   doc.text('Checked by: ___________________________', pageWidth / 2 + 10, sigY);
   doc.text('Date: ______________', pageWidth / 2 + 10, sigY + 14);
 
-  doc.save(`order-sheet-${order.shopName.replace(/[^a-z0-9]/gi, '_')}-${order.id.slice(0, 8)}.pdf`);
+  return doc;
 }
