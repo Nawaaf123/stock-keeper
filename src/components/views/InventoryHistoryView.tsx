@@ -55,7 +55,7 @@ export function InventoryHistoryView({ transactions }: InventoryHistoryViewProps
         <div className="space-y-6">
           {sortedDates.map((dateKey) => {
             const dayTransactions = groupedByDate[dateKey];
-            const displayDate = format(new Date(dateKey), 'EEEE, MMMM d, yyyy');
+            const displayDate = format(new Date(Number(dateKey.slice(0, 4)), Number(dateKey.slice(5, 7)) - 1, Number(dateKey.slice(8, 10))), 'EEEE, MMMM d, yyyy');
 
             // Group by BOL within each day
             const groupedByBol = dayTransactions.reduce((acc, t) => {
