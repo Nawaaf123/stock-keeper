@@ -77,6 +77,7 @@ const Index = () => {
             items={inventory.allItems}
             orders={inventory.orders}
             transactions={inventory.transactions}
+            warehouses={inventory.warehouses}
           />
         );
       case 'payments':
