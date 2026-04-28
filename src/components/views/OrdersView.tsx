@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Order, InventoryItem, Wholesaler, Warehouse } from '@/types/inventory';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,19 +38,10 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>('');
 
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
-
   const handlePreview = async (order: Order) => {
     try {
       const url = await previewPickSheet(order, items);
-      setPreviewUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return url;
-      });
+      setPreviewUrl(url);
       setPreviewTitle(`Order Sheet — ${order.shopName}`);
     } catch (e) {
       toast.error('Failed to generate preview');
@@ -520,17 +511,32 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={previewUrl !== null} onOpenChange={(o) => { if (!o) { if (previewUrl) URL.revokeObjectURL(previewUrl); setPreviewUrl(null); } }}>
+      <Dialog open={previewUrl !== null} onOpenChange={(o) => { if (!o) setPreviewUrl(null); }}>
         <DialogContent className="sm:max-w-5xl sm:h-[90vh] sm:p-4 flex flex-col">
           <DialogHeader>
-            <DialogTitle>{previewTitle || 'Order Sheet Preview'}</DialogTitle>
+            <DialogTitle className="flex items-center justify-between gap-3 pr-8">
+              <span className="truncate">{previewTitle || 'Order Sheet Preview'}</span>
+              {previewUrl && (
+                <a
+                  href={previewUrl}
+                  download="order-sheet.pdf"
+                  className="text-sm font-normal text-primary underline-offset-4 hover:underline"
+                >
+                  Download
+                </a>
+              )}
+            </DialogTitle>
           </DialogHeader>
           {previewUrl && (
-            <iframe
-              src={previewUrl}
-              title="Order Sheet"
+            <object
+              data={previewUrl}
+              type="application/pdf"
               className="flex-1 w-full h-[75vh] border rounded-md bg-background"
-            />
+            >
+              <div className="p-4 text-sm text-muted-foreground">
+                Your browser is blocking inline PDF preview. <a href={previewUrl} download="order-sheet.pdf" className="text-primary underline">Download the PDF</a> instead.
+              </div>
+            </object>
           )}
         </DialogContent>
       </Dialog>
