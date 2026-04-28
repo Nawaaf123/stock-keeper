@@ -228,17 +228,53 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                       {isOpen && canExpand && (
                         <TableRow key={`${item.id}-detail`} className="bg-muted/20 hover:bg-muted/20">
                           <TableCell colSpan={7} className="p-0">
-                            <div className="px-8 py-3">
-                              <Table>
-                                <TableHeader>
-                                  <TableRow className="border-b border-border/50">
-                                    <TableHead className="h-8 text-xs">Type</TableHead>
-                                    <TableHead className="h-8 text-xs">Source</TableHead>
-                                    <TableHead className="h-8 text-xs text-center">Qty</TableHead>
-                                    <TableHead className="h-8 text-xs text-center">Remaining</TableHead>
-                                    <TableHead className="h-8 text-xs">Date</TableHead>
-                                  </TableRow>
-                                </TableHeader>
+                            <div className="px-8 py-3 space-y-4">
+                              {item.warehouseBreakdown.length > 0 && (
+                                <div>
+                                  <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">By Warehouse</div>
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow className="border-b border-border/50">
+                                        <TableHead className="h-8 text-xs">Warehouse</TableHead>
+                                        <TableHead className="h-8 text-xs text-center">Received</TableHead>
+                                        <TableHead className="h-8 text-xs text-center">Sold</TableHead>
+                                        <TableHead className="h-8 text-xs text-center">Remaining</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {item.warehouseBreakdown.map((wb) => (
+                                        <TableRow key={wb.warehouseId} className="border-b-0 hover:bg-transparent">
+                                          <TableCell className="text-sm py-1.5 font-medium">{wb.warehouseName}</TableCell>
+                                          <TableCell className="text-center py-1.5">
+                                            <span className="text-green-600 font-semibold">+{wb.received}</span>
+                                          </TableCell>
+                                          <TableCell className="text-center py-1.5">
+                                            <span className="text-orange-600 font-semibold">-{wb.sold}</span>
+                                          </TableCell>
+                                          <TableCell className="text-center py-1.5">
+                                            <span className={wb.remaining < 10 ? "text-red-600 font-semibold" : "text-foreground font-semibold"}>
+                                              {wb.remaining}
+                                            </span>
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              )}
+                              <div>
+                                <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Movements</div>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow className="border-b border-border/50">
+                                      <TableHead className="h-8 text-xs">Type</TableHead>
+                                      <TableHead className="h-8 text-xs">Source</TableHead>
+                                      <TableHead className="h-8 text-xs">Warehouse</TableHead>
+                                      <TableHead className="h-8 text-xs text-center">Qty</TableHead>
+                                      <TableHead className="h-8 text-xs text-center">Remaining</TableHead>
+                                      <TableHead className="h-8 text-xs">Date</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
                                 <TableBody>
                                   {item.entries.map((entry, idx) => (
                                     <TableRow key={idx} className="border-b-0 hover:bg-transparent">
