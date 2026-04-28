@@ -187,6 +187,15 @@ export function useInventory() {
     const refreshWarehouses = debounce(() => { fetchWarehouses().then(fetchItems); }, 300);
     const refreshPayments = debounce(() => { fetchPayments(); }, 300);
 
+    const refreshAll = () => {
+      fetchItems();
+      fetchTransactions();
+      fetchOrders();
+      fetchWholesalers();
+      fetchPayments();
+      fetchWarehouses();
+    };
+
     const channel = supabase
       .channel(`inventory-realtime-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items' }, refreshItems)
@@ -197,9 +206,31 @@ export function useInventory() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wholesalers' }, refreshWholesalers)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'warehouses' }, refreshWarehouses)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, refreshPayments)
-      .subscribe();
+      .subscribe((status) => {
+        // When (re)subscribed, sync immediately to catch anything missed while disconnected
+        if (status === 'SUBSCRIBED') refreshAll();
+      });
 
-    return () => { supabase.removeChannel(channel); };
+    // Safety net: refetch when the tab becomes visible / window regains focus / network reconnects
+    const onVisible = () => { if (document.visibilityState === 'visible') refreshAll(); };
+    const onFocus = () => refreshAll();
+    const onOnline = () => refreshAll();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('online', onOnline);
+
+    // Background poll every 15s as a last-resort safety net for missed realtime events
+    const pollId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') refreshAll();
+    }, 15000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('online', onOnline);
+      window.clearInterval(pollId);
+    };
   }, [fetchItems, fetchTransactions, fetchOrders, fetchWholesalers, fetchWarehouses, fetchPayments]);
 
   // ─── Filtering & Sorting ───
