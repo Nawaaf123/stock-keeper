@@ -515,8 +515,12 @@ export function useInventory() {
   const deleteOrder = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
-    // Restore stock in parallel
-    await Promise.all(order.items.map(line => adjustStockBy(line.itemId, line.warehouseId, line.quantity)));
+    // Restore stock — aggregate per (item, warehouse) and apply sequentially to
+    // avoid parallel SELECT→UPDATE races that can drop or double-apply deltas
+    // when the same product+warehouse appears on multiple order lines.
+    await applyStockDeltas(order.items.map(line => ({
+      itemId: line.itemId, warehouseId: line.warehouseId, delta: line.quantity,
+    })));
     await (supabase as any).from('payments').delete().eq('order_id', orderId);
     await supabase.from('order_items').delete().eq('order_id', orderId);
     await supabase.from('orders').delete().eq('id', orderId);
