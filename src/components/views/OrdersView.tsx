@@ -288,7 +288,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                 <span>${order.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2)}</span>
                               </div>
                               <div className="mt-3 flex justify-end gap-2">
-                                <Button size="sm" variant="outline" onClick={() => previewPickSheet(order, items)}>
+                                <Button size="sm" variant="outline" onClick={() => handlePreview(order)}>
                                   <Eye className="w-4 h-4 mr-2" />
                                   Preview
                                 </Button>
