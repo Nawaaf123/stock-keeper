@@ -32,8 +32,8 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
 
 export async function previewPickSheet(order: Order, allItems: InventoryItem[] = []): Promise<string> {
   const doc = await buildPickSheetDoc(order, allItems);
-  const blob = doc.output('blob');
-  return URL.createObjectURL(blob);
+  // Use a base64 data URI — Brave Shields blocks blob: iframes, but data: works.
+  return doc.output('datauristring');
 }
 
 async function buildPickSheetDoc(order: Order, allItems: InventoryItem[] = []) {
