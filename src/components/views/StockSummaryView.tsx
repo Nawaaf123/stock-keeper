@@ -38,6 +38,7 @@ interface WarehouseBreakdown {
 export function StockSummaryView({ items, orders, transactions, warehouses = [] }: StockSummaryViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [warehouseFilter, setWarehouseFilter] = useState<string>('all');
 
   const toggle = (id: string) => {
     setExpanded(prev => {
@@ -79,24 +80,32 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
         });
       });
 
-      stockEntries.sort((a, b) => a.date.getTime() - b.date.getTime());
+      // Apply warehouse filter to entries
+      const filteredEntries = warehouseFilter === 'all'
+        ? stockEntries
+        : stockEntries.filter(e => e.warehouseId === warehouseFilter);
 
-      const totalReceived = stockEntries.filter(e => e.type === 'receive').reduce((sum, e) => sum + e.qty, 0);
-      const totalSold = stockEntries.filter(e => e.type === 'sale').reduce((sum, e) => sum + e.qty, 0);
-      const currentStock = getTotalQuantity(item);
+      filteredEntries.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      const totalReceived = filteredEntries.filter(e => e.type === 'receive').reduce((sum, e) => sum + e.qty, 0);
+      const totalSold = filteredEntries.filter(e => e.type === 'sale').reduce((sum, e) => sum + e.qty, 0);
+
+      // Current stock: all warehouses or just selected one
+      const currentStock = warehouseFilter === 'all'
+        ? getTotalQuantity(item)
+        : (item.stock.find(s => s.warehouseId === warehouseFilter)?.quantity || 0);
+
       const startingStock = currentStock - totalReceived + totalSold;
 
       let runningStock = startingStock;
-      const entriesWithRemaining: StockEntry[] = stockEntries.map(entry => {
+      const entriesWithRemaining: StockEntry[] = filteredEntries.map(entry => {
         runningStock += entry.type === 'receive' ? entry.qty : -entry.qty;
         return { ...entry, remainingAfter: runningStock };
       });
-      // Display latest first
       entriesWithRemaining.reverse();
 
-      // Per-warehouse breakdown
+      // Per-warehouse breakdown (always computed from full entries; useful in 'all' mode)
       const breakdownMap = new Map<string, WarehouseBreakdown>();
-      // Seed with warehouses where item currently has stock
       item.stock.forEach(s => {
         breakdownMap.set(s.warehouseId, {
           warehouseId: s.warehouseId,
