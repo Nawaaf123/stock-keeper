@@ -12,10 +12,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown, FileDown, Pencil, Trash2, ClipboardList } from 'lucide-react';
+import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown, FileDown, Pencil, Trash2, ClipboardList, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { downloadInvoice } from '@/lib/invoice';
-import { downloadPickSheet } from '@/lib/pickSheet';
+import { downloadPickSheet, previewPickSheet } from '@/lib/pickSheet';
 import { toast } from 'sonner';
 
 interface OrdersViewProps {
