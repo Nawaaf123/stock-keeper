@@ -38,19 +38,10 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>('');
 
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
-
   const handlePreview = async (order: Order) => {
     try {
       const url = await previewPickSheet(order, items);
-      setPreviewUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return url;
-      });
+      setPreviewUrl(url);
       setPreviewTitle(`Order Sheet — ${order.shopName}`);
     } catch (e) {
       toast.error('Failed to generate preview');
