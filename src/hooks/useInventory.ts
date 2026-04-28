@@ -188,7 +188,7 @@ export function useInventory() {
     const refreshPayments = debounce(() => { fetchPayments(); }, 300);
 
     const channel = supabase
-      .channel('inventory-realtime')
+      .channel(`inventory-realtime-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items' }, refreshItems)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'warehouse_stock' }, refreshItems)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_transactions' }, refreshTx)
