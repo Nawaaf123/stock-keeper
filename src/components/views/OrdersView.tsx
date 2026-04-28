@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Order, InventoryItem, Wholesaler, Warehouse } from '@/types/inventory';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown, FileDown, Pencil, Trash2, ClipboardList, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { downloadInvoice } from '@/lib/invoice';
@@ -34,6 +35,27 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
   const [shopFilter, setShopFilter] = useState<string>('all');
   const [productFilter, setProductFilter] = useState<string>('all');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState<string>('');
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const handlePreview = async (order: Order) => {
+    try {
+      const url = await previewPickSheet(order, items);
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
+      setPreviewTitle(`Order Sheet — ${order.shopName}`);
+    } catch (e) {
+      toast.error('Failed to generate preview');
+    }
+  };
 
   const groupedOrders = orders.reduce((acc, order) => {
     const dateKey = format(order.date, 'yyyy-MM-dd');
@@ -266,7 +288,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                 <span>${order.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2)}</span>
                               </div>
                               <div className="mt-3 flex justify-end gap-2">
-                                <Button size="sm" variant="outline" onClick={() => previewPickSheet(order, items)}>
+                                <Button size="sm" variant="outline" onClick={() => handlePreview(order)}>
                                   <Eye className="w-4 h-4 mr-2" />
                                   Preview
                                 </Button>
@@ -497,6 +519,21 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={previewUrl !== null} onOpenChange={(o) => { if (!o) { if (previewUrl) URL.revokeObjectURL(previewUrl); setPreviewUrl(null); } }}>
+        <DialogContent className="sm:max-w-5xl sm:h-[90vh] sm:p-4 flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{previewTitle || 'Order Sheet Preview'}</DialogTitle>
+          </DialogHeader>
+          {previewUrl && (
+            <iframe
+              src={previewUrl}
+              title="Order Sheet"
+              className="flex-1 w-full h-[75vh] border rounded-md bg-background"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

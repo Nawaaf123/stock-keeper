@@ -30,10 +30,10 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
   doc.save(`order-sheet-${order.shopName.replace(/[^a-z0-9]/gi, '_')}-${order.id.slice(0, 8)}.pdf`);
 }
 
-export async function previewPickSheet(order: Order, allItems: InventoryItem[] = []) {
+export async function previewPickSheet(order: Order, allItems: InventoryItem[] = []): Promise<string> {
   const doc = await buildPickSheetDoc(order, allItems);
-  const blobUrl = doc.output('bloburl');
-  window.open(blobUrl, '_blank', 'noopener,noreferrer');
+  const blob = doc.output('blob');
+  return URL.createObjectURL(blob);
 }
 
 async function buildPickSheetDoc(order: Order, allItems: InventoryItem[] = []) {
