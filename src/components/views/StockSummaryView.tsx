@@ -290,6 +290,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                         )}
                                       </TableCell>
                                       <TableCell className="text-sm py-1.5">{entry.source}</TableCell>
+                                      <TableCell className="text-sm py-1.5 text-muted-foreground">{entry.warehouseName || '—'}</TableCell>
                                       <TableCell className="text-center py-1.5">
                                         <span className={entry.type === 'receive' ? "text-green-600 font-semibold" : "text-orange-600 font-semibold"}>
                                           {entry.type === 'receive' ? '+' : '-'}{entry.qty}
@@ -307,6 +308,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                   ))}
                                 </TableBody>
                               </Table>
+                              </div>
                             </div>
                           </TableCell>
                         </TableRow>
