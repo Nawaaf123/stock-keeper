@@ -35,6 +35,27 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
   const [shopFilter, setShopFilter] = useState<string>('all');
   const [productFilter, setProductFilter] = useState<string>('all');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState<string>('');
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const handlePreview = async (order: Order) => {
+    try {
+      const url = await previewPickSheet(order, items);
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
+      setPreviewTitle(`Order Sheet — ${order.shopName}`);
+    } catch (e) {
+      toast.error('Failed to generate preview');
+    }
+  };
 
   const groupedOrders = orders.reduce((acc, order) => {
     const dateKey = format(order.date, 'yyyy-MM-dd');
