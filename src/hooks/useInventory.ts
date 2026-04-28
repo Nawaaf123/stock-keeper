@@ -437,12 +437,33 @@ export function useInventory() {
     }
   };
 
+  // Aggregate multiple stock changes by (item, warehouse) and apply each row ONCE.
+  // Avoids race conditions where parallel SELECT→UPDATE on the same row drops deltas
+  // or (in some sequences) double-applies them.
+  const applyStockDeltas = async (
+    changes: { itemId: string; warehouseId: string; delta: number }[]
+  ) => {
+    const key = (i: string, w: string) => `${i}::${w}`;
+    const merged = new Map<string, { itemId: string; warehouseId: string; delta: number }>();
+    for (const c of changes) {
+      const k = key(c.itemId, c.warehouseId);
+      const cur = merged.get(k);
+      if (cur) cur.delta += c.delta;
+      else merged.set(k, { ...c });
+    }
+    // Run sequentially per row to prevent read/modify/write races.
+    for (const d of merged.values()) {
+      if (d.delta === 0) continue;
+      await adjustStockBy(d.itemId, d.warehouseId, d.delta);
+    }
+  };
+
   // ─── Receivings (grouped by BOL number) ───
   const deleteReceiving = async (bolNumber: string) => {
     const lines = transactions.filter(t => t.bolNumber === bolNumber);
     if (lines.length === 0) return;
-    // Reverse stock for each line
-    await Promise.all(lines.map(l => adjustStockBy(l.itemId, l.warehouseId, -l.quantity)));
+    // Reverse stock — aggregate per (item, warehouse) to avoid duplicate/race adjustments
+    await applyStockDeltas(lines.map(l => ({ itemId: l.itemId, warehouseId: l.warehouseId, delta: -l.quantity })));
     await supabase.from('inventory_transactions').delete().eq('bol_number', bolNumber);
   };
 
