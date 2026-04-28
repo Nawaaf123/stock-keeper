@@ -12,6 +12,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown, FileDown, Pencil, Trash2, ClipboardList, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { downloadInvoice } from '@/lib/invoice';
