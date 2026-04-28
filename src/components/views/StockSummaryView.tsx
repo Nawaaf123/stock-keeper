@@ -5,7 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ClipboardList, ArrowUp, ArrowDown, Search, ChevronRight, ChevronDown } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ClipboardList, ArrowUp, ArrowDown, Search, ChevronRight, ChevronDown, Warehouse as WarehouseIcon } from 'lucide-react';
 import { getTotalQuantity } from '@/data/mockData';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -38,6 +39,7 @@ interface WarehouseBreakdown {
 export function StockSummaryView({ items, orders, transactions, warehouses = [] }: StockSummaryViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [warehouseFilter, setWarehouseFilter] = useState<string>('all');
 
   const toggle = (id: string) => {
     setExpanded(prev => {
@@ -79,24 +81,32 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
         });
       });
 
-      stockEntries.sort((a, b) => a.date.getTime() - b.date.getTime());
+      // Apply warehouse filter to entries
+      const filteredEntries = warehouseFilter === 'all'
+        ? stockEntries
+        : stockEntries.filter(e => e.warehouseId === warehouseFilter);
 
-      const totalReceived = stockEntries.filter(e => e.type === 'receive').reduce((sum, e) => sum + e.qty, 0);
-      const totalSold = stockEntries.filter(e => e.type === 'sale').reduce((sum, e) => sum + e.qty, 0);
-      const currentStock = getTotalQuantity(item);
+      filteredEntries.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      const totalReceived = filteredEntries.filter(e => e.type === 'receive').reduce((sum, e) => sum + e.qty, 0);
+      const totalSold = filteredEntries.filter(e => e.type === 'sale').reduce((sum, e) => sum + e.qty, 0);
+
+      // Current stock: all warehouses or just selected one
+      const currentStock = warehouseFilter === 'all'
+        ? getTotalQuantity(item)
+        : (item.stock.find(s => s.warehouseId === warehouseFilter)?.quantity || 0);
+
       const startingStock = currentStock - totalReceived + totalSold;
 
       let runningStock = startingStock;
-      const entriesWithRemaining: StockEntry[] = stockEntries.map(entry => {
+      const entriesWithRemaining: StockEntry[] = filteredEntries.map(entry => {
         runningStock += entry.type === 'receive' ? entry.qty : -entry.qty;
         return { ...entry, remainingAfter: runningStock };
       });
-      // Display latest first
       entriesWithRemaining.reverse();
 
-      // Per-warehouse breakdown
+      // Per-warehouse breakdown (always computed from full entries; useful in 'all' mode)
       const breakdownMap = new Map<string, WarehouseBreakdown>();
-      // Seed with warehouses where item currently has stock
       item.stock.forEach(s => {
         breakdownMap.set(s.warehouseId, {
           warehouseId: s.warehouseId,
@@ -134,7 +144,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
         warehouseBreakdown,
       };
     }).sort((a, b) => b.totalSold - a.totalSold);
-  }, [items, orders, transactions, warehouses]);
+  }, [items, orders, transactions, warehouses, warehouseFilter]);
 
   const filteredSummaryData = useMemo(() => {
     if (!searchQuery.trim()) return summaryData;
@@ -158,7 +168,19 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
               <ClipboardList className="w-5 h-5" />
               Product Sales & Stock Overview
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <WarehouseIcon className="w-4 h-4 mr-1 text-muted-foreground" />
+                  <SelectValue placeholder="All warehouses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All warehouses</SelectItem>
+                  {warehouses.map(w => (
+                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 variant="outline"
                 size="sm"
