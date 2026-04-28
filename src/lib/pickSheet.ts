@@ -26,6 +26,17 @@ async function getLogoDataUrl(): Promise<string | null> {
 }
 
 export async function downloadPickSheet(order: Order, allItems: InventoryItem[] = []) {
+  const doc = await buildPickSheetDoc(order, allItems);
+  doc.save(`order-sheet-${order.shopName.replace(/[^a-z0-9]/gi, '_')}-${order.id.slice(0, 8)}.pdf`);
+}
+
+export async function previewPickSheet(order: Order, allItems: InventoryItem[] = []) {
+  const doc = await buildPickSheetDoc(order, allItems);
+  const blobUrl = doc.output('bloburl');
+  window.open(blobUrl, '_blank', 'noopener,noreferrer');
+}
+
+async function buildPickSheetDoc(order: Order, allItems: InventoryItem[] = []) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
