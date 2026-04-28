@@ -168,7 +168,19 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
               <ClipboardList className="w-5 h-5" />
               Product Sales & Stock Overview
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <WarehouseIcon className="w-4 h-4 mr-1 text-muted-foreground" />
+                  <SelectValue placeholder="All warehouses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All warehouses</SelectItem>
+                  {warehouses.map(w => (
+                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 variant="outline"
                 size="sm"
