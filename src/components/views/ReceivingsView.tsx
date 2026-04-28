@@ -105,7 +105,7 @@ export function ReceivingsView({
               <div className="flex items-center gap-2 mb-3">
                 <Calendar className="w-4 h-4 text-muted-foreground" />
                 <h2 className="text-sm font-semibold text-muted-foreground">
-                  {format(new Date(dateKey), 'EEEE, MMMM d, yyyy')}
+                  {format(new Date(Number(dateKey.slice(0, 4)), Number(dateKey.slice(5, 7)) - 1, Number(dateKey.slice(8, 10))), 'EEEE, MMMM d, yyyy')}
                 </h2>
                 <Badge variant="secondary">{groupedByDate[dateKey].length} BOL{groupedByDate[dateKey].length !== 1 ? 's' : ''}</Badge>
               </div>
