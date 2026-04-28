@@ -32,8 +32,17 @@ export async function downloadPickSheet(order: Order, allItems: InventoryItem[] 
 
 export async function previewPickSheet(order: Order, allItems: InventoryItem[] = []) {
   const doc = await buildPickSheetDoc(order, allItems);
-  const blobUrl = doc.output('bloburl');
-  window.open(blobUrl, '_blank', 'noopener,noreferrer');
+  const blob = doc.output('blob');
+  const url = URL.createObjectURL(blob);
+  // Open in same tab to avoid Brave/popup blockers; user can use back button to return.
+  const win = window.open('', '_blank');
+  if (win) {
+    win.location.href = url;
+  } else {
+    // Fallback: navigate current tab
+    window.location.href = url;
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 async function buildPickSheetDoc(order: Order, allItems: InventoryItem[] = []) {
