@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { InventoryItem, Order, InventoryTransaction } from '@/types/inventory';
+import { InventoryItem, Order, InventoryTransaction, Warehouse } from '@/types/inventory';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ interface StockSummaryViewProps {
   items: InventoryItem[];
   orders: Order[];
   transactions: InventoryTransaction[];
+  warehouses?: Warehouse[];
 }
 
 interface StockEntry {
@@ -21,10 +22,20 @@ interface StockEntry {
   source: string;
   qty: number;
   date: Date;
+  warehouseId: string;
+  warehouseName: string;
   remainingAfter: number;
 }
 
-export function StockSummaryView({ items, orders, transactions }: StockSummaryViewProps) {
+interface WarehouseBreakdown {
+  warehouseId: string;
+  warehouseName: string;
+  received: number;
+  sold: number;
+  remaining: number;
+}
+
+export function StockSummaryView({ items, orders, transactions, warehouses = [] }: StockSummaryViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -38,18 +49,32 @@ export function StockSummaryView({ items, orders, transactions }: StockSummaryVi
 
   const summaryData = useMemo(() => {
     return items.map(item => {
-      const stockEntries: { type: 'receive' | 'sale'; source: string; qty: number; date: Date }[] = [];
+      const stockEntries: Omit<StockEntry, 'remainingAfter'>[] = [];
 
       transactions
         .filter(t => t.itemId === item.id && t.type === 'receive')
         .forEach(t => {
-          stockEntries.push({ type: 'receive', source: `BOL: ${t.bolNumber}`, qty: t.quantity, date: t.date });
+          stockEntries.push({
+            type: 'receive',
+            source: `BOL: ${t.bolNumber}`,
+            qty: t.quantity,
+            date: t.date,
+            warehouseId: t.warehouseId,
+            warehouseName: t.warehouseName,
+          });
         });
 
       orders.forEach(order => {
         order.items.forEach(orderItem => {
           if (orderItem.itemId === item.id) {
-            stockEntries.push({ type: 'sale', source: order.shopName, qty: orderItem.quantity, date: order.date });
+            stockEntries.push({
+              type: 'sale',
+              source: order.shopName,
+              qty: orderItem.quantity,
+              date: order.date,
+              warehouseId: orderItem.warehouseId,
+              warehouseName: orderItem.warehouseName,
+            });
           }
         });
       });
@@ -69,6 +94,34 @@ export function StockSummaryView({ items, orders, transactions }: StockSummaryVi
       // Display latest first
       entriesWithRemaining.reverse();
 
+      // Per-warehouse breakdown
+      const breakdownMap = new Map<string, WarehouseBreakdown>();
+      // Seed with warehouses where item currently has stock
+      item.stock.forEach(s => {
+        breakdownMap.set(s.warehouseId, {
+          warehouseId: s.warehouseId,
+          warehouseName: s.warehouseName,
+          received: 0,
+          sold: 0,
+          remaining: s.quantity,
+        });
+      });
+      stockEntries.forEach(e => {
+        if (!e.warehouseId) return;
+        let b = breakdownMap.get(e.warehouseId);
+        if (!b) {
+          b = { warehouseId: e.warehouseId, warehouseName: e.warehouseName, received: 0, sold: 0, remaining: 0 };
+          breakdownMap.set(e.warehouseId, b);
+        }
+        if (e.type === 'receive') b.received += e.qty;
+        else b.sold += e.qty;
+      });
+      const warehouseBreakdown = Array.from(breakdownMap.values()).sort((a, b) => {
+        const ai = warehouses.findIndex(w => w.id === a.warehouseId);
+        const bi = warehouses.findIndex(w => w.id === b.warehouseId);
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      });
+
       return {
         id: item.id,
         sku: item.sku,
@@ -78,9 +131,10 @@ export function StockSummaryView({ items, orders, transactions }: StockSummaryVi
         totalSold,
         currentStock,
         entries: entriesWithRemaining,
+        warehouseBreakdown,
       };
     }).sort((a, b) => b.totalSold - a.totalSold);
-  }, [items, orders, transactions]);
+  }, [items, orders, transactions, warehouses]);
 
   const filteredSummaryData = useMemo(() => {
     if (!searchQuery.trim()) return summaryData;
