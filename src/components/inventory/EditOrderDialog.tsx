@@ -34,6 +34,7 @@ interface EditOrderDialogProps {
     orderId: string,
     shopName: string,
     items: Omit<OrderLine, 'lineId'>[],
+    shippingFee: number,
   ) => Promise<void> | void;
 }
 
