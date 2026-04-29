@@ -190,7 +190,7 @@ async function buildPickSheetDoc(order: Order, allItems: InventoryItem[] = []) {
       const sub = group[gi];
       const list = bySubCategory.get(sub)!;
       const subTotal = list.reduce((s, it) => s + (qtyMap.get(it.id) ?? 0), 0);
-      const headerLabel = `${String(sub).toUpperCase()}  —  TOTAL CASES: ${subTotal}`;
+      const headerLabel = String(sub).toUpperCase();
 
     // Build 2-column rows: [sku1, name1, qty1, sku2, name2, qty2]
     const rows: (string | number)[][] = [];
@@ -213,6 +213,7 @@ async function buildPickSheetDoc(order: Order, allItems: InventoryItem[] = []) {
       pageBreak: 'avoid',
       head: [[{ content: headerLabel, colSpan: 6, styles: { halign: 'center', fillColor: [225, 225, 225], textColor: 20, fontStyle: 'bold', fontSize: 10 } }]],
       body: rows,
+      foot: [[{ content: `TOTAL CASES: ${subTotal}`, colSpan: 6, styles: { halign: 'right', fillColor: [245, 245, 245], textColor: 20, fontStyle: 'bold', fontSize: 9.5 } }]],
       theme: 'grid',
       rowPageBreak: 'avoid',
       styles: {
