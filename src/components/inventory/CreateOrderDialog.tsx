@@ -28,7 +28,7 @@ interface CreateOrderDialogProps {
   items: InventoryItem[];
   warehouses: Warehouse[];
   wholesalers: Wholesaler[];
-  onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]) => void;
+  onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[], shippingFee: number) => void;
 }
 
 export function CreateOrderDialog({ open, onOpenChange, items, warehouses, wholesalers, onCreateOrder }: CreateOrderDialogProps) {
