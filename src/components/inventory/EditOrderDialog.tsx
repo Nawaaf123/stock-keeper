@@ -46,6 +46,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
   const [skuInput, setSkuInput] = useState('');
   const [qtyInput, setQtyInput] = useState('1');
+  const [shippingFee, setShippingFee] = useState<string>('');
   const [openProductIdx, setOpenProductIdx] = useState<number | null>(null);
   const [openWarehouseIdx, setOpenWarehouseIdx] = useState<number | null>(null);
   const [openProductPickerLineId, setOpenProductPickerLineId] = useState<string | null>(null);
