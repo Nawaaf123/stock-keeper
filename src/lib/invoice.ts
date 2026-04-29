@@ -86,7 +86,7 @@ export function downloadInvoice(order: Order, wholesaler?: Wholesaler) {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(120);
-  doc.text('Thank you for your business.', 14, finalY + 25);
+  doc.text('Thank you for your business.', 14, totalsY + 15);
 
   doc.save(`invoice-${order.shopName.replace(/[^a-z0-9]/gi, '_')}-${order.id.slice(0, 8)}.pdf`);
 }
