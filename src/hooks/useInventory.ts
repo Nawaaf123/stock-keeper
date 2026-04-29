@@ -626,7 +626,7 @@ export function useInventory() {
         );
       })
     );
-    ops.push(supabase.from('orders').update({ shop_name: shopName }).eq('id', orderId));
+    ops.push((supabase as any).from('orders').update({ shop_name: shopName, shipping_fee: shippingFee }).eq('id', orderId));
 
     await Promise.all(ops);
   };
