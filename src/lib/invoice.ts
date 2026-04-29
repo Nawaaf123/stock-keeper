@@ -48,6 +48,8 @@ export function downloadInvoice(order: Order, wholesaler?: Wholesaler) {
 
   const total = order.items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
   const totalUnits = order.items.reduce((s, i) => s + i.quantity, 0);
+  const shipping = Number(order.shippingFee) || 0;
+  const grandTotal = total + shipping;
 
   autoTable(doc, {
     startY: nextY + 5,
@@ -68,9 +70,18 @@ export function downloadInvoice(order: Order, wholesaler?: Wholesaler) {
   doc.setFontSize(10);
   doc.text(`Total Cases: ${totalUnits}`, 14, finalY + 10);
 
+  // Totals stack on the right
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(`Subtotal: $${total.toFixed(2)}`, pageWidth - 14, finalY + 10, { align: 'right' });
+  let totalsY = finalY + 16;
+  if (shipping > 0) {
+    doc.text(`Shipping fee: $${shipping.toFixed(2)}`, pageWidth - 14, totalsY, { align: 'right' });
+    totalsY += 6;
+  }
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Total: $${total.toFixed(2)}`, pageWidth - 14, finalY + 10, { align: 'right' });
+  doc.text(`Total: $${grandTotal.toFixed(2)}`, pageWidth - 14, totalsY + 2, { align: 'right' });
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
