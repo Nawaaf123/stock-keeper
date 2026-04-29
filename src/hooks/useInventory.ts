@@ -581,6 +581,7 @@ export function useInventory() {
     setOrders(prev => prev.map(o => o.id === orderId ? {
       ...o,
       shopName,
+      shippingFee,
       items: newItems.map(ni => {
         const item = itemsNow.find(i => i.id === ni.itemId);
         const wh = warehousesRef.current.find(w => w.id === ni.warehouseId);
