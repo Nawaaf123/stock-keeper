@@ -96,7 +96,7 @@ export function useInventory() {
 
   const fetchOrders = useCallback(async () => {
     const [ordersRes, oiRes] = await Promise.all([
-      supabase.from('orders').select('id,shop_name,status,created_at').order('created_at', { ascending: false }),
+      supabase.from('orders').select('id,shop_name,status,created_at,shipping_fee').order('created_at', { ascending: false }),
       supabase.from('order_items').select('order_id,item_id,warehouse_id,quantity,unit_price'),
     ]);
     const ordersData = ordersRes.data;
@@ -120,11 +120,12 @@ export function useInventory() {
       });
       itemsByOrder.set(oi.order_id, arr);
     }
-    setOrders(ordersData.map(o => ({
+    setOrders(ordersData.map((o: any) => ({
       id: o.id,
       shopName: o.shop_name,
       date: new Date(o.created_at),
       status: o.status as 'pending' | 'completed' | 'cancelled',
+      shippingFee: Number(o.shipping_fee ?? 0),
       items: itemsByOrder.get(o.id) || [],
     })));
   }, []);
@@ -393,10 +394,10 @@ export function useInventory() {
     await Promise.all(ops);
   };
 
-  const createOrder = async (shopName: string, orderItems: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]) => {
+  const createOrder = async (shopName: string, orderItems: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[], shippingFee: number = 0) => {
     const { data: newOrder, error } = await supabase
       .from('orders')
-      .insert({ shop_name: shopName, status: 'completed' })
+      .insert({ shop_name: shopName, status: 'completed', shipping_fee: shippingFee } as any)
       .select()
       .single();
     if (error || !newOrder) return;
@@ -525,7 +526,8 @@ export function useInventory() {
   const updateOrder = async (
     orderId: string,
     shopName: string,
-    newItems: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]
+    newItems: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[],
+    shippingFee: number = 0,
   ) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
@@ -579,6 +581,7 @@ export function useInventory() {
     setOrders(prev => prev.map(o => o.id === orderId ? {
       ...o,
       shopName,
+      shippingFee,
       items: newItems.map(ni => {
         const item = itemsNow.find(i => i.id === ni.itemId);
         const wh = warehousesRef.current.find(w => w.id === ni.warehouseId);
@@ -623,7 +626,7 @@ export function useInventory() {
         );
       })
     );
-    ops.push(supabase.from('orders').update({ shop_name: shopName }).eq('id', orderId));
+    ops.push((supabase as any).from('orders').update({ shop_name: shopName, shipping_fee: shippingFee }).eq('id', orderId));
 
     await Promise.all(ops);
   };

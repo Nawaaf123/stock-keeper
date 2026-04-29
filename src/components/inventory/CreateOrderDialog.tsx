@@ -28,7 +28,7 @@ interface CreateOrderDialogProps {
   items: InventoryItem[];
   warehouses: Warehouse[];
   wholesalers: Wholesaler[];
-  onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]) => void;
+  onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[], shippingFee: number) => void;
 }
 
 export function CreateOrderDialog({ open, onOpenChange, items, warehouses, wholesalers, onCreateOrder }: CreateOrderDialogProps) {
@@ -41,6 +41,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
   const [skuInput, setSkuInput] = useState('');
   const [qtyInput, setQtyInput] = useState('1');
+  const [shippingFee, setShippingFee] = useState<string>('');
   const skuRef = useRef<HTMLInputElement>(null);
   const linesScrollRef = useRef<HTMLDivElement>(null);
 
@@ -159,7 +160,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     const valid = orderItems
       .filter(e => e.itemId && e.warehouseId && e.quantity > 0)
       .map(e => ({ ...e, unitPrice: Number(e.unitPrice) || 0 }));
-    onCreateOrder(getShopName(), valid);
+    onCreateOrder(getShopName(), valid, Number(shippingFee) || 0);
     resetState();
     onOpenChange(false);
   };
@@ -172,13 +173,16 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     setSubCategoryFilter('all');
     setSkuInput('');
     setQtyInput('1');
+    setShippingFee('');
     setOpenProductPickerLineId(null);
   };
 
   const handleClose = () => { resetState(); onOpenChange(false); };
 
   const totalUnits = orderItems.reduce((s, e) => s + (e.itemId && e.warehouseId ? e.quantity : 0), 0);
-  const totalValue = orderItems.reduce((s, e) => s + (e.itemId && e.warehouseId ? e.quantity * (Number(e.unitPrice) || 0) : 0), 0);
+  const subtotal = orderItems.reduce((s, e) => s + (e.itemId && e.warehouseId ? e.quantity * (Number(e.unitPrice) || 0) : 0), 0);
+  const shipping = Number(shippingFee) || 0;
+  const totalValue = subtotal + shipping;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -434,8 +438,33 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
                         <td colSpan={2} className="px-2 py-1.5 text-muted-foreground text-xs">
                           {totalUnits} cases · {orderItems.length} line{orderItems.length !== 1 ? 's' : ''}
                         </td>
+                        <td colSpan={3} className="px-2 py-1.5 text-right tabular-nums">
+                          Subtotal: ${subtotal.toFixed(2)}
+                        </td>
+                        <td></td>
+                      </tr>
+                      <tr className="border-t">
+                        <td colSpan={2} className="px-2 py-1.5 text-muted-foreground text-xs">
+                          Shipping fee
+                        </td>
+                        <td colSpan={3} className="px-2 py-1 text-right">
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            placeholder="0.00"
+                            value={shippingFee}
+                            onChange={(e) => setShippingFee(e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            className="h-7 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1 ml-auto w-28 inline-block"
+                          />
+                        </td>
+                        <td></td>
+                      </tr>
+                      <tr className="border-t">
+                        <td colSpan={2}></td>
                         <td colSpan={3} className="px-2 py-1.5 text-right font-semibold tabular-nums">
-                          ${totalValue.toFixed(2)}
+                          Total: ${totalValue.toFixed(2)}
                         </td>
                         <td></td>
                       </tr>

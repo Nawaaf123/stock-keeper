@@ -63,6 +63,7 @@ export interface Order {
   items: OrderItem[];
   date: Date;
   status: 'pending' | 'completed' | 'cancelled';
+  shippingFee: number;
 }
 
 export interface Wholesaler {

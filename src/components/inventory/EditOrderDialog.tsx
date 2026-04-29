@@ -34,6 +34,7 @@ interface EditOrderDialogProps {
     orderId: string,
     shopName: string,
     items: Omit<OrderLine, 'lineId'>[],
+    shippingFee: number,
   ) => Promise<void> | void;
 }
 
@@ -45,6 +46,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
   const [skuInput, setSkuInput] = useState('');
   const [qtyInput, setQtyInput] = useState('1');
+  const [shippingFee, setShippingFee] = useState<string>('');
   const [openProductIdx, setOpenProductIdx] = useState<number | null>(null);
   const [openWarehouseIdx, setOpenWarehouseIdx] = useState<number | null>(null);
   const [openProductPickerLineId, setOpenProductPickerLineId] = useState<string | null>(null);
@@ -72,6 +74,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
       setSubCategoryFilter('all');
       setSkuInput('');
       setQtyInput('1');
+      setShippingFee(order.shippingFee ? String(order.shippingFee) : '');
     }
   }, [order]);
 
@@ -187,13 +190,15 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
     const valid = lines
       .filter(l => l.itemId && l.warehouseId && l.quantity > 0)
       .map(l => ({ ...l, unitPrice: Number(l.unitPrice) || 0 }));
-    await onUpdateOrder(order.id, shopName.trim(), valid);
+    await onUpdateOrder(order.id, shopName.trim(), valid, Number(shippingFee) || 0);
     toast.success('Order updated and inventory adjusted');
     onOpenChange(false);
   };
 
   const totalUnits = lines.reduce((s, l) => s + (l.itemId && l.warehouseId ? l.quantity : 0), 0);
-  const totalValue = lines.reduce((s, l) => s + (l.itemId && l.warehouseId ? l.quantity * (Number(l.unitPrice) || 0) : 0), 0);
+  const subtotal = lines.reduce((s, l) => s + (l.itemId && l.warehouseId ? l.quantity * (Number(l.unitPrice) || 0) : 0), 0);
+  const shipping = Number(shippingFee) || 0;
+  const totalValue = subtotal + shipping;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -484,8 +489,33 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
                         <td colSpan={2} className="px-2 py-1.5 text-muted-foreground text-xs">
                           {totalUnits} cases · {lines.length} line{lines.length !== 1 ? 's' : ''}
                         </td>
+                        <td colSpan={3} className="px-2 py-1.5 text-right tabular-nums">
+                          Subtotal: ${subtotal.toFixed(2)}
+                        </td>
+                        <td></td>
+                      </tr>
+                      <tr className="border-t">
+                        <td colSpan={2} className="px-2 py-1.5 text-muted-foreground text-xs">
+                          Shipping fee
+                        </td>
+                        <td colSpan={3} className="px-2 py-1 text-right">
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            placeholder="0.00"
+                            value={shippingFee}
+                            onChange={(e) => setShippingFee(e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            className="h-7 text-right border-0 shadow-none focus-visible:ring-1 no-spinner px-1 ml-auto w-28 inline-block"
+                          />
+                        </td>
+                        <td></td>
+                      </tr>
+                      <tr className="border-t">
+                        <td colSpan={2}></td>
                         <td colSpan={3} className="px-2 py-1.5 text-right font-semibold tabular-nums">
-                          ${totalValue.toFixed(2)}
+                          Total: ${totalValue.toFixed(2)}
                         </td>
                         <td></td>
                       </tr>
