@@ -74,6 +74,7 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
       setSubCategoryFilter('all');
       setSkuInput('');
       setQtyInput('1');
+      setShippingFee(order.shippingFee ? String(order.shippingFee) : '');
     }
   }, [order]);
 
