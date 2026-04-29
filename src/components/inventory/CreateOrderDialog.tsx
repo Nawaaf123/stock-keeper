@@ -160,7 +160,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     const valid = orderItems
       .filter(e => e.itemId && e.warehouseId && e.quantity > 0)
       .map(e => ({ ...e, unitPrice: Number(e.unitPrice) || 0 }));
-    onCreateOrder(getShopName(), valid);
+    onCreateOrder(getShopName(), valid, Number(shippingFee) || 0);
     resetState();
     onOpenChange(false);
   };
@@ -173,6 +173,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     setSubCategoryFilter('all');
     setSkuInput('');
     setQtyInput('1');
+    setShippingFee('');
     setOpenProductPickerLineId(null);
   };
 
