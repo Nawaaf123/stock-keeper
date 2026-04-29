@@ -394,10 +394,10 @@ export function useInventory() {
     await Promise.all(ops);
   };
 
-  const createOrder = async (shopName: string, orderItems: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]) => {
+  const createOrder = async (shopName: string, orderItems: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[], shippingFee: number = 0) => {
     const { data: newOrder, error } = await supabase
       .from('orders')
-      .insert({ shop_name: shopName, status: 'completed' })
+      .insert({ shop_name: shopName, status: 'completed', shipping_fee: shippingFee } as any)
       .select()
       .single();
     if (error || !newOrder) return;
