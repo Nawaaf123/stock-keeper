@@ -526,7 +526,8 @@ export function useInventory() {
   const updateOrder = async (
     orderId: string,
     shopName: string,
-    newItems: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[]
+    newItems: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[],
+    shippingFee: number = 0,
   ) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
