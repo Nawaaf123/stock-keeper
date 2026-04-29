@@ -41,6 +41,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
   const [skuInput, setSkuInput] = useState('');
   const [qtyInput, setQtyInput] = useState('1');
+  const [shippingFee, setShippingFee] = useState<string>('');
   const skuRef = useRef<HTMLInputElement>(null);
   const linesScrollRef = useRef<HTMLDivElement>(null);
 
