@@ -213,7 +213,7 @@ async function buildPickSheetDoc(order: Order, allItems: InventoryItem[] = []) {
       pageBreak: 'avoid',
       head: [[{ content: headerLabel, colSpan: 6, styles: { halign: 'center', fillColor: [225, 225, 225], textColor: 20, fontStyle: 'bold', fontSize: 10 } }]],
       body: rows,
-      foot: [[{ content: `TOTAL CASES: ${subTotal}`, colSpan: 6, styles: { halign: 'left', fillColor: [245, 245, 245], textColor: 20, fontStyle: 'bold', fontSize: 9.5 } }]],
+      foot: [[{ content: `TOTAL CASES: ${subTotal}`, colSpan: 6, styles: { halign: 'center', fillColor: [245, 245, 245], textColor: 20, fontStyle: 'bold', fontSize: 9.5 } }]],
       theme: 'grid',
       rowPageBreak: 'avoid',
       styles: {
