@@ -180,7 +180,9 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   const handleClose = () => { resetState(); onOpenChange(false); };
 
   const totalUnits = orderItems.reduce((s, e) => s + (e.itemId && e.warehouseId ? e.quantity : 0), 0);
-  const totalValue = orderItems.reduce((s, e) => s + (e.itemId && e.warehouseId ? e.quantity * (Number(e.unitPrice) || 0) : 0), 0);
+  const subtotal = orderItems.reduce((s, e) => s + (e.itemId && e.warehouseId ? e.quantity * (Number(e.unitPrice) || 0) : 0), 0);
+  const shipping = Number(shippingFee) || 0;
+  const totalValue = subtotal + shipping;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
