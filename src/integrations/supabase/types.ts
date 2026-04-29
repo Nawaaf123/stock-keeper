@@ -175,18 +175,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          shipping_fee: number
           shop_name: string
           status: string
         }
         Insert: {
           created_at?: string
           id?: string
+          shipping_fee?: number
           shop_name: string
           status?: string
         }
         Update: {
           created_at?: string
           id?: string
+          shipping_fee?: number
           shop_name?: string
           status?: string
         }
