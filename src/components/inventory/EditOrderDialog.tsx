@@ -190,13 +190,15 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
     const valid = lines
       .filter(l => l.itemId && l.warehouseId && l.quantity > 0)
       .map(l => ({ ...l, unitPrice: Number(l.unitPrice) || 0 }));
-    await onUpdateOrder(order.id, shopName.trim(), valid);
+    await onUpdateOrder(order.id, shopName.trim(), valid, Number(shippingFee) || 0);
     toast.success('Order updated and inventory adjusted');
     onOpenChange(false);
   };
 
   const totalUnits = lines.reduce((s, l) => s + (l.itemId && l.warehouseId ? l.quantity : 0), 0);
-  const totalValue = lines.reduce((s, l) => s + (l.itemId && l.warehouseId ? l.quantity * (Number(l.unitPrice) || 0) : 0), 0);
+  const subtotal = lines.reduce((s, l) => s + (l.itemId && l.warehouseId ? l.quantity * (Number(l.unitPrice) || 0) : 0), 0);
+  const shipping = Number(shippingFee) || 0;
+  const totalValue = subtotal + shipping;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
