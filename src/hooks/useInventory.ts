@@ -96,7 +96,7 @@ export function useInventory() {
 
   const fetchOrders = useCallback(async () => {
     const [ordersRes, oiRes] = await Promise.all([
-      supabase.from('orders').select('id,shop_name,status,created_at').order('created_at', { ascending: false }),
+      supabase.from('orders').select('id,shop_name,status,created_at,shipping_fee').order('created_at', { ascending: false }),
       supabase.from('order_items').select('order_id,item_id,warehouse_id,quantity,unit_price'),
     ]);
     const ordersData = ordersRes.data;
@@ -120,11 +120,12 @@ export function useInventory() {
       });
       itemsByOrder.set(oi.order_id, arr);
     }
-    setOrders(ordersData.map(o => ({
+    setOrders(ordersData.map((o: any) => ({
       id: o.id,
       shopName: o.shop_name,
       date: new Date(o.created_at),
       status: o.status as 'pending' | 'completed' | 'cancelled',
+      shippingFee: Number(o.shipping_fee ?? 0),
       items: itemsByOrder.get(o.id) || [],
     })));
   }, []);
