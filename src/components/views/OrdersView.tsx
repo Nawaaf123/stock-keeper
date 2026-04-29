@@ -274,9 +274,21 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                   </div>
                                 ))}
                               </div>
-                              <div className="mt-2 pt-2 border-t flex flex-wrap justify-between gap-2 text-sm font-medium">
-                                <span>Total ({order.items.reduce((sum, i) => sum + i.quantity, 0)} cases)</span>
-                                <span>${order.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2)}</span>
+                              <div className="mt-2 pt-2 border-t space-y-1 text-sm">
+                                <div className="flex flex-wrap justify-between gap-2">
+                                  <span className="text-muted-foreground">Subtotal ({order.items.reduce((sum, i) => sum + i.quantity, 0)} cases)</span>
+                                  <span>${order.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2)}</span>
+                                </div>
+                                {order.shippingFee > 0 && (
+                                  <div className="flex flex-wrap justify-between gap-2">
+                                    <span className="text-muted-foreground">Shipping fee</span>
+                                    <span>${order.shippingFee.toFixed(2)}</span>
+                                  </div>
+                                )}
+                                <div className="flex flex-wrap justify-between gap-2 font-semibold">
+                                  <span>Total</span>
+                                  <span>${(order.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0) + (order.shippingFee || 0)).toFixed(2)}</span>
+                                </div>
                               </div>
                               <div className="mt-3 flex justify-end gap-2">
                                 <Button size="sm" variant="outline" onClick={() => handlePreview(order)}>
