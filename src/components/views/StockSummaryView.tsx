@@ -318,18 +318,36 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
                                             <ArrowUp className="w-3 h-3 mr-1" />Receive
                                           </Badge>
-                                        ) : (
+                                        ) : entry.type === 'sale' ? (
                                           <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
                                             <ArrowDown className="w-3 h-3 mr-1" />Sale
+                                          </Badge>
+                                        ) : entry.type === 'transfer_in' ? (
+                                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                                            <ArrowUp className="w-3 h-3 mr-1" />Transfer In
+                                          </Badge>
+                                        ) : (
+                                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                                            <ArrowDown className="w-3 h-3 mr-1" />Transfer Out
                                           </Badge>
                                         )}
                                       </TableCell>
                                       <TableCell className="text-sm py-1.5">{entry.source}</TableCell>
                                       <TableCell className="text-sm py-1.5 text-muted-foreground">{entry.warehouseName || '—'}</TableCell>
                                       <TableCell className="text-center py-1.5">
-                                        <span className={entry.type === 'receive' ? "text-green-600 font-semibold" : "text-orange-600 font-semibold"}>
-                                          {entry.type === 'receive' ? '+' : '-'}{entry.qty}
-                                        </span>
+                                        {(() => {
+                                          const positive = entry.type === 'receive' || entry.type === 'transfer_in';
+                                          const colorClass = entry.type === 'receive'
+                                            ? 'text-green-600'
+                                            : entry.type === 'sale'
+                                            ? 'text-orange-600'
+                                            : 'text-blue-600';
+                                          return (
+                                            <span className={`${colorClass} font-semibold`}>
+                                              {positive ? '+' : '-'}{entry.qty}
+                                            </span>
+                                          );
+                                        })()}
                                       </TableCell>
                                       <TableCell className="text-center py-1.5">
                                         <span className={entry.remainingAfter < 10 ? "text-red-600 font-semibold" : "text-foreground"}>
