@@ -19,7 +19,7 @@ interface StockSummaryViewProps {
 }
 
 interface StockEntry {
-  type: 'receive' | 'sale';
+  type: 'receive' | 'sale' | 'transfer_in' | 'transfer_out';
   source: string;
   qty: number;
   date: Date;
@@ -54,16 +54,27 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
       const stockEntries: Omit<StockEntry, 'remainingAfter'>[] = [];
 
       transactions
-        .filter(t => t.itemId === item.id && t.type === 'receive')
+        .filter(t => t.itemId === item.id)
         .forEach(t => {
-          stockEntries.push({
-            type: 'receive',
-            source: `BOL: ${t.bolNumber}`,
-            qty: t.quantity,
-            date: t.date,
-            warehouseId: t.warehouseId,
-            warehouseName: t.warehouseName,
-          });
+          if (t.type === 'receive') {
+            stockEntries.push({
+              type: 'receive',
+              source: `BOL: ${t.bolNumber}`,
+              qty: t.quantity,
+              date: t.date,
+              warehouseId: t.warehouseId,
+              warehouseName: t.warehouseName,
+            });
+          } else if (t.type === 'transfer_in' || t.type === 'transfer_out') {
+            stockEntries.push({
+              type: t.type,
+              source: t.bolNumber || (t.type === 'transfer_in' ? 'Transfer in' : 'Transfer out'),
+              qty: t.quantity,
+              date: t.date,
+              warehouseId: t.warehouseId,
+              warehouseName: t.warehouseName,
+            });
+          }
         });
 
       orders.forEach(order => {
@@ -88,8 +99,8 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
 
       filteredEntries.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-      const totalReceived = filteredEntries.filter(e => e.type === 'receive').reduce((sum, e) => sum + e.qty, 0);
-      const totalSold = filteredEntries.filter(e => e.type === 'sale').reduce((sum, e) => sum + e.qty, 0);
+      const totalReceived = filteredEntries.filter(e => e.type === 'receive' || e.type === 'transfer_in').reduce((sum, e) => sum + e.qty, 0);
+      const totalSold = filteredEntries.filter(e => e.type === 'sale' || e.type === 'transfer_out').reduce((sum, e) => sum + e.qty, 0);
 
       // Current stock: all warehouses or just selected one
       const currentStock = warehouseFilter === 'all'
@@ -98,9 +109,11 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
 
       const startingStock = currentStock - totalReceived + totalSold;
 
+      const isPositive = (t: StockEntry['type']) => t === 'receive' || t === 'transfer_in';
+
       let runningStock = startingStock;
       const entriesWithRemaining: StockEntry[] = filteredEntries.map(entry => {
-        runningStock += entry.type === 'receive' ? entry.qty : -entry.qty;
+        runningStock += isPositive(entry.type) ? entry.qty : -entry.qty;
         return { ...entry, remainingAfter: runningStock };
       });
       entriesWithRemaining.reverse();
@@ -123,7 +136,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
           b = { warehouseId: e.warehouseId, warehouseName: e.warehouseName, received: 0, sold: 0, remaining: 0 };
           breakdownMap.set(e.warehouseId, b);
         }
-        if (e.type === 'receive') b.received += e.qty;
+        if (e.type === 'receive' || e.type === 'transfer_in') b.received += e.qty;
         else b.sold += e.qty;
       });
       const warehouseBreakdown = Array.from(breakdownMap.values()).sort((a, b) => {
@@ -305,18 +318,36 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
                                             <ArrowUp className="w-3 h-3 mr-1" />Receive
                                           </Badge>
-                                        ) : (
+                                        ) : entry.type === 'sale' ? (
                                           <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
                                             <ArrowDown className="w-3 h-3 mr-1" />Sale
+                                          </Badge>
+                                        ) : entry.type === 'transfer_in' ? (
+                                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                                            <ArrowUp className="w-3 h-3 mr-1" />Transfer In
+                                          </Badge>
+                                        ) : (
+                                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                                            <ArrowDown className="w-3 h-3 mr-1" />Transfer Out
                                           </Badge>
                                         )}
                                       </TableCell>
                                       <TableCell className="text-sm py-1.5">{entry.source}</TableCell>
                                       <TableCell className="text-sm py-1.5 text-muted-foreground">{entry.warehouseName || '—'}</TableCell>
                                       <TableCell className="text-center py-1.5">
-                                        <span className={entry.type === 'receive' ? "text-green-600 font-semibold" : "text-orange-600 font-semibold"}>
-                                          {entry.type === 'receive' ? '+' : '-'}{entry.qty}
-                                        </span>
+                                        {(() => {
+                                          const positive = entry.type === 'receive' || entry.type === 'transfer_in';
+                                          const colorClass = entry.type === 'receive'
+                                            ? 'text-green-600'
+                                            : entry.type === 'sale'
+                                            ? 'text-orange-600'
+                                            : 'text-blue-600';
+                                          return (
+                                            <span className={`${colorClass} font-semibold`}>
+                                              {positive ? '+' : '-'}{entry.qty}
+                                            </span>
+                                          );
+                                        })()}
                                       </TableCell>
                                       <TableCell className="text-center py-1.5">
                                         <span className={entry.remainingAfter < 10 ? "text-red-600 font-semibold" : "text-foreground"}>
