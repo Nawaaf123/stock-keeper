@@ -392,6 +392,15 @@ export function useInventory() {
     if (toRes.data) ops.push(Promise.resolve(supabase.from('warehouse_stock').update({ quantity: toRes.data.quantity + quantity }).eq('id', toRes.data.id)));
     else ops.push(Promise.resolve(supabase.from('warehouse_stock').insert({ item_id: itemId, warehouse_id: toWarehouseId, quantity })));
     await Promise.all(ops);
+
+    // Log the transfer as two ledger entries so it shows up in Stock Summary.
+    const whName = new Map(warehousesRef.current.map(w => [w.id, w.name]));
+    const fromName = whName.get(fromWarehouseId) || '';
+    const toName = whName.get(toWarehouseId) || '';
+    await supabase.from('inventory_transactions').insert([
+      { item_id: itemId, warehouse_id: fromWarehouseId, quantity, bol_number: `Transfer to ${toName}`, type: 'transfer_out' },
+      { item_id: itemId, warehouse_id: toWarehouseId, quantity, bol_number: `Transfer from ${fromName}`, type: 'transfer_in' },
+    ] as any);
   };
 
   const createOrder = async (shopName: string, orderItems: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[], shippingFee: number = 0) => {
