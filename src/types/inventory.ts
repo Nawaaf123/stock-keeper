@@ -44,7 +44,7 @@ export interface InventoryTransaction {
   bolNumber: string;
   bolDocumentUrl?: string | null;
   date: Date;
-  type: 'receive' | 'adjust';
+  type: 'receive' | 'adjust' | 'transfer_in' | 'transfer_out';
 }
 
 export interface OrderItem {
