@@ -99,8 +99,8 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
 
       filteredEntries.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-      const totalReceived = filteredEntries.filter(e => e.type === 'receive').reduce((sum, e) => sum + e.qty, 0);
-      const totalSold = filteredEntries.filter(e => e.type === 'sale').reduce((sum, e) => sum + e.qty, 0);
+      const totalReceived = filteredEntries.filter(e => e.type === 'receive' || e.type === 'transfer_in').reduce((sum, e) => sum + e.qty, 0);
+      const totalSold = filteredEntries.filter(e => e.type === 'sale' || e.type === 'transfer_out').reduce((sum, e) => sum + e.qty, 0);
 
       // Current stock: all warehouses or just selected one
       const currentStock = warehouseFilter === 'all'
