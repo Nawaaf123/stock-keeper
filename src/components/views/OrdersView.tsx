@@ -56,7 +56,26 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
     }
   };
 
-  const groupedOrders = orders.reduce((acc, order) => {
+  const filteredOrders = useMemo(() => {
+    const now = new Date();
+    let from: Date | null = null;
+    let to: Date | null = null;
+    if (dateRange === 'today') { from = startOfDay(now); to = endOfDay(now); }
+    else if (dateRange === 'week') { from = startOfWeek(now, { weekStartsOn: 1 }); to = endOfWeek(now, { weekStartsOn: 1 }); }
+    else if (dateRange === 'custom') {
+      if (customFrom) from = startOfDay(customFrom);
+      if (customTo) to = endOfDay(customTo);
+    }
+    const q = searchQuery.trim().toLowerCase();
+    return orders.filter(o => {
+      if (q && !o.shopName.toLowerCase().includes(q)) return false;
+      if (from && o.date < from) return false;
+      if (to && o.date > to) return false;
+      return true;
+    });
+  }, [orders, searchQuery, dateRange, customFrom, customTo]);
+
+  const groupedOrders = filteredOrders.reduce((acc, order) => {
     const dateKey = format(order.date, 'yyyy-MM-dd');
     if (!acc[dateKey]) acc[dateKey] = [];
     acc[dateKey].push(order);
