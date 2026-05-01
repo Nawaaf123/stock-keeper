@@ -109,9 +109,11 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
 
       const startingStock = currentStock - totalReceived + totalSold;
 
+      const isPositive = (t: StockEntry['type']) => t === 'receive' || t === 'transfer_in';
+
       let runningStock = startingStock;
       const entriesWithRemaining: StockEntry[] = filteredEntries.map(entry => {
-        runningStock += entry.type === 'receive' ? entry.qty : -entry.qty;
+        runningStock += isPositive(entry.type) ? entry.qty : -entry.qty;
         return { ...entry, remainingAfter: runningStock };
       });
       entriesWithRemaining.reverse();
@@ -134,7 +136,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
           b = { warehouseId: e.warehouseId, warehouseName: e.warehouseName, received: 0, sold: 0, remaining: 0 };
           breakdownMap.set(e.warehouseId, b);
         }
-        if (e.type === 'receive') b.received += e.qty;
+        if (e.type === 'receive' || e.type === 'transfer_in') b.received += e.qty;
         else b.sold += e.qty;
       });
       const warehouseBreakdown = Array.from(breakdownMap.values()).sort((a, b) => {
