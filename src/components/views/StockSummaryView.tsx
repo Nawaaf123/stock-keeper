@@ -54,16 +54,27 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
       const stockEntries: Omit<StockEntry, 'remainingAfter'>[] = [];
 
       transactions
-        .filter(t => t.itemId === item.id && t.type === 'receive')
+        .filter(t => t.itemId === item.id)
         .forEach(t => {
-          stockEntries.push({
-            type: 'receive',
-            source: `BOL: ${t.bolNumber}`,
-            qty: t.quantity,
-            date: t.date,
-            warehouseId: t.warehouseId,
-            warehouseName: t.warehouseName,
-          });
+          if (t.type === 'receive') {
+            stockEntries.push({
+              type: 'receive',
+              source: `BOL: ${t.bolNumber}`,
+              qty: t.quantity,
+              date: t.date,
+              warehouseId: t.warehouseId,
+              warehouseName: t.warehouseName,
+            });
+          } else if (t.type === 'transfer_in' || t.type === 'transfer_out') {
+            stockEntries.push({
+              type: t.type,
+              source: t.bolNumber || (t.type === 'transfer_in' ? 'Transfer in' : 'Transfer out'),
+              qty: t.quantity,
+              date: t.date,
+              warehouseId: t.warehouseId,
+              warehouseName: t.warehouseName,
+            });
+          }
         });
 
       orders.forEach(order => {
