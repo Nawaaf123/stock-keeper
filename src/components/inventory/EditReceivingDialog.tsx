@@ -30,6 +30,7 @@ interface EditReceivingDialogProps {
     bolNumber: string,
     newBolNumber: string,
     lines: ReceivingLine[],
+    bolDocumentUrl?: string | null,
   ) => Promise<void> | void;
 }
 
