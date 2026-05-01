@@ -12,6 +12,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { getTotalQuantity } from '@/data/mockData';
+import {
+  ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
+  CartesianGrid, Tooltip as RTooltip, Legend, PieChart, Pie, Cell,
+} from 'recharts';
 
 interface ReportsViewProps {
   orders: Order[];
