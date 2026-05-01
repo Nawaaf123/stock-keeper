@@ -146,13 +146,13 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
   const handleSubmit = () => {
     if (isSingleItemMode) {
       if (item && warehouseId && singleQuantity > 0 && bolNumber.trim()) {
-        onReceive(item.id, warehouseId, singleQuantity, bolNumber.trim(), null);
+        onReceive(item.id, warehouseId, singleQuantity, bolNumber.trim(), bolDocumentUrl);
         handleClose();
       }
     } else {
       const valid = productEntries.filter(e => e.itemId && e.quantity > 0);
       if (warehouseId && bolNumber.trim() && valid.length > 0) {
-        valid.forEach(e => onReceive(e.itemId, warehouseId, e.quantity, bolNumber.trim(), null));
+        valid.forEach(e => onReceive(e.itemId, warehouseId, e.quantity, bolNumber.trim(), bolDocumentUrl));
         handleClose();
       }
     }
