@@ -224,6 +224,70 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
         </div>
 
         <TabsContent value="orders" className="space-y-6">
+          {orders.length > 0 && (
+            <Card>
+              <CardContent className="p-3 flex flex-col sm:flex-row gap-2 sm:items-center">
+                <div className="relative flex-1 min-w-0">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by shop name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={dateRange} onValueChange={(v: any) => setDateRange(v)}>
+                  <SelectTrigger className="w-full sm:w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover">
+                    <SelectItem value="all">All time</SelectItem>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="week">This week</SelectItem>
+                    <SelectItem value="custom">Custom range</SelectItem>
+                  </SelectContent>
+                </Select>
+                {dateRange === 'custom' && (
+                  <div className="flex gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-40 justify-start text-left font-normal", !customFrom && "text-muted-foreground")}>
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {customFrom ? format(customFrom, 'MMM d, yyyy') : 'From'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarPicker mode="single" selected={customFrom} onSelect={setCustomFrom} initialFocus className="p-3 pointer-events-auto" />
+                      </PopoverContent>
+                    </Popover>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-40 justify-start text-left font-normal", !customTo && "text-muted-foreground")}>
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {customTo ? format(customTo, 'MMM d, yyyy') : 'To'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarPicker mode="single" selected={customTo} onSelect={setCustomTo} initialFocus className="p-3 pointer-events-auto" />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+                {(searchQuery || dateRange !== 'all') && (
+                  <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(''); setDateRange('all'); setCustomFrom(undefined); setCustomTo(undefined); }}>
+                    <X className="w-4 h-4 mr-1" /> Clear
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          {orders.length > 0 && filteredOrders.length === 0 && (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground text-sm">
+                No orders match your filters.
+              </CardContent>
+            </Card>
+          )}
           {orders.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
