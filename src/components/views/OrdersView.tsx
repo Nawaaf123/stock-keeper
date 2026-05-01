@@ -41,6 +41,10 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
   const [productFilter, setProductFilter] = useState<string>('all');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState<'all' | 'today' | 'week' | 'custom'>('all');
+  const [customFrom, setCustomFrom] = useState<Date | undefined>();
+  const [customTo, setCustomTo] = useState<Date | undefined>();
 
   const handlePreview = async (order: Order) => {
     try {
