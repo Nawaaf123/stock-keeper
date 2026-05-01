@@ -65,8 +65,36 @@ export function EditReceivingDialog({ open, onOpenChange, receiving, items, ware
       setSubCategoryFilter('all');
       setSkuInput('');
       setQtyInput('1');
+      setBolDocumentUrl(receiving.lines.find(l => l.bolDocumentUrl)?.bolDocumentUrl ?? null);
     }
   }, [receiving]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File too large (max 10MB)');
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'bin';
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from('bol-documents').upload(path, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from('bol-documents').getPublicUrl(path);
+      setBolDocumentUrl(data.publicUrl);
+      toast.success('BOL document uploaded');
+    } catch (err: any) {
+      toast.error(err?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const categories = useMemo(
     () => Array.from(new Set(items.map(i => i.category).filter(Boolean))).sort(),
