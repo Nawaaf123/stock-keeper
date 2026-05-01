@@ -472,9 +472,12 @@ export function useInventory() {
     bolNumber: string,
     newBolNumber: string,
     newLines: { itemId: string; warehouseId: string; quantity: number }[],
+    newBolDocumentUrl?: string | null,
   ) => {
     const oldLines = transactions.filter(t => t.bolNumber === bolNumber);
-    const bolDocumentUrl = oldLines[0]?.bolDocumentUrl ?? null;
+    const bolDocumentUrl = newBolDocumentUrl !== undefined
+      ? newBolDocumentUrl
+      : (oldLines[0]?.bolDocumentUrl ?? null);
 
     const key = (i: string, w: string) => `${i}::${w}`;
     const deltas = new Map<string, { itemId: string; warehouseId: string; delta: number }>();

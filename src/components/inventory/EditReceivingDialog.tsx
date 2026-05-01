@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { InventoryItem, Warehouse, InventoryTransaction } from '@/types/inventory';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { Plus, Trash2, Pencil, Upload, FileText, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ReceivingLine {
   itemId: string;
@@ -29,6 +30,7 @@ interface EditReceivingDialogProps {
     bolNumber: string,
     newBolNumber: string,
     lines: ReceivingLine[],
+    bolDocumentUrl?: string | null,
   ) => Promise<void> | void;
 }
 
@@ -39,8 +41,11 @@ export function EditReceivingDialog({ open, onOpenChange, receiving, items, ware
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
   const [skuInput, setSkuInput] = useState('');
   const [qtyInput, setQtyInput] = useState('1');
+  const [bolDocumentUrl, setBolDocumentUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const skuRef = useRef<HTMLInputElement>(null);
   const linesScrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (linesScrollRef.current) {
@@ -60,8 +65,36 @@ export function EditReceivingDialog({ open, onOpenChange, receiving, items, ware
       setSubCategoryFilter('all');
       setSkuInput('');
       setQtyInput('1');
+      setBolDocumentUrl(receiving.lines.find(l => l.bolDocumentUrl)?.bolDocumentUrl ?? null);
     }
   }, [receiving]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File too large (max 10MB)');
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'bin';
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from('bol-documents').upload(path, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from('bol-documents').getPublicUrl(path);
+      setBolDocumentUrl(data.publicUrl);
+      toast.success('BOL document uploaded');
+    } catch (err: any) {
+      toast.error(err?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const categories = useMemo(
     () => Array.from(new Set(items.map(i => i.category).filter(Boolean))).sort(),
@@ -127,7 +160,7 @@ export function EditReceivingDialog({ open, onOpenChange, receiving, items, ware
     if (!receiving) return;
     if (!isValid()) { toast.error('Check BOL number, products, warehouses, and quantities'); return; }
     const valid = lines.filter(l => l.itemId && l.warehouseId && l.quantity > 0);
-    await onUpdate(receiving.bolNumber, bolNumber.trim(), valid);
+    await onUpdate(receiving.bolNumber, bolNumber.trim(), valid, bolDocumentUrl);
     toast.success('Receiving updated and inventory adjusted');
     onOpenChange(false);
   };
@@ -169,6 +202,54 @@ export function EditReceivingDialog({ open, onOpenChange, receiving, items, ware
                 {subCategories.map(sc => <SelectItem key={sc} value={sc}>{sc}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* BOL document upload */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            {bolDocumentUrl ? (
+              <div className="flex items-center gap-2 px-2 py-1 border rounded-md bg-muted/30 text-xs">
+                <FileText className="w-3.5 h-3.5 text-primary" />
+                <a href={bolDocumentUrl} target="_blank" rel="noreferrer" className="underline">View BOL document</a>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  Replace
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5"
+                  onClick={() => setBolDocumentUrl(null)}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Upload className="w-3.5 h-3.5 mr-1" />}
+                {uploading ? 'Uploading…' : 'Attach BOL (PDF/Image)'}
+              </Button>
+            )}
           </div>
 
           <div className="flex gap-2">
