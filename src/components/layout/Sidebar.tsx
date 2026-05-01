@@ -18,7 +18,7 @@ const navItems = [
   { id: 'wholesalers', label: 'Wholesalers', icon: Users },
   { id: 'inventory-history', label: 'Inventory History', icon: History },
   { id: 'reports', label: 'Reports', icon: BarChart3 },
-  { id: 'bill-of-lading', label: 'Bill of Lading', icon: FileText },
+  { id: 'bill-of-lading', label: 'Payment History', icon: Receipt },
   { id: 'users', label: 'Users', icon: UserCog },
 ];
 
