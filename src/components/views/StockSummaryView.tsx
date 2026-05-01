@@ -19,7 +19,7 @@ interface StockSummaryViewProps {
 }
 
 interface StockEntry {
-  type: 'receive' | 'sale';
+  type: 'receive' | 'sale' | 'transfer_in' | 'transfer_out';
   source: string;
   qty: number;
   date: Date;
