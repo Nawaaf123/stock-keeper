@@ -1,4 +1,4 @@
-import { Package, BarChart3, FileText, History, ShoppingCart, Users, ClipboardList, CreditCard, Menu, X, LogOut, UserCog, PackagePlus } from 'lucide-react';
+import { Package, BarChart3, History, ShoppingCart, Users, ClipboardList, CreditCard, Menu, X, LogOut, UserCog, PackagePlus, Receipt } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import mrfogLogo from '@/assets/mrfog-logo.png';
