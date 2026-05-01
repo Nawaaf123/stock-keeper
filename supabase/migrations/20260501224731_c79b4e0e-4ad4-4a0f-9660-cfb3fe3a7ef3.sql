@@ -1,0 +1,2 @@
+ALTER TABLE public.inventory_transactions DROP CONSTRAINT IF EXISTS inventory_transactions_type_check;
+ALTER TABLE public.inventory_transactions ADD CONSTRAINT inventory_transactions_type_check CHECK (type = ANY (ARRAY['receive'::text, 'adjust'::text, 'transfer_in'::text, 'transfer_out'::text]));
