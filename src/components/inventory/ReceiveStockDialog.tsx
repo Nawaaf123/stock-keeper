@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { InventoryItem, Warehouse } from '@/types/inventory';
-import { Package, Plus, Trash2 } from 'lucide-react';
+import { Package, Plus, Trash2, Upload, FileText, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProductEntry {
   itemId: string;
