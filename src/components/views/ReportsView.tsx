@@ -12,6 +12,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { getTotalQuantity } from '@/data/mockData';
+import {
+  ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
+  CartesianGrid, Tooltip as RTooltip, Legend, PieChart, Pie, Cell,
+} from 'recharts';
 
 interface ReportsViewProps {
   orders: Order[];
@@ -313,58 +317,187 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
 
         <TabsContent value="trend">
           <Card>
-            <CardHeader className="pb-3"><CardTitle>Daily Sales Trend</CardTitle></CardHeader>
+            <CardHeader className="pb-3">
+              <CardTitle>Daily Sales Trend</CardTitle>
+              <p className="text-sm text-muted-foreground">Revenue and cases shipped per day</p>
+            </CardHeader>
             <CardContent>
-              <div className="space-y-1 max-h-[500px] overflow-y-auto">
-                {dailyTrend.map(d => (
-                  <div key={d.date.toISOString()} className="flex items-center gap-3 text-sm">
-                    <div className="w-24 text-muted-foreground">{format(d.date, 'EEE dd MMM')}</div>
-                    <div className="flex-1 bg-muted rounded h-6 relative overflow-hidden">
-                      <div className="absolute inset-y-0 left-0 bg-primary/70 transition-all" style={{ width: `${(d.revenue / maxRevenue) * 100}%` }} />
-                    </div>
-                    <div className="w-16 text-right text-muted-foreground">{d.orders} ord</div>
-                    <div className="w-20 text-right font-semibold">${d.revenue.toFixed(0)}</div>
-                  </div>
-                ))}
-                {dailyTrend.length === 0 && <div className="text-center py-8 text-muted-foreground">Select a range</div>}
-              </div>
+              {dailyTrend.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">Select a range</div>
+              ) : (
+                <div className="w-full h-[380px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={dailyTrend.map(d => ({
+                      date: format(d.date, 'dd MMM'),
+                      Revenue: Number(d.revenue.toFixed(2)),
+                      Cases: d.units,
+                      Orders: d.orders,
+                    }))} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.45} />
+                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="caseGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={0.4} />
+                          <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <RTooltip
+                        contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                        formatter={(v: number, n: string) => n === 'Revenue' ? [`$${v.toFixed(2)}`, n] : [v, n]}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Area yAxisId="left" type="monotone" dataKey="Revenue" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#revGrad)" />
+                      <Area yAxisId="right" type="monotone" dataKey="Cases" stroke="hsl(var(--accent))" strokeWidth={2} fill="url(#caseGrad)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="warehouses">
-          <ReportTable
-            title="Warehouse Activity"
-            headers={['Warehouse', 'Received', 'Shipped', 'Net Change', 'Revenue']}
-            aligns={['left', 'center', 'center', 'center', 'right']}
-            rows={warehouseStats.map(w => [
-              <span className="font-medium">{w.warehouse}</span>,
-              <span className="text-green-600 font-semibold">+{w.received}</span>,
-              <span className="text-orange-600 font-semibold">-{w.shipped}</span>,
-              <span className={w.net >= 0 ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>{w.net >= 0 ? '+' : ''}{w.net}</span>,
-              <span className="font-semibold">${w.revenue.toFixed(2)}</span>,
-            ])}
-            emptyText="No warehouse activity in this range"
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-3">
+                <CardTitle>Received vs Shipped by Warehouse</CardTitle>
+                <p className="text-sm text-muted-foreground">Inbound and outbound case movement</p>
+              </CardHeader>
+              <CardContent>
+                {warehouseStats.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">No warehouse activity in this range</div>
+                ) : (
+                  <div className="w-full h-[340px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={warehouseStats.map(w => ({ name: w.warehouse, Received: w.received, Shipped: w.shipped }))}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <RTooltip contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Bar dataKey="Received" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="Shipped" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle>Revenue Share</CardTitle>
+                <p className="text-sm text-muted-foreground">Per warehouse</p>
+              </CardHeader>
+              <CardContent>
+                {warehouseStats.filter(w => w.revenue > 0).length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">No revenue</div>
+                ) : (
+                  <div className="w-full h-[340px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={warehouseStats.filter(w => w.revenue > 0).map(w => ({ name: w.warehouse, value: Number(w.revenue.toFixed(2)) }))}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={55}
+                          outerRadius={95}
+                          paddingAngle={2}
+                          label={(e: any) => `${e.name}`}
+                        >
+                          {warehouseStats.filter(w => w.revenue > 0).map((_, i) => {
+                            const palette = ['hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--destructive))', 'hsl(var(--ring))', 'hsl(var(--secondary))'];
+                            return <Cell key={i} fill={palette[i % palette.length]} />;
+                          })}
+                        </Pie>
+                        <RTooltip
+                          contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                          formatter={(v: number) => `$${v.toFixed(2)}`}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-3">
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {warehouseStats.map(w => (
+                    <div key={w.warehouse} className="p-3 rounded-lg border bg-card">
+                      <div className="text-xs text-muted-foreground">{w.warehouse}</div>
+                      <div className="text-lg font-semibold mt-1">${w.revenue.toFixed(2)}</div>
+                      <div className="text-xs mt-2 flex gap-3">
+                        <span className="text-green-600">+{w.received} in</span>
+                        <span className="text-orange-600">-{w.shipped} out</span>
+                        <span className={w.net >= 0 ? "text-green-600" : "text-red-600"}>net {w.net >= 0 ? '+' : ''}{w.net}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="lowstock">
-          <ReportTable
-            title="Low Stock Alert (current)"
-            headers={['SKU', 'Product', 'Category', 'Current', 'Min', 'Status']}
-            aligns={['left', 'left', 'left', 'center', 'center', 'center']}
-            rows={lowStock.map(i => [
-              <span className="font-mono text-xs">{i.sku}</span>,
-              <span className="font-medium">{i.name}</span>,
-              <span className="text-muted-foreground text-sm">{i.category}</span>,
-              <span className={i.current === 0 ? "text-red-600 font-bold" : "text-orange-600 font-semibold"}>{i.current}</span>,
-              i.min,
-              <Badge variant={i.current === 0 ? "destructive" : "outline"} className={i.current > 0 ? "bg-orange-50 text-orange-700 border-orange-200" : ""}>
-                {i.current === 0 ? 'Out of stock' : 'Low'}
-              </Badge>,
-            ])}
-            emptyText="All products are above their minimum stock levels"
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground">Out of Stock</p>
+                <p className="text-3xl font-bold text-red-600 mt-1">{lowStock.filter(i => i.current === 0).length}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground">Below Minimum</p>
+                <p className="text-3xl font-bold text-orange-600 mt-1">{lowStock.filter(i => i.current > 0).length}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground">Total Alerts</p>
+                <p className="text-3xl font-bold text-foreground mt-1">{lowStock.length}</p>
+              </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-3">
+              <CardHeader className="pb-3">
+                <CardTitle>Stock Shortfall</CardTitle>
+                <p className="text-sm text-muted-foreground">Current stock vs minimum required (top 15 most critical)</p>
+              </CardHeader>
+              <CardContent>
+                {lowStock.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">All products are above their minimum stock levels</div>
+                ) : (
+                  <div className="w-full" style={{ height: Math.max(280, Math.min(lowStock.length, 15) * 36 + 60) }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={lowStock.slice(0, 15).map(i => ({ name: i.name, Current: i.current, Min: i.min }))}
+                        layout="vertical"
+                        margin={{ top: 10, right: 20, left: 10, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                        <YAxis type="category" dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} width={160} />
+                        <RTooltip contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Bar dataKey="Current" fill="hsl(var(--destructive))" radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="Min" fill="hsl(var(--muted-foreground))" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
