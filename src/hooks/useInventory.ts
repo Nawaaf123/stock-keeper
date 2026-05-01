@@ -90,7 +90,7 @@ export function useInventory() {
       bolNumber: t.bol_number,
       bolDocumentUrl: (t as any).bol_document_url ?? null,
       date: new Date(t.created_at),
-      type: t.type as 'receive' | 'adjust',
+      type: t.type as 'receive' | 'adjust' | 'transfer_in' | 'transfer_out',
     })));
   }, []);
 
