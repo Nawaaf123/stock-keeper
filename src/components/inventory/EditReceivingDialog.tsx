@@ -204,6 +204,54 @@ export function EditReceivingDialog({ open, onOpenChange, receiving, items, ware
             </Select>
           </div>
 
+          {/* BOL document upload */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            {bolDocumentUrl ? (
+              <div className="flex items-center gap-2 px-2 py-1 border rounded-md bg-muted/30 text-xs">
+                <FileText className="w-3.5 h-3.5 text-primary" />
+                <a href={bolDocumentUrl} target="_blank" rel="noreferrer" className="underline">View BOL document</a>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  Replace
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5"
+                  onClick={() => setBolDocumentUrl(null)}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Upload className="w-3.5 h-3.5 mr-1" />}
+                {uploading ? 'Uploading…' : 'Attach BOL (PDF/Image)'}
+              </Button>
+            )}
+          </div>
+
           <div className="flex gap-2">
             <Input
               ref={skuRef}
