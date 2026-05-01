@@ -41,8 +41,11 @@ export function EditReceivingDialog({ open, onOpenChange, receiving, items, ware
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
   const [skuInput, setSkuInput] = useState('');
   const [qtyInput, setQtyInput] = useState('1');
+  const [bolDocumentUrl, setBolDocumentUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const skuRef = useRef<HTMLInputElement>(null);
   const linesScrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (linesScrollRef.current) {
