@@ -13,8 +13,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown, FileDown, Pencil, Trash2, ClipboardList, Eye } from 'lucide-react';
-import { format } from 'date-fns';
+import { Plus, Store, Package, Calendar, History, TrendingUp, BarChart3, ChevronDown, FileDown, Pencil, Trash2, ClipboardList, Eye, Search, X } from 'lucide-react';
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import { downloadInvoice } from '@/lib/invoice';
 import { downloadPickSheet, previewPickSheet } from '@/lib/pickSheet';
 import { toast } from 'sonner';
@@ -37,6 +41,10 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
   const [productFilter, setProductFilter] = useState<string>('all');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState<'all' | 'today' | 'week' | 'custom'>('all');
+  const [customFrom, setCustomFrom] = useState<Date | undefined>();
+  const [customTo, setCustomTo] = useState<Date | undefined>();
 
   const handlePreview = async (order: Order) => {
     try {
@@ -48,7 +56,26 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
     }
   };
 
-  const groupedOrders = orders.reduce((acc, order) => {
+  const filteredOrders = useMemo(() => {
+    const now = new Date();
+    let from: Date | null = null;
+    let to: Date | null = null;
+    if (dateRange === 'today') { from = startOfDay(now); to = endOfDay(now); }
+    else if (dateRange === 'week') { from = startOfWeek(now, { weekStartsOn: 1 }); to = endOfWeek(now, { weekStartsOn: 1 }); }
+    else if (dateRange === 'custom') {
+      if (customFrom) from = startOfDay(customFrom);
+      if (customTo) to = endOfDay(customTo);
+    }
+    const q = searchQuery.trim().toLowerCase();
+    return orders.filter(o => {
+      if (q && !o.shopName.toLowerCase().includes(q)) return false;
+      if (from && o.date < from) return false;
+      if (to && o.date > to) return false;
+      return true;
+    });
+  }, [orders, searchQuery, dateRange, customFrom, customTo]);
+
+  const groupedOrders = filteredOrders.reduce((acc, order) => {
     const dateKey = format(order.date, 'yyyy-MM-dd');
     if (!acc[dateKey]) acc[dateKey] = [];
     acc[dateKey].push(order);
@@ -197,6 +224,70 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
         </div>
 
         <TabsContent value="orders" className="space-y-6">
+          {orders.length > 0 && (
+            <Card>
+              <CardContent className="p-3 flex flex-col sm:flex-row gap-2 sm:items-center">
+                <div className="relative flex-1 min-w-0">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by shop name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={dateRange} onValueChange={(v: any) => setDateRange(v)}>
+                  <SelectTrigger className="w-full sm:w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover">
+                    <SelectItem value="all">All time</SelectItem>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="week">This week</SelectItem>
+                    <SelectItem value="custom">Custom range</SelectItem>
+                  </SelectContent>
+                </Select>
+                {dateRange === 'custom' && (
+                  <div className="flex gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-40 justify-start text-left font-normal", !customFrom && "text-muted-foreground")}>
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {customFrom ? format(customFrom, 'MMM d, yyyy') : 'From'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarPicker mode="single" selected={customFrom} onSelect={setCustomFrom} initialFocus className="p-3 pointer-events-auto" />
+                      </PopoverContent>
+                    </Popover>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-40 justify-start text-left font-normal", !customTo && "text-muted-foreground")}>
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {customTo ? format(customTo, 'MMM d, yyyy') : 'To'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarPicker mode="single" selected={customTo} onSelect={setCustomTo} initialFocus className="p-3 pointer-events-auto" />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+                {(searchQuery || dateRange !== 'all') && (
+                  <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(''); setDateRange('all'); setCustomFrom(undefined); setCustomTo(undefined); }}>
+                    <X className="w-4 h-4 mr-1" /> Clear
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          {orders.length > 0 && filteredOrders.length === 0 && (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground text-sm">
+                No orders match your filters.
+              </CardContent>
+            </Card>
+          )}
           {orders.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
