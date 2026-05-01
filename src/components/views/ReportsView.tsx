@@ -499,25 +499,6 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
             </Card>
           </div>
         </TabsContent>
-
-        <TabsContent value="lowstock">
-          <ReportTable
-            title="Low Stock Alert (current)"
-            headers={['SKU', 'Product', 'Category', 'Current', 'Min', 'Status']}
-            aligns={['left', 'left', 'left', 'center', 'center', 'center']}
-            rows={lowStock.map(i => [
-              <span className="font-mono text-xs">{i.sku}</span>,
-              <span className="font-medium">{i.name}</span>,
-              <span className="text-muted-foreground text-sm">{i.category}</span>,
-              <span className={i.current === 0 ? "text-red-600 font-bold" : "text-orange-600 font-semibold"}>{i.current}</span>,
-              i.min,
-              <Badge variant={i.current === 0 ? "destructive" : "outline"} className={i.current > 0 ? "bg-orange-50 text-orange-700 border-orange-200" : ""}>
-                {i.current === 0 ? 'Out of stock' : 'Low'}
-              </Badge>,
-            ])}
-            emptyText="All products are above their minimum stock levels"
-          />
-        </TabsContent>
       </Tabs>
     </div>
   );
