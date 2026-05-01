@@ -160,7 +160,7 @@ export function EditReceivingDialog({ open, onOpenChange, receiving, items, ware
     if (!receiving) return;
     if (!isValid()) { toast.error('Check BOL number, products, warehouses, and quantities'); return; }
     const valid = lines.filter(l => l.itemId && l.warehouseId && l.quantity > 0);
-    await onUpdate(receiving.bolNumber, bolNumber.trim(), valid);
+    await onUpdate(receiving.bolNumber, bolNumber.trim(), valid, bolDocumentUrl);
     toast.success('Receiving updated and inventory adjusted');
     onOpenChange(false);
   };
