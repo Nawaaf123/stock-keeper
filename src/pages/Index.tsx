@@ -9,7 +9,7 @@ const InventoryHistoryView = lazy(() => import('@/components/views/InventoryHist
 const ReceivingsView = lazy(() => import('@/components/views/ReceivingsView').then(m => ({ default: m.ReceivingsView })));
 const WarehousesView = lazy(() => import('@/components/views/WarehousesView').then(m => ({ default: m.WarehousesView })));
 const ReportsView = lazy(() => import('@/components/views/ReportsView').then(m => ({ default: m.ReportsView })));
-const BillOfLadingView = lazy(() => import('@/components/views/BillOfLadingView').then(m => ({ default: m.BillOfLadingView })));
+const PaymentHistoryView = lazy(() => import('@/components/views/PaymentHistoryView').then(m => ({ default: m.PaymentHistoryView })));
 const OrdersView = lazy(() => import('@/components/views/OrdersView').then(m => ({ default: m.OrdersView })));
 const WholesalersView = lazy(() => import('@/components/views/WholesalersView').then(m => ({ default: m.WholesalersView })));
 const StockSummaryView = lazy(() => import('@/components/views/StockSummaryView').then(m => ({ default: m.StockSummaryView })));
