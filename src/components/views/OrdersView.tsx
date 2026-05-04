@@ -28,7 +28,7 @@ interface OrdersViewProps {
   items: InventoryItem[];
   warehouses: Warehouse[];
   wholesalers: Wholesaler[];
-  onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[], shippingFee: number) => void;
+  onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[], shippingFee: number) => Promise<string | void> | string | void;
   onUpdateOrder: (orderId: string, shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[], shippingFee: number) => Promise<void> | void;
   onDeleteOrder: (orderId: string) => Promise<void> | void;
 }
