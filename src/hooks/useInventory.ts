@@ -95,13 +95,26 @@ export function useInventory() {
   }, []);
 
   const fetchOrders = useCallback(async () => {
-    const [ordersRes, oiRes] = await Promise.all([
+    const fetchAllOrderItems = async () => {
+      const pageSize = 1000;
+      const rows: any[] = [];
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabase
+          .from('order_items')
+          .select('order_id,item_id,warehouse_id,quantity,unit_price')
+          .range(from, from + pageSize - 1);
+        if (error || !data) return rows;
+        rows.push(...data);
+        if (data.length < pageSize) return rows;
+      }
+    };
+
+    const [ordersRes, orderItemsData] = await Promise.all([
       supabase.from('orders').select('id,shop_name,status,created_at,shipping_fee').order('created_at', { ascending: false }),
-      supabase.from('order_items').select('order_id,item_id,warehouse_id,quantity,unit_price').range(0, 9999),
+      fetchAllOrderItems(),
     ]);
     const ordersData = ordersRes.data;
-    const orderItemsData = oiRes.data;
-    if (!ordersData || !orderItemsData) return;
+    if (!ordersData) return;
 
     const whName = new Map(warehousesRef.current.map(w => [w.id, w.name]));
     const itemMap = new Map(itemsRef.current.map(i => [i.id, i]));
