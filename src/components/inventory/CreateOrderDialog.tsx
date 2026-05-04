@@ -28,7 +28,7 @@ interface CreateOrderDialogProps {
   items: InventoryItem[];
   warehouses: Warehouse[];
   wholesalers: Wholesaler[];
-  onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[], shippingFee: number) => void;
+  onCreateOrder: (shopName: string, items: { itemId: string; warehouseId: string; quantity: number; unitPrice: number }[], shippingFee: number) => Promise<string | void> | string | void;
 }
 
 export function CreateOrderDialog({ open, onOpenChange, items, warehouses, wholesalers, onCreateOrder }: CreateOrderDialogProps) {
@@ -42,6 +42,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   const [skuInput, setSkuInput] = useState('');
   const [qtyInput, setQtyInput] = useState('1');
   const [shippingFee, setShippingFee] = useState<string>('');
+  const [saving, setSaving] = useState(false);
   const skuRef = useRef<HTMLInputElement>(null);
   const linesScrollRef = useRef<HTMLDivElement>(null);
 
@@ -155,14 +156,21 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     return valid.every(e => e.quantity <= getAvailableStock(e.itemId, e.warehouseId));
   };
 
-  const handleSubmit = () => {
-    if (!isValid()) return;
+  const handleSubmit = async () => {
+    if (!isValid() || saving) return;
     const valid = orderItems
       .filter(e => e.itemId && e.warehouseId && e.quantity > 0)
       .map(e => ({ ...e, unitPrice: Number(e.unitPrice) || 0 }));
-    onCreateOrder(getShopName(), valid, Number(shippingFee) || 0);
-    resetState();
-    onOpenChange(false);
+    try {
+      setSaving(true);
+      await onCreateOrder(getShopName(), valid, Number(shippingFee) || 0);
+      resetState();
+      onOpenChange(false);
+    } catch (error) {
+      toast.error('Could not create order. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const resetState = () => {
@@ -494,8 +502,8 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
         </div>
 
         <DialogFooter className="sticky bottom-0 z-10 gap-2 px-6 py-4 border-t bg-background flex-shrink-0">
-          <Button variant="outline" size="sm" onClick={handleClose}>Cancel</Button>
-          <Button size="sm" onClick={handleSubmit} disabled={!isValid()}>Create Order</Button>
+          <Button variant="outline" size="sm" onClick={handleClose} disabled={saving}>Cancel</Button>
+          <Button size="sm" onClick={handleSubmit} disabled={!isValid() || saving}>{saving ? 'Creating…' : 'Create Order'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
