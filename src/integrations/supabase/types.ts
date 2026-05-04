@@ -361,7 +361,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      apply_stock_deltas: { Args: { _changes: Json }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
