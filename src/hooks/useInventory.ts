@@ -587,28 +587,32 @@ export function useInventory() {
       else deltas.set(k, { itemId: ni.itemId, warehouseId: ni.warehouseId, delta: -ni.quantity });
     }
 
-    // Resolve current quantities locally — no per-row SELECT round-trip
-    const itemsNow = itemsRef.current;
-    const stockUpdates: { itemId: string; warehouseId: string; newQty: number }[] = [];
+    // Build atomic deltas to apply via RPC.
+    // CRITICAL: do NOT compute "newQty = currentLocal + delta" and overwrite —
+    // that pattern silently corrupts stock when local state is stale (which is what
+    // caused the May 4 American/TKE order incident). The RPC does
+    // quantity = quantity + delta atomically per row in the database.
+    const changes: { item_id: string; warehouse_id: string; delta: number }[] = [];
     for (const d of deltas.values()) {
       if (d.delta === 0) continue;
-      const item = itemsNow.find(i => i.id === d.itemId);
-      const current = item?.stock.find(s => s.warehouseId === d.warehouseId)?.quantity || 0;
-      stockUpdates.push({ itemId: d.itemId, warehouseId: d.warehouseId, newQty: Math.max(0, current + d.delta) });
+      changes.push({ item_id: d.itemId, warehouse_id: d.warehouseId, delta: d.delta });
     }
 
-    // Optimistic local update so the UI reflects new stock immediately
-    if (stockUpdates.length > 0) {
+    // Optimistic local update so the UI reflects new stock immediately.
+    // Computed from local state for display only; the DB will use atomic deltas.
+    const itemsNow = itemsRef.current;
+    if (changes.length > 0) {
       setItems(prev => prev.map(it => {
-        const updates = stockUpdates.filter(u => u.itemId === it.id);
+        const updates = changes.filter(u => u.item_id === it.id);
         if (updates.length === 0) return it;
         const stockMap = new Map(it.stock.map(s => [s.warehouseId, s]));
         for (const u of updates) {
-          const existing = stockMap.get(u.warehouseId);
-          if (existing) stockMap.set(u.warehouseId, { ...existing, quantity: u.newQty });
+          const existing = stockMap.get(u.warehouse_id);
+          const newQty = Math.max(0, (existing?.quantity || 0) + u.delta);
+          if (existing) stockMap.set(u.warehouse_id, { ...existing, quantity: newQty });
           else {
-            const wh = warehousesRef.current.find(w => w.id === u.warehouseId);
-            stockMap.set(u.warehouseId, { warehouseId: u.warehouseId, warehouseName: wh?.name || '', quantity: u.newQty });
+            const wh = warehousesRef.current.find(w => w.id === u.warehouse_id);
+            stockMap.set(u.warehouse_id, { warehouseId: u.warehouse_id, warehouseName: wh?.name || '', quantity: newQty });
           }
         }
         return { ...it, stock: Array.from(stockMap.values()) };
@@ -635,18 +639,10 @@ export function useInventory() {
       }),
     } : o));
 
-    // Fire all DB writes in parallel — single round trip per table
+    // DB writes — apply atomic stock deltas via RPC, then replace order_items
     const ops: PromiseLike<any>[] = [];
-
-    // Bulk update warehouse_stock rows
-    for (const u of stockUpdates) {
-      ops.push(
-        (supabase as any)
-          .from('warehouse_stock')
-          .update({ quantity: u.newQty })
-          .eq('item_id', u.itemId)
-          .eq('warehouse_id', u.warehouseId)
-      );
+    if (changes.length > 0) {
+      ops.push((supabase as any).rpc('apply_stock_deltas', { _changes: changes }));
     }
 
     // Replace order_items (delete + insert) and update order shop name in parallel
