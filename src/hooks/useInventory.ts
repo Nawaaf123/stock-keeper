@@ -437,15 +437,22 @@ export function useInventory() {
       throw itemsError;
     }
 
-    // Fetch all impacted stock rows in parallel
-    const stockResults = await Promise.all(orderItems.map(entry =>
-      supabase.from('warehouse_stock').select('id, quantity').eq('item_id', entry.itemId).eq('warehouse_id', entry.warehouseId).maybeSingle()
-    ));
-    await Promise.all(stockResults.map((res, i) => {
-      const entry = orderItems[i];
-      if (res.data) return supabase.from('warehouse_stock').update({ quantity: Math.max(0, res.data.quantity - entry.quantity) }).eq('id', res.data.id);
-      return Promise.resolve();
-    }));
+    // Atomic stock deduction via RPC — aggregates duplicates and applies
+    // quantity = quantity + delta inside a single SQL statement per row.
+    // Eliminates the read/modify/write race that could silently drop deductions.
+    const aggregated = new Map<string, number>();
+    for (const entry of orderItems) {
+      const k = `${entry.itemId}::${entry.warehouseId}`;
+      aggregated.set(k, (aggregated.get(k) || 0) - entry.quantity);
+    }
+    const changes = Array.from(aggregated.entries()).map(([k, delta]) => {
+      const [item_id, warehouse_id] = k.split('::');
+      return { item_id, warehouse_id, delta };
+    });
+    if (changes.length > 0) {
+      const { error: rpcErr } = await (supabase as any).rpc('apply_stock_deltas', { _changes: changes });
+      if (rpcErr) throw rpcErr;
+    }
 
     await Promise.all([fetchItems(), fetchOrders()]);
 
