@@ -409,7 +409,7 @@ export function useInventory() {
       .insert({ shop_name: shopName, status: 'completed', shipping_fee: shippingFee } as any)
       .select()
       .single();
-    if (error || !newOrder) return;
+    if (error || !newOrder) throw error || new Error('Could not create order');
 
     const oiRows = orderItems.map(entry => ({
       order_id: newOrder.id,
@@ -418,7 +418,11 @@ export function useInventory() {
       quantity: entry.quantity,
       unit_price: entry.unitPrice,
     }));
-    await supabase.from('order_items').insert(oiRows);
+    const { error: itemsError } = await supabase.from('order_items').insert(oiRows);
+    if (itemsError) {
+      await supabase.from('orders').delete().eq('id', newOrder.id);
+      throw itemsError;
+    }
 
     // Fetch all impacted stock rows in parallel
     const stockResults = await Promise.all(orderItems.map(entry =>
@@ -429,6 +433,8 @@ export function useInventory() {
       if (res.data) return supabase.from('warehouse_stock').update({ quantity: Math.max(0, res.data.quantity - entry.quantity) }).eq('id', res.data.id);
       return Promise.resolve();
     }));
+
+    await Promise.all([fetchItems(), fetchOrders()]);
 
     return newOrder.id as string;
   };
@@ -641,6 +647,7 @@ export function useInventory() {
     ops.push((supabase as any).from('orders').update({ shop_name: shopName, shipping_fee: shippingFee }).eq('id', orderId));
 
     await Promise.all(ops);
+    await Promise.all([fetchItems(), fetchOrders()]);
   };
 
   const addWholesaler = async (wholesaler: Omit<Wholesaler, 'id'>) => {
