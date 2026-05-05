@@ -189,7 +189,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
           b = { warehouseId: e.warehouseId, warehouseName: e.warehouseName, received: 0, sold: 0, remaining: 0 };
           breakdownMap.set(e.warehouseId, b);
         }
-        if (e.type === 'receive' || e.type === 'transfer_in') b.received += e.qty;
+        if (e.type === 'receive' || e.type === 'transfer_in' || e.type === 'order_cancelled') b.received += e.qty;
         else if (e.type === 'sale' || e.type === 'transfer_out') b.sold += e.qty;
         else if (e.type === 'manual_adjust') {
           if (e.qty >= 0) b.received += e.qty;
