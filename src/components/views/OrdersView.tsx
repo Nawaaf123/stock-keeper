@@ -275,6 +275,14 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                     </Popover>
                   </div>
                 )}
+                <Button
+                  variant={showCancelled ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setShowCancelled(v => !v)}
+                  className="whitespace-nowrap"
+                >
+                  {showCancelled ? 'Hide cancelled' : 'Show cancelled'}
+                </Button>
                 {(searchQuery || dateRange !== 'all') && (
                   <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(''); setDateRange('all'); setCustomFrom(undefined); setCustomTo(undefined); }}>
                     <X className="w-4 h-4 mr-1" /> Clear
