@@ -115,7 +115,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
       lastOrder: Date;
     }>();
 
-    orders.forEach(order => {
+    orders.filter(o => o.status !== 'cancelled').forEach(order => {
       if (!history.has(order.shopName)) {
         history.set(order.shopName, {
           shopName: order.shopName,
