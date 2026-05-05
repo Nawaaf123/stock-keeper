@@ -327,14 +327,14 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                   <div className="space-y-3">
                     {groupedOrders[dateKey].map((order) => (
                       <Collapsible key={order.id}>
-                        <Card>
+                        <Card className={cn(order.status === 'cancelled' && 'opacity-60 border-dashed')}>
                           <CollapsibleTrigger asChild>
                             <CardHeader className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors">
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                 <CardTitle className="text-base flex items-start sm:items-center gap-2 min-w-0">
                                   <Store className="w-4 h-4 text-primary flex-shrink-0 mt-1 sm:mt-0" />
                                   <span className="min-w-0">
-                                    <span className="break-words">{order.shopName}</span>
+                                    <span className={cn("break-words", order.status === 'cancelled' && 'line-through text-muted-foreground')}>{order.shopName}</span>
                                     <span className="block sm:inline text-sm font-normal text-muted-foreground sm:ml-1">
                                       <span className="hidden sm:inline">— </span>{order.items.reduce((sum, i) => sum + i.quantity, 0)} cases, {order.items.length} {order.items.length === 1 ? 'product' : 'products'}
                                     </span>
@@ -344,7 +344,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                   <span className="text-xs text-muted-foreground">
                                     {format(order.date, 'h:mm a')}
                                   </span>
-                                  <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
+                                  <Badge variant={order.status === 'completed' ? 'default' : order.status === 'cancelled' ? 'outline' : 'secondary'} className={cn(order.status === 'cancelled' && 'bg-amber-50 text-amber-700 border-amber-200')}>
                                     {order.status}
                                   </Badge>
                                   <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
