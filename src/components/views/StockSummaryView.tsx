@@ -392,6 +392,10 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                           <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-300 text-xs">
                                             Opening
                                           </Badge>
+                                        ) : entry.type === 'order_cancelled' ? (
+                                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                                            <ArrowUp className="w-3 h-3 mr-1" />Cancelled
+                                          </Badge>
                                         ) : (
                                           <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
                                             {entry.qty >= 0 ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
