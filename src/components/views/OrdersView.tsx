@@ -612,22 +612,22 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
       <AlertDialog open={deleteOrderId !== null} onOpenChange={(o) => { if (!o) setDeleteOrderId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this order?</AlertDialogTitle>
+            <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
             <AlertDialogDescription>
-              The product quantities from this order will be returned to inventory. This action cannot be undone.
+              The product quantities will be returned to inventory and a reversal entry will be logged in your stock history. The order will stay visible (greyed out) so you keep a full audit trail.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Keep order</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
                 if (!deleteOrderId) return;
                 await onDeleteOrder(deleteOrderId);
-                toast.success('Order deleted and stock restored');
+                toast.success('Order cancelled and stock returned');
                 setDeleteOrderId(null);
               }}
             >
-              Delete & restore stock
+              Cancel order & return stock
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
