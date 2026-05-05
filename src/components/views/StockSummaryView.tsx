@@ -92,6 +92,15 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
               warehouseId: t.warehouseId,
               warehouseName: t.warehouseName,
             });
+          } else if (t.type === 'order_cancelled') {
+            stockEntries.push({
+              type: 'order_cancelled',
+              source: t.bolNumber || 'Order cancelled',
+              qty: t.quantity, // positive = stock returned
+              date: t.date,
+              warehouseId: t.warehouseId,
+              warehouseName: t.warehouseName,
+            });
           }
         });
 
