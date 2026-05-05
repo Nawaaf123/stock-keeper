@@ -374,9 +374,18 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
                                             <ArrowUp className="w-3 h-3 mr-1" />Transfer In
                                           </Badge>
-                                        ) : (
+                                        ) : entry.type === 'transfer_out' ? (
                                           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
                                             <ArrowDown className="w-3 h-3 mr-1" />Transfer Out
+                                          </Badge>
+                                        ) : entry.type === 'opening_balance' ? (
+                                          <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-300 text-xs">
+                                            Opening
+                                          </Badge>
+                                        ) : (
+                                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
+                                            {entry.qty >= 0 ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
+                                            Manual
                                           </Badge>
                                         )}
                                       </TableCell>
@@ -384,15 +393,24 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                       <TableCell className="text-sm py-1.5 text-muted-foreground">{entry.warehouseName || '—'}</TableCell>
                                       <TableCell className="text-center py-1.5">
                                         {(() => {
-                                          const positive = entry.type === 'receive' || entry.type === 'transfer_in';
-                                          const colorClass = entry.type === 'receive'
-                                            ? 'text-green-600'
-                                            : entry.type === 'sale'
-                                            ? 'text-orange-600'
-                                            : 'text-blue-600';
+                                          // Display sign based on movement direction.
+                                          // manual_adjust qty is already signed (positive or negative).
+                                          let sign: '+' | '-' | '' = '';
+                                          let displayQty = entry.qty;
+                                          let colorClass = 'text-foreground';
+                                          if (entry.type === 'receive') { sign = '+'; colorClass = 'text-green-600'; }
+                                          else if (entry.type === 'sale') { sign = '-'; colorClass = 'text-orange-600'; }
+                                          else if (entry.type === 'transfer_in') { sign = '+'; colorClass = 'text-blue-600'; }
+                                          else if (entry.type === 'transfer_out') { sign = '-'; colorClass = 'text-blue-600'; }
+                                          else if (entry.type === 'opening_balance') { sign = ''; colorClass = 'text-slate-600'; }
+                                          else if (entry.type === 'manual_adjust') {
+                                            sign = entry.qty >= 0 ? '+' : '-';
+                                            displayQty = Math.abs(entry.qty);
+                                            colorClass = 'text-purple-600';
+                                          }
                                           return (
                                             <span className={`${colorClass} font-semibold`}>
-                                              {positive ? '+' : '-'}{entry.qty}
+                                              {sign}{displayQty}
                                             </span>
                                           );
                                         })()}
