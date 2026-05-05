@@ -110,7 +110,7 @@ export function useInventory() {
     };
 
     const [ordersRes, orderItemsData] = await Promise.all([
-      supabase.from('orders').select('id,shop_name,status,created_at,shipping_fee').order('created_at', { ascending: false }),
+      (supabase as any).from('orders').select('id,shop_name,status,created_at,shipping_fee,cancelled_at,cancelled_reason').order('created_at', { ascending: false }),
       fetchAllOrderItems(),
     ]);
     const ordersData = ordersRes.data;
@@ -139,6 +139,8 @@ export function useInventory() {
       date: new Date(o.created_at),
       status: o.status as 'pending' | 'completed' | 'cancelled',
       shippingFee: Number(o.shipping_fee ?? 0),
+      cancelledAt: o.cancelled_at ? new Date(o.cancelled_at) : null,
+      cancelledReason: o.cancelled_reason ?? null,
       items: itemsByOrder.get(o.id) || [],
     })));
   }, []);
