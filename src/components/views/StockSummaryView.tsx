@@ -180,7 +180,12 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
           breakdownMap.set(e.warehouseId, b);
         }
         if (e.type === 'receive' || e.type === 'transfer_in') b.received += e.qty;
-        else b.sold += e.qty;
+        else if (e.type === 'sale' || e.type === 'transfer_out') b.sold += e.qty;
+        else if (e.type === 'manual_adjust') {
+          if (e.qty >= 0) b.received += e.qty;
+          else b.sold += -e.qty;
+        }
+        // opening_balance is a starting point, not a movement → don't tally
       });
       const warehouseBreakdown = Array.from(breakdownMap.values()).sort((a, b) => {
         const ai = warehouses.findIndex(w => w.id === a.warehouseId);
