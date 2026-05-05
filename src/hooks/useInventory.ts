@@ -570,15 +570,38 @@ export function useInventory() {
   const deleteOrder = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
-    // Restore stock — aggregate per (item, warehouse) and apply sequentially to
-    // avoid parallel SELECT→UPDATE races that can drop or double-apply deltas
-    // when the same product+warehouse appears on multiple order lines.
+    if (order.status === 'cancelled') return; // already cancelled, no-op
+
+    // Restore stock atomically
     await applyStockDeltas(order.items.map(line => ({
       itemId: line.itemId, warehouseId: line.warehouseId, delta: line.quantity,
     })));
+
+    // Log reversal entries in inventory_transactions (audit trail).
+    // One row per order line so Stock Summary shows the cancellation per item/warehouse.
+    if (order.items.length > 0) {
+      await supabase.from('inventory_transactions').insert(
+        order.items.map(line => ({
+          item_id: line.itemId,
+          warehouse_id: line.warehouseId,
+          quantity: line.quantity, // positive = stock returned
+          bol_number: `Order cancelled — ${order.shopName}`,
+          type: 'order_cancelled',
+        } as any))
+      );
+    }
+
+    // Soft-cancel the order: keep rows for audit, mark status='cancelled'.
+    // Do NOT delete order_items or the order itself.
+    await (supabase as any).from('orders').update({
+      status: 'cancelled',
+      cancelled_at: new Date().toISOString(),
+    }).eq('id', orderId);
+
+    // Remove any payments tied to this order (cancelling means no payment due)
     await (supabase as any).from('payments').delete().eq('order_id', orderId);
-    await supabase.from('order_items').delete().eq('order_id', orderId);
-    await supabase.from('orders').delete().eq('id', orderId);
+
+    await Promise.all([fetchItems(), fetchOrders(), fetchTransactions()]);
   };
 
   const updateOrder = async (
