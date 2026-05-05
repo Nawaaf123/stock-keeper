@@ -90,7 +90,7 @@ export function useInventory() {
       bolNumber: t.bol_number,
       bolDocumentUrl: (t as any).bol_document_url ?? null,
       date: new Date(t.created_at),
-      type: t.type as 'receive' | 'adjust' | 'transfer_in' | 'transfer_out',
+      type: t.type as InventoryTransaction['type'],
     })));
   }, []);
 
@@ -365,6 +365,20 @@ export function useInventory() {
 
   const updateStock = async (itemId: string, warehouseId: string, newQuantity: number) => {
     const qty = Math.max(0, newQuantity);
+
+    // Read current quantity FIRST so we can log the delta as a manual_adjust ledger row.
+    // This is what stops Stock Summary from silently shifting past closing balances:
+    // every change to warehouse_stock.quantity now leaves a dated, attributable row.
+    const { data: existing } = await supabase
+      .from('warehouse_stock')
+      .select('id, quantity')
+      .eq('item_id', itemId)
+      .eq('warehouse_id', warehouseId)
+      .maybeSingle();
+
+    const prevQty = existing?.quantity ?? 0;
+    const delta = qty - prevQty;
+
     // Optimistic local update
     setItems(prev => prev.map(it => {
       if (it.id !== itemId) return it;
@@ -375,19 +389,23 @@ export function useInventory() {
       return { ...it, stock };
     }));
 
-    const { data: existing } = await supabase
-      .from('warehouse_stock')
-      .select('id')
-      .eq('item_id', itemId)
-      .eq('warehouse_id', warehouseId)
-      .maybeSingle();
-
     if (existing) {
       const { error } = await supabase.from('warehouse_stock').update({ quantity: qty }).eq('id', existing.id);
       if (error) throw error;
     } else {
       const { error } = await supabase.from('warehouse_stock').insert({ item_id: itemId, warehouse_id: warehouseId, quantity: qty });
       if (error) throw error;
+    }
+
+    // Log the manual adjustment so it appears in Stock Summary and history.
+    if (delta !== 0) {
+      await supabase.from('inventory_transactions').insert({
+        item_id: itemId,
+        warehouse_id: warehouseId,
+        quantity: delta,
+        bol_number: `Manual edit: ${prevQty} → ${qty}`,
+        type: 'manual_adjust',
+      } as any);
     }
   };
 

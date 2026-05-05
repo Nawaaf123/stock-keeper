@@ -19,7 +19,7 @@ interface StockSummaryViewProps {
 }
 
 interface StockEntry {
-  type: 'receive' | 'sale' | 'transfer_in' | 'transfer_out';
+  type: 'receive' | 'sale' | 'transfer_in' | 'transfer_out' | 'opening_balance' | 'manual_adjust';
   source: string;
   qty: number;
   date: Date;
@@ -74,6 +74,24 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
               warehouseId: t.warehouseId,
               warehouseName: t.warehouseName,
             });
+          } else if (t.type === 'opening_balance') {
+            stockEntries.push({
+              type: 'opening_balance',
+              source: t.bolNumber || 'Opening balance',
+              qty: t.quantity,
+              date: t.date,
+              warehouseId: t.warehouseId,
+              warehouseName: t.warehouseName,
+            });
+          } else if (t.type === 'manual_adjust') {
+            stockEntries.push({
+              type: 'manual_adjust',
+              source: t.bolNumber || 'Manual adjust',
+              qty: t.quantity, // signed: positive = increase, negative = decrease
+              date: t.date,
+              warehouseId: t.warehouseId,
+              warehouseName: t.warehouseName,
+            });
           }
         });
 
@@ -99,21 +117,46 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
 
       filteredEntries.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-      const totalReceived = filteredEntries.filter(e => e.type === 'receive' || e.type === 'transfer_in').reduce((sum, e) => sum + e.qty, 0);
-      const totalSold = filteredEntries.filter(e => e.type === 'sale' || e.type === 'transfer_out').reduce((sum, e) => sum + e.qty, 0);
+      // Signed contribution: receives/transfer_in add, sales/transfer_out subtract,
+      // opening_balance and manual_adjust use the raw signed quantity.
+      const signed = (e: { type: StockEntry['type']; qty: number }) => {
+        switch (e.type) {
+          case 'receive':
+          case 'transfer_in':
+            return e.qty;
+          case 'sale':
+          case 'transfer_out':
+            return -e.qty;
+          case 'opening_balance':
+          case 'manual_adjust':
+            return e.qty;
+        }
+      };
+
+      const totalReceived = filteredEntries
+        .filter(e => e.type === 'receive' || e.type === 'transfer_in' || (e.type === 'manual_adjust' && e.qty > 0))
+        .reduce((sum, e) => sum + Math.abs(e.qty), 0);
+      const totalSold = filteredEntries
+        .filter(e => e.type === 'sale' || e.type === 'transfer_out' || (e.type === 'manual_adjust' && e.qty < 0))
+        .reduce((sum, e) => sum + Math.abs(e.qty), 0);
 
       // Current stock: all warehouses or just selected one
       const currentStock = warehouseFilter === 'all'
         ? getTotalQuantity(item)
         : (item.stock.find(s => s.warehouseId === warehouseFilter)?.quantity || 0);
 
-      const startingStock = currentStock - totalReceived + totalSold;
+      // Forward-walk from opening balance (or zero) so past rows DON'T shift when new
+      // movements are added today. Drift, if any, will be visible at the end.
+      const openingTotal = filteredEntries
+        .filter(e => e.type === 'opening_balance')
+        .reduce((sum, e) => sum + e.qty, 0);
 
-      const isPositive = (t: StockEntry['type']) => t === 'receive' || t === 'transfer_in';
-
-      let runningStock = startingStock;
+      let runningStock = openingTotal;
+      // Skip opening_balance entries from the running walk (already counted as the starting value)
       const entriesWithRemaining: StockEntry[] = filteredEntries.map(entry => {
-        runningStock += isPositive(entry.type) ? entry.qty : -entry.qty;
+        if (entry.type !== 'opening_balance') {
+          runningStock += signed(entry);
+        }
         return { ...entry, remainingAfter: runningStock };
       });
       entriesWithRemaining.reverse();
@@ -137,7 +180,12 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
           breakdownMap.set(e.warehouseId, b);
         }
         if (e.type === 'receive' || e.type === 'transfer_in') b.received += e.qty;
-        else b.sold += e.qty;
+        else if (e.type === 'sale' || e.type === 'transfer_out') b.sold += e.qty;
+        else if (e.type === 'manual_adjust') {
+          if (e.qty >= 0) b.received += e.qty;
+          else b.sold += -e.qty;
+        }
+        // opening_balance is a starting point, not a movement → don't tally
       });
       const warehouseBreakdown = Array.from(breakdownMap.values()).sort((a, b) => {
         const ai = warehouses.findIndex(w => w.id === a.warehouseId);
@@ -326,9 +374,18 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
                                             <ArrowUp className="w-3 h-3 mr-1" />Transfer In
                                           </Badge>
-                                        ) : (
+                                        ) : entry.type === 'transfer_out' ? (
                                           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
                                             <ArrowDown className="w-3 h-3 mr-1" />Transfer Out
+                                          </Badge>
+                                        ) : entry.type === 'opening_balance' ? (
+                                          <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-300 text-xs">
+                                            Opening
+                                          </Badge>
+                                        ) : (
+                                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
+                                            {entry.qty >= 0 ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
+                                            Manual
                                           </Badge>
                                         )}
                                       </TableCell>
@@ -336,15 +393,24 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                       <TableCell className="text-sm py-1.5 text-muted-foreground">{entry.warehouseName || '—'}</TableCell>
                                       <TableCell className="text-center py-1.5">
                                         {(() => {
-                                          const positive = entry.type === 'receive' || entry.type === 'transfer_in';
-                                          const colorClass = entry.type === 'receive'
-                                            ? 'text-green-600'
-                                            : entry.type === 'sale'
-                                            ? 'text-orange-600'
-                                            : 'text-blue-600';
+                                          // Display sign based on movement direction.
+                                          // manual_adjust qty is already signed (positive or negative).
+                                          let sign: '+' | '-' | '' = '';
+                                          let displayQty = entry.qty;
+                                          let colorClass = 'text-foreground';
+                                          if (entry.type === 'receive') { sign = '+'; colorClass = 'text-green-600'; }
+                                          else if (entry.type === 'sale') { sign = '-'; colorClass = 'text-orange-600'; }
+                                          else if (entry.type === 'transfer_in') { sign = '+'; colorClass = 'text-blue-600'; }
+                                          else if (entry.type === 'transfer_out') { sign = '-'; colorClass = 'text-blue-600'; }
+                                          else if (entry.type === 'opening_balance') { sign = ''; colorClass = 'text-slate-600'; }
+                                          else if (entry.type === 'manual_adjust') {
+                                            sign = entry.qty >= 0 ? '+' : '-';
+                                            displayQty = Math.abs(entry.qty);
+                                            colorClass = 'text-purple-600';
+                                          }
                                           return (
                                             <span className={`${colorClass} font-semibold`}>
-                                              {positive ? '+' : '-'}{entry.qty}
+                                              {sign}{displayQty}
                                             </span>
                                           );
                                         })()}
