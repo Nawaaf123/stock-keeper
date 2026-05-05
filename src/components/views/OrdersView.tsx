@@ -69,12 +69,13 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
     }
     const q = searchQuery.trim().toLowerCase();
     return orders.filter(o => {
+      if (!showCancelled && o.status === 'cancelled') return false;
       if (q && !o.shopName.toLowerCase().includes(q)) return false;
       if (from && o.date < from) return false;
       if (to && o.date > to) return false;
       return true;
     });
-  }, [orders, searchQuery, dateRange, customFrom, customTo]);
+  }, [orders, searchQuery, dateRange, customFrom, customTo, showCancelled]);
 
   const groupedOrders = filteredOrders.reduce((acc, order) => {
     const dateKey = format(order.date, 'yyyy-MM-dd');
