@@ -154,7 +154,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
       shops: Map<string, { shopName: string; quantity: number; orders: number; lastOrder: Date }>;
     }>();
 
-    orders.forEach(order => {
+    orders.filter(o => o.status !== 'cancelled').forEach(order => {
       order.items.forEach(item => {
         if (!history.has(item.itemId)) {
           history.set(item.itemId, {
