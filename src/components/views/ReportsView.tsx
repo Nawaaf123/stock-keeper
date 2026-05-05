@@ -44,7 +44,7 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
 
   const filteredOrders = useMemo(() => {
     if (!from || !to) return [];
-    return orders.filter(o => o.date >= from && o.date <= to);
+    return orders.filter(o => o.date >= from && o.date <= to && o.status !== 'cancelled');
   }, [orders, from, to]);
 
   const filteredTx = useMemo(() => {
