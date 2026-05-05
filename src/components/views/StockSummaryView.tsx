@@ -417,6 +417,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                           else if (entry.type === 'transfer_in') { sign = '+'; colorClass = 'text-blue-600'; }
                                           else if (entry.type === 'transfer_out') { sign = '-'; colorClass = 'text-blue-600'; }
                                           else if (entry.type === 'opening_balance') { sign = ''; colorClass = 'text-slate-600'; }
+                                          else if (entry.type === 'order_cancelled') { sign = '+'; colorClass = 'text-amber-600'; }
                                           else if (entry.type === 'manual_adjust') {
                                             sign = entry.qty >= 0 ? '+' : '-';
                                             displayQty = Math.abs(entry.qty);
