@@ -19,7 +19,7 @@ interface StockSummaryViewProps {
 }
 
 interface StockEntry {
-  type: 'receive' | 'sale' | 'transfer_in' | 'transfer_out';
+  type: 'receive' | 'sale' | 'transfer_in' | 'transfer_out' | 'opening_balance' | 'manual_adjust';
   source: string;
   qty: number;
   date: Date;
@@ -74,6 +74,24 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
               warehouseId: t.warehouseId,
               warehouseName: t.warehouseName,
             });
+          } else if (t.type === 'opening_balance') {
+            stockEntries.push({
+              type: 'opening_balance',
+              source: t.bolNumber || 'Opening balance',
+              qty: t.quantity,
+              date: t.date,
+              warehouseId: t.warehouseId,
+              warehouseName: t.warehouseName,
+            });
+          } else if (t.type === 'manual_adjust') {
+            stockEntries.push({
+              type: 'manual_adjust',
+              source: t.bolNumber || 'Manual adjust',
+              qty: t.quantity, // signed: positive = increase, negative = decrease
+              date: t.date,
+              warehouseId: t.warehouseId,
+              warehouseName: t.warehouseName,
+            });
           }
         });
 
@@ -99,21 +117,46 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
 
       filteredEntries.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-      const totalReceived = filteredEntries.filter(e => e.type === 'receive' || e.type === 'transfer_in').reduce((sum, e) => sum + e.qty, 0);
-      const totalSold = filteredEntries.filter(e => e.type === 'sale' || e.type === 'transfer_out').reduce((sum, e) => sum + e.qty, 0);
+      // Signed contribution: receives/transfer_in add, sales/transfer_out subtract,
+      // opening_balance and manual_adjust use the raw signed quantity.
+      const signed = (e: { type: StockEntry['type']; qty: number }) => {
+        switch (e.type) {
+          case 'receive':
+          case 'transfer_in':
+            return e.qty;
+          case 'sale':
+          case 'transfer_out':
+            return -e.qty;
+          case 'opening_balance':
+          case 'manual_adjust':
+            return e.qty;
+        }
+      };
+
+      const totalReceived = filteredEntries
+        .filter(e => e.type === 'receive' || e.type === 'transfer_in' || (e.type === 'manual_adjust' && e.qty > 0))
+        .reduce((sum, e) => sum + Math.abs(e.qty), 0);
+      const totalSold = filteredEntries
+        .filter(e => e.type === 'sale' || e.type === 'transfer_out' || (e.type === 'manual_adjust' && e.qty < 0))
+        .reduce((sum, e) => sum + Math.abs(e.qty), 0);
 
       // Current stock: all warehouses or just selected one
       const currentStock = warehouseFilter === 'all'
         ? getTotalQuantity(item)
         : (item.stock.find(s => s.warehouseId === warehouseFilter)?.quantity || 0);
 
-      const startingStock = currentStock - totalReceived + totalSold;
+      // Forward-walk from opening balance (or zero) so past rows DON'T shift when new
+      // movements are added today. Drift, if any, will be visible at the end.
+      const openingTotal = filteredEntries
+        .filter(e => e.type === 'opening_balance')
+        .reduce((sum, e) => sum + e.qty, 0);
 
-      const isPositive = (t: StockEntry['type']) => t === 'receive' || t === 'transfer_in';
-
-      let runningStock = startingStock;
+      let runningStock = openingTotal;
+      // Skip opening_balance entries from the running walk (already counted as the starting value)
       const entriesWithRemaining: StockEntry[] = filteredEntries.map(entry => {
-        runningStock += isPositive(entry.type) ? entry.qty : -entry.qty;
+        if (entry.type !== 'opening_balance') {
+          runningStock += signed(entry);
+        }
         return { ...entry, remainingAfter: runningStock };
       });
       entriesWithRemaining.reverse();
