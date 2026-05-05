@@ -45,6 +45,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
   const [dateRange, setDateRange] = useState<'all' | 'today' | 'week' | 'custom'>('all');
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
+  const [showCancelled, setShowCancelled] = useState(false);
 
   const handlePreview = async (order: Order) => {
     try {
