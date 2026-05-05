@@ -391,7 +391,12 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                   <span>${(order.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0) + (order.shippingFee || 0)).toFixed(2)}</span>
                                 </div>
                               </div>
-                              <div className="mt-3 flex justify-end gap-2">
+                              {order.status === 'cancelled' && order.cancelledAt && (
+                                <div className="mt-3 px-3 py-2 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                                  Cancelled on {format(order.cancelledAt, 'MMM d, yyyy h:mm a')} — stock was returned and a reversal entry was logged.
+                                </div>
+                              )}
+                              <div className="mt-3 flex justify-end gap-2 flex-wrap">
                                 <Button size="sm" variant="outline" onClick={() => handlePreview(order)}>
                                   <Eye className="w-4 h-4 mr-2" />
                                   Preview
@@ -404,14 +409,18 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                   <FileDown className="w-4 h-4 mr-2" />
                                   Invoice
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => setEditOrder(order)}>
-                                  <Pencil className="w-4 h-4 mr-2" />
-                                  Edit
-                                </Button>
-                                <Button size="sm" variant="destructive" onClick={() => setDeleteOrderId(order.id)}>
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete
-                                </Button>
+                                {order.status !== 'cancelled' && (
+                                  <>
+                                    <Button size="sm" variant="outline" onClick={() => setEditOrder(order)}>
+                                      <Pencil className="w-4 h-4 mr-2" />
+                                      Edit
+                                    </Button>
+                                    <Button size="sm" variant="destructive" onClick={() => setDeleteOrderId(order.id)}>
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Cancel
+                                    </Button>
+                                  </>
+                                )}
                               </div>
                             </CardContent>
                           </CollapsibleContent>
