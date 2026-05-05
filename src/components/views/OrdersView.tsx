@@ -45,6 +45,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
   const [dateRange, setDateRange] = useState<'all' | 'today' | 'week' | 'custom'>('all');
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
+  const [showCancelled, setShowCancelled] = useState(false);
 
   const handlePreview = async (order: Order) => {
     try {
@@ -68,12 +69,13 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
     }
     const q = searchQuery.trim().toLowerCase();
     return orders.filter(o => {
+      if (!showCancelled && o.status === 'cancelled') return false;
       if (q && !o.shopName.toLowerCase().includes(q)) return false;
       if (from && o.date < from) return false;
       if (to && o.date > to) return false;
       return true;
     });
-  }, [orders, searchQuery, dateRange, customFrom, customTo]);
+  }, [orders, searchQuery, dateRange, customFrom, customTo, showCancelled]);
 
   const groupedOrders = filteredOrders.reduce((acc, order) => {
     const dateKey = format(order.date, 'yyyy-MM-dd');
@@ -113,7 +115,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
       lastOrder: Date;
     }>();
 
-    orders.forEach(order => {
+    orders.filter(o => o.status !== 'cancelled').forEach(order => {
       if (!history.has(order.shopName)) {
         history.set(order.shopName, {
           shopName: order.shopName,
@@ -152,7 +154,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
       shops: Map<string, { shopName: string; quantity: number; orders: number; lastOrder: Date }>;
     }>();
 
-    orders.forEach(order => {
+    orders.filter(o => o.status !== 'cancelled').forEach(order => {
       order.items.forEach(item => {
         if (!history.has(item.itemId)) {
           history.set(item.itemId, {
@@ -273,6 +275,14 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                     </Popover>
                   </div>
                 )}
+                <Button
+                  variant={showCancelled ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setShowCancelled(v => !v)}
+                  className="whitespace-nowrap"
+                >
+                  {showCancelled ? 'Hide cancelled' : 'Show cancelled'}
+                </Button>
                 {(searchQuery || dateRange !== 'all') && (
                   <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(''); setDateRange('all'); setCustomFrom(undefined); setCustomTo(undefined); }}>
                     <X className="w-4 h-4 mr-1" /> Clear
@@ -317,14 +327,14 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                   <div className="space-y-3">
                     {groupedOrders[dateKey].map((order) => (
                       <Collapsible key={order.id}>
-                        <Card>
+                        <Card className={cn(order.status === 'cancelled' && 'opacity-60 border-dashed')}>
                           <CollapsibleTrigger asChild>
                             <CardHeader className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors">
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                 <CardTitle className="text-base flex items-start sm:items-center gap-2 min-w-0">
                                   <Store className="w-4 h-4 text-primary flex-shrink-0 mt-1 sm:mt-0" />
                                   <span className="min-w-0">
-                                    <span className="break-words">{order.shopName}</span>
+                                    <span className={cn("break-words", order.status === 'cancelled' && 'line-through text-muted-foreground')}>{order.shopName}</span>
                                     <span className="block sm:inline text-sm font-normal text-muted-foreground sm:ml-1">
                                       <span className="hidden sm:inline">— </span>{order.items.reduce((sum, i) => sum + i.quantity, 0)} cases, {order.items.length} {order.items.length === 1 ? 'product' : 'products'}
                                     </span>
@@ -334,7 +344,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                   <span className="text-xs text-muted-foreground">
                                     {format(order.date, 'h:mm a')}
                                   </span>
-                                  <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
+                                  <Badge variant={order.status === 'completed' ? 'default' : order.status === 'cancelled' ? 'outline' : 'secondary'} className={cn(order.status === 'cancelled' && 'bg-amber-50 text-amber-700 border-amber-200')}>
                                     {order.status}
                                   </Badge>
                                   <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
@@ -381,7 +391,12 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                   <span>${(order.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0) + (order.shippingFee || 0)).toFixed(2)}</span>
                                 </div>
                               </div>
-                              <div className="mt-3 flex justify-end gap-2">
+                              {order.status === 'cancelled' && order.cancelledAt && (
+                                <div className="mt-3 px-3 py-2 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                                  Cancelled on {format(order.cancelledAt, 'MMM d, yyyy h:mm a')} — stock was returned and a reversal entry was logged.
+                                </div>
+                              )}
+                              <div className="mt-3 flex justify-end gap-2 flex-wrap">
                                 <Button size="sm" variant="outline" onClick={() => handlePreview(order)}>
                                   <Eye className="w-4 h-4 mr-2" />
                                   Preview
@@ -394,14 +409,18 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
                                   <FileDown className="w-4 h-4 mr-2" />
                                   Invoice
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => setEditOrder(order)}>
-                                  <Pencil className="w-4 h-4 mr-2" />
-                                  Edit
-                                </Button>
-                                <Button size="sm" variant="destructive" onClick={() => setDeleteOrderId(order.id)}>
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete
-                                </Button>
+                                {order.status !== 'cancelled' && (
+                                  <>
+                                    <Button size="sm" variant="outline" onClick={() => setEditOrder(order)}>
+                                      <Pencil className="w-4 h-4 mr-2" />
+                                      Edit
+                                    </Button>
+                                    <Button size="sm" variant="destructive" onClick={() => setDeleteOrderId(order.id)}>
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Cancel
+                                    </Button>
+                                  </>
+                                )}
                               </div>
                             </CardContent>
                           </CollapsibleContent>
@@ -593,22 +612,22 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
       <AlertDialog open={deleteOrderId !== null} onOpenChange={(o) => { if (!o) setDeleteOrderId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this order?</AlertDialogTitle>
+            <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
             <AlertDialogDescription>
-              The product quantities from this order will be returned to inventory. This action cannot be undone.
+              The product quantities will be returned to inventory and a reversal entry will be logged in your stock history. The order will stay visible (greyed out) so you keep a full audit trail.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Keep order</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
                 if (!deleteOrderId) return;
                 await onDeleteOrder(deleteOrderId);
-                toast.success('Order deleted and stock restored');
+                toast.success('Order cancelled and stock returned');
                 setDeleteOrderId(null);
               }}
             >
-              Delete & restore stock
+              Cancel order & return stock
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

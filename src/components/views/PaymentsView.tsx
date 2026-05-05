@@ -91,7 +91,7 @@ export function PaymentsView({ orders, payments, wholesalers, onAddPayment, onDe
 
   // Compute per-order rows
   const orderRows: OrderRow[] = useMemo(() => {
-    return orders.map(o => {
+    return orders.filter(o => o.status !== 'cancelled').map(o => {
       const total = o.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
       const paid = payments.filter(p => p.orderId === o.id).reduce((s, p) => s + p.amount, 0);
       const balance = total - paid;

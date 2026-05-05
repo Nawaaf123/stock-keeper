@@ -19,7 +19,7 @@ interface StockSummaryViewProps {
 }
 
 interface StockEntry {
-  type: 'receive' | 'sale' | 'transfer_in' | 'transfer_out' | 'opening_balance' | 'manual_adjust';
+  type: 'receive' | 'sale' | 'transfer_in' | 'transfer_out' | 'opening_balance' | 'manual_adjust' | 'order_cancelled';
   source: string;
   qty: number;
   date: Date;
@@ -92,6 +92,15 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
               warehouseId: t.warehouseId,
               warehouseName: t.warehouseName,
             });
+          } else if (t.type === 'order_cancelled') {
+            stockEntries.push({
+              type: 'order_cancelled',
+              source: t.bolNumber || 'Order cancelled',
+              qty: t.quantity, // positive = stock returned
+              date: t.date,
+              warehouseId: t.warehouseId,
+              warehouseName: t.warehouseName,
+            });
           }
         });
 
@@ -123,6 +132,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
         switch (e.type) {
           case 'receive':
           case 'transfer_in':
+          case 'order_cancelled':
             return e.qty;
           case 'sale':
           case 'transfer_out':
@@ -134,7 +144,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
       };
 
       const totalReceived = filteredEntries
-        .filter(e => e.type === 'receive' || e.type === 'transfer_in' || (e.type === 'manual_adjust' && e.qty > 0))
+        .filter(e => e.type === 'receive' || e.type === 'transfer_in' || e.type === 'order_cancelled' || (e.type === 'manual_adjust' && e.qty > 0))
         .reduce((sum, e) => sum + Math.abs(e.qty), 0);
       const totalSold = filteredEntries
         .filter(e => e.type === 'sale' || e.type === 'transfer_out' || (e.type === 'manual_adjust' && e.qty < 0))
@@ -179,7 +189,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
           b = { warehouseId: e.warehouseId, warehouseName: e.warehouseName, received: 0, sold: 0, remaining: 0 };
           breakdownMap.set(e.warehouseId, b);
         }
-        if (e.type === 'receive' || e.type === 'transfer_in') b.received += e.qty;
+        if (e.type === 'receive' || e.type === 'transfer_in' || e.type === 'order_cancelled') b.received += e.qty;
         else if (e.type === 'sale' || e.type === 'transfer_out') b.sold += e.qty;
         else if (e.type === 'manual_adjust') {
           if (e.qty >= 0) b.received += e.qty;
@@ -382,6 +392,10 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                           <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-300 text-xs">
                                             Opening
                                           </Badge>
+                                        ) : entry.type === 'order_cancelled' ? (
+                                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                                            <ArrowUp className="w-3 h-3 mr-1" />Cancelled
+                                          </Badge>
                                         ) : (
                                           <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
                                             {entry.qty >= 0 ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
@@ -403,6 +417,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                           else if (entry.type === 'transfer_in') { sign = '+'; colorClass = 'text-blue-600'; }
                                           else if (entry.type === 'transfer_out') { sign = '-'; colorClass = 'text-blue-600'; }
                                           else if (entry.type === 'opening_balance') { sign = ''; colorClass = 'text-slate-600'; }
+                                          else if (entry.type === 'order_cancelled') { sign = '+'; colorClass = 'text-amber-600'; }
                                           else if (entry.type === 'manual_adjust') {
                                             sign = entry.qty >= 0 ? '+' : '-';
                                             displayQty = Math.abs(entry.qty);

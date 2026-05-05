@@ -190,9 +190,13 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
     const valid = lines
       .filter(l => l.itemId && l.warehouseId && l.quantity > 0)
       .map(l => ({ ...l, unitPrice: Number(l.unitPrice) || 0 }));
-    await onUpdateOrder(order.id, shopName.trim(), valid, Number(shippingFee) || 0);
-    toast.success('Order updated and inventory adjusted');
-    onOpenChange(false);
+    try {
+      await onUpdateOrder(order.id, shopName.trim(), valid, Number(shippingFee) || 0);
+      toast.success('Order updated and inventory adjusted');
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update order');
+    }
   };
 
   const totalUnits = lines.reduce((s, l) => s + (l.itemId && l.warehouseId ? l.quantity : 0), 0);

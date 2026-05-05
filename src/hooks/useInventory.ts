@@ -110,7 +110,7 @@ export function useInventory() {
     };
 
     const [ordersRes, orderItemsData] = await Promise.all([
-      supabase.from('orders').select('id,shop_name,status,created_at,shipping_fee').order('created_at', { ascending: false }),
+      (supabase as any).from('orders').select('id,shop_name,status,created_at,shipping_fee,cancelled_at,cancelled_reason').order('created_at', { ascending: false }),
       fetchAllOrderItems(),
     ]);
     const ordersData = ordersRes.data;
@@ -139,6 +139,8 @@ export function useInventory() {
       date: new Date(o.created_at),
       status: o.status as 'pending' | 'completed' | 'cancelled',
       shippingFee: Number(o.shipping_fee ?? 0),
+      cancelledAt: o.cancelled_at ? new Date(o.cancelled_at) : null,
+      cancelledReason: o.cancelled_reason ?? null,
       items: itemsByOrder.get(o.id) || [],
     })));
   }, []);
@@ -568,15 +570,38 @@ export function useInventory() {
   const deleteOrder = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
-    // Restore stock — aggregate per (item, warehouse) and apply sequentially to
-    // avoid parallel SELECT→UPDATE races that can drop or double-apply deltas
-    // when the same product+warehouse appears on multiple order lines.
+    if (order.status === 'cancelled') return; // already cancelled, no-op
+
+    // Restore stock atomically
     await applyStockDeltas(order.items.map(line => ({
       itemId: line.itemId, warehouseId: line.warehouseId, delta: line.quantity,
     })));
+
+    // Log reversal entries in inventory_transactions (audit trail).
+    // One row per order line so Stock Summary shows the cancellation per item/warehouse.
+    if (order.items.length > 0) {
+      await supabase.from('inventory_transactions').insert(
+        order.items.map(line => ({
+          item_id: line.itemId,
+          warehouse_id: line.warehouseId,
+          quantity: line.quantity, // positive = stock returned
+          bol_number: `Order cancelled — ${order.shopName}`,
+          type: 'order_cancelled',
+        } as any))
+      );
+    }
+
+    // Soft-cancel the order: keep rows for audit, mark status='cancelled'.
+    // Do NOT delete order_items or the order itself.
+    await (supabase as any).from('orders').update({
+      status: 'cancelled',
+      cancelled_at: new Date().toISOString(),
+    }).eq('id', orderId);
+
+    // Remove any payments tied to this order (cancelling means no payment due)
     await (supabase as any).from('payments').delete().eq('order_id', orderId);
-    await supabase.from('order_items').delete().eq('order_id', orderId);
-    await supabase.from('orders').delete().eq('id', orderId);
+
+    await Promise.all([fetchItems(), fetchOrders(), fetchTransactions()]);
   };
 
   const updateOrder = async (
@@ -587,6 +612,24 @@ export function useInventory() {
   ) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
+
+    // Block edits to cancelled orders entirely.
+    if (order.status === 'cancelled') {
+      throw new Error('This order is cancelled and cannot be edited. Create a new order instead.');
+    }
+
+    // Block edits to orders from a previous day to keep audit trail clean.
+    // Same-day edits are allowed (they mutate in place — clean Stock Summary).
+    const today = new Date();
+    const sameDay =
+      order.date.getFullYear() === today.getFullYear() &&
+      order.date.getMonth() === today.getMonth() &&
+      order.date.getDate() === today.getDate();
+    if (!sameDay) {
+      throw new Error(
+        'This order is from a previous day. To keep your stock history accurate, please cancel it and create a new order with the correct details.'
+      );
+    }
 
     // Compute net stock delta per (item, warehouse). Positive delta = stock should INCREASE
     // (e.g. removing/reducing an order line returns stock); negative = stock decreases.

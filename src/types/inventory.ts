@@ -44,7 +44,7 @@ export interface InventoryTransaction {
   bolNumber: string;
   bolDocumentUrl?: string | null;
   date: Date;
-  type: 'receive' | 'adjust' | 'transfer_in' | 'transfer_out' | 'opening_balance' | 'manual_adjust';
+  type: 'receive' | 'adjust' | 'transfer_in' | 'transfer_out' | 'opening_balance' | 'manual_adjust' | 'order_cancelled';
 }
 
 export interface OrderItem {
@@ -64,6 +64,8 @@ export interface Order {
   date: Date;
   status: 'pending' | 'completed' | 'cancelled';
   shippingFee: number;
+  cancelledAt?: Date | null;
+  cancelledReason?: string | null;
 }
 
 export interface Wholesaler {
