@@ -64,6 +64,8 @@ export interface Order {
   date: Date;
   status: 'pending' | 'completed' | 'cancelled';
   shippingFee: number;
+  cancelledAt?: Date | null;
+  cancelledReason?: string | null;
 }
 
 export interface Wholesaler {
