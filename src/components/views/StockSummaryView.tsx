@@ -132,6 +132,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
         switch (e.type) {
           case 'receive':
           case 'transfer_in':
+          case 'order_cancelled':
             return e.qty;
           case 'sale':
           case 'transfer_out':
@@ -143,7 +144,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
       };
 
       const totalReceived = filteredEntries
-        .filter(e => e.type === 'receive' || e.type === 'transfer_in' || (e.type === 'manual_adjust' && e.qty > 0))
+        .filter(e => e.type === 'receive' || e.type === 'transfer_in' || e.type === 'order_cancelled' || (e.type === 'manual_adjust' && e.qty > 0))
         .reduce((sum, e) => sum + Math.abs(e.qty), 0);
       const totalSold = filteredEntries
         .filter(e => e.type === 'sale' || e.type === 'transfer_out' || (e.type === 'manual_adjust' && e.qty < 0))
