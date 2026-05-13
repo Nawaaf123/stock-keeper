@@ -149,25 +149,42 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     });
   };
 
-  const isValid = () => {
-    if (!getShopName()) return false;
-    const valid = orderItems.filter(e => e.itemId && e.warehouseId && e.quantity > 0);
-    if (valid.length === 0) return false;
-    return valid.every(e => e.quantity <= getAvailableStock(e.itemId, e.warehouseId));
+  const validate = (): { ok: boolean; message?: string; valid: OrderItemEntry[] } => {
+    if (!getShopName()) return { ok: false, message: 'Select a shop / wholesaler first.', valid: [] };
+    if (orderItems.length === 0) return { ok: false, message: 'Add at least one product.', valid: [] };
+
+    // Find first incomplete or invalid line and report exactly which one
+    for (let i = 0; i < orderItems.length; i++) {
+      const e = orderItems[i];
+      const item = items.find(it => it.id === e.itemId);
+      const label = item ? `${item.sku} – ${item.name}` : `Line ${i + 1}`;
+      if (!e.itemId) return { ok: false, message: `Line ${i + 1}: pick a product or remove the empty line.`, valid: [] };
+      if (!e.warehouseId) return { ok: false, message: `${label}: select a warehouse.`, valid: [] };
+      if (!e.quantity || e.quantity <= 0) return { ok: false, message: `${label}: quantity must be at least 1.`, valid: [] };
+      const avail = getAvailableStock(e.itemId, e.warehouseId);
+      if (e.quantity > avail) return { ok: false, message: `${label}: only ${avail} available in selected warehouse (you entered ${e.quantity}).`, valid: [] };
+    }
+    return {
+      ok: true,
+      valid: orderItems.map(e => ({ ...e, unitPrice: Number(e.unitPrice) || 0 })),
+    };
   };
 
   const handleSubmit = async () => {
-    if (!isValid() || saving) return;
-    const valid = orderItems
-      .filter(e => e.itemId && e.warehouseId && e.quantity > 0)
-      .map(e => ({ ...e, unitPrice: Number(e.unitPrice) || 0 }));
+    if (saving) return;
+    const result = validate();
+    if (!result.ok) {
+      toast.error(result.message || 'Order is not valid.');
+      return;
+    }
     try {
       setSaving(true);
-      await onCreateOrder(getShopName(), valid, Number(shippingFee) || 0);
+      await onCreateOrder(getShopName(), result.valid, Number(shippingFee) || 0);
       resetState();
       onOpenChange(false);
-    } catch (error) {
-      toast.error('Could not create order. Please try again.');
+    } catch (error: any) {
+      console.error('Create order failed:', error);
+      toast.error(error?.message ? `Could not create order: ${error.message}` : 'Could not create order. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -503,7 +520,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
         <DialogFooter className="sticky bottom-0 z-10 gap-2 px-6 py-4 border-t bg-background flex-shrink-0">
           <Button variant="outline" size="sm" onClick={handleClose} disabled={saving}>Cancel</Button>
-          <Button size="sm" onClick={handleSubmit} disabled={!isValid() || saving}>{saving ? 'Creating…' : 'Create Order'}</Button>
+          <Button size="sm" onClick={handleSubmit} disabled={saving}>{saving ? 'Creating…' : 'Create Order'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
