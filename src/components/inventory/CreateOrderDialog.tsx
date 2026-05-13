@@ -151,22 +151,37 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
   const validate = (): { ok: boolean; message?: string; valid: OrderItemEntry[] } => {
     if (!getShopName()) return { ok: false, message: 'Select a shop / wholesaler first.', valid: [] };
-    if (orderItems.length === 0) return { ok: false, message: 'Add at least one product.', valid: [] };
 
-    // Find first incomplete or invalid line and report exactly which one
-    for (let i = 0; i < orderItems.length; i++) {
-      const e = orderItems[i];
+    // Drop empty picker rows (user opened a product picker but never selected anything)
+    const realLines = orderItems.filter(e => e.itemId);
+    if (realLines.length === 0) return { ok: false, message: 'Add at least one product.', valid: [] };
+
+    // Aggregate qty per (item, warehouse) so we validate against the TOTAL the order would deduct
+    const totalsByKey = new Map<string, number>();
+    for (const e of realLines) {
+      const k = `${e.itemId}::${e.warehouseId}`;
+      totalsByKey.set(k, (totalsByKey.get(k) || 0) + (Number(e.quantity) || 0));
+    }
+
+    for (let i = 0; i < realLines.length; i++) {
+      const e = realLines[i];
       const item = items.find(it => it.id === e.itemId);
       const label = item ? `${item.sku} – ${item.name}` : `Line ${i + 1}`;
-      if (!e.itemId) return { ok: false, message: `Line ${i + 1}: pick a product or remove the empty line.`, valid: [] };
       if (!e.warehouseId) return { ok: false, message: `${label}: select a warehouse.`, valid: [] };
       if (!e.quantity || e.quantity <= 0) return { ok: false, message: `${label}: quantity must be at least 1.`, valid: [] };
-      const avail = getAvailableStock(e.itemId, e.warehouseId);
-      if (e.quantity > avail) return { ok: false, message: `${label}: only ${avail} available in selected warehouse (you entered ${e.quantity}).`, valid: [] };
+    }
+    for (const [k, total] of totalsByKey.entries()) {
+      const [itemId, warehouseId] = k.split('::');
+      const avail = getAvailableStock(itemId, warehouseId);
+      if (total > avail) {
+        const item = items.find(it => it.id === itemId);
+        const label = item ? `${item.sku} – ${item.name}` : 'Item';
+        return { ok: false, message: `${label}: only ${avail} available in selected warehouse (order needs ${total}).`, valid: [] };
+      }
     }
     return {
       ok: true,
-      valid: orderItems.map(e => ({ ...e, unitPrice: Number(e.unitPrice) || 0 })),
+      valid: realLines.map(e => ({ ...e, unitPrice: Number(e.unitPrice) || 0 })),
     };
   };
 
