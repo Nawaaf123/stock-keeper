@@ -520,7 +520,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
         <DialogFooter className="sticky bottom-0 z-10 gap-2 px-6 py-4 border-t bg-background flex-shrink-0">
           <Button variant="outline" size="sm" onClick={handleClose} disabled={saving}>Cancel</Button>
-          <Button size="sm" onClick={handleSubmit} disabled={!isValid() || saving}>{saving ? 'Creating…' : 'Create Order'}</Button>
+          <Button size="sm" onClick={handleSubmit} disabled={saving}>{saving ? 'Creating…' : 'Create Order'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
