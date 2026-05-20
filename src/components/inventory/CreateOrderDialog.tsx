@@ -130,9 +130,8 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     skuRef.current?.focus();
   };
 
-  // Add a product into the lines list. Always inserts as a new line ABOVE the popover row (which stays empty
-  // so the popover trigger stays mounted and the popover stays open for the next click).
-  const addProductToLines = (itemId: string, popoverRowIndex?: number) => {
+  // Add a product to the order. Always appended at the end. Idempotent on itemId.
+  const addProductToLines = (itemId: string) => {
     const item = items.find(i => i.id === itemId);
     if (!item) return;
     const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
@@ -140,15 +139,10 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
     setOrderItems((prev) => {
       if (prev.some(e => e.itemId === itemId)) return prev; // already added
-      const newLine = createOrderLine({ itemId, warehouseId, quantity: 1, unitPrice: item.price });
-      if (typeof popoverRowIndex === 'number' && popoverRowIndex >= 0 && popoverRowIndex < prev.length) {
-        const updated = [...prev];
-        updated.splice(popoverRowIndex, 0, newLine);
-        return updated;
-      }
-      return [...prev, newLine];
+      return [...prev, createOrderLine({ itemId, warehouseId, quantity: 1, unitPrice: item.price })];
     });
   };
+
 
   const validate = (): { ok: boolean; message?: string; valid: OrderItemEntry[] } => {
     if (!getShopName()) return { ok: false, message: 'Select a shop / wholesaler first.', valid: [] };
