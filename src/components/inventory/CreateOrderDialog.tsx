@@ -271,7 +271,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
             />
           )}
 
-          {/* Quick add SKU bar */}
+          {/* Quick add SKU bar + product picker */}
           <div className="flex gap-2">
             <Input
               ref={skuRef}
@@ -292,7 +292,52 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
             <Button onClick={handleQuickAdd} type="button" size="sm" className="h-9">
               <Plus className="w-4 h-4" />
             </Button>
+            <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className="h-9">
+                  Browse products <ChevronsUpDown className="w-3.5 h-3.5 ml-1 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="p-0 w-[420px]"
+                align="end"
+                onWheel={(e) => e.stopPropagation()}
+                onTouchMove={(e) => e.stopPropagation()}
+              >
+                <Command>
+                  <CommandInput placeholder="Search product by SKU or name..." />
+                  <CommandList
+                    className="max-h-[320px] overflow-y-auto overscroll-contain"
+                    onWheel={(e) => e.stopPropagation()}
+                  >
+                    <CommandEmpty>No product found.</CommandEmpty>
+                    <CommandGroup>
+                      {filteredItems.map((item) => {
+                        const added = orderItems.some(e => e.itemId === item.id);
+                        const totalStock = item.stock.reduce((s, st) => s + st.quantity, 0);
+                        return (
+                          <CommandItem
+                            key={item.id}
+                            value={`${item.sku} ${item.name}`}
+                            disabled={totalStock === 0}
+                            onSelect={() => {
+                              if (added || totalStock === 0) return;
+                              addProductToLines(item.id);
+                            }}
+                          >
+                            <Check className={`mr-2 h-4 w-4 ${added ? 'opacity-100' : 'opacity-0'}`} />
+                            <span className="flex-1 truncate">{item.sku} – {item.name}</span>
+                            <span className="text-xs text-muted-foreground ml-2">{totalStock}</span>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
+
 
           {/* Order lines table */}
           {orderItems.length > 0 ? (
