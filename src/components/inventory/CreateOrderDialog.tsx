@@ -35,7 +35,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   const [selectedWholesaler, setSelectedWholesaler] = useState('');
   const [customShopName, setCustomShopName] = useState('');
   const [orderItems, setOrderItems] = useState<OrderItemEntry[]>([]);
-  const [openProductPickerLineId, setOpenProductPickerLineId] = useState<string | null>(null);
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
 
@@ -51,6 +51,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
       linesScrollRef.current.scrollTop = linesScrollRef.current.scrollHeight;
     }
   }, [orderItems.length]);
+
 
   const categories = useMemo(
     () => Array.from(new Set(items.map(i => i.category).filter(Boolean))).sort(),
@@ -129,9 +130,8 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     skuRef.current?.focus();
   };
 
-  // Add a product into the lines list. Always inserts as a new line ABOVE the popover row (which stays empty
-  // so the popover trigger stays mounted and the popover stays open for the next click).
-  const addProductToLines = (itemId: string, popoverRowIndex?: number) => {
+  // Add a product to the order. Always appended at the end. Idempotent on itemId.
+  const addProductToLines = (itemId: string) => {
     const item = items.find(i => i.id === itemId);
     if (!item) return;
     const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
@@ -139,15 +139,10 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
     setOrderItems((prev) => {
       if (prev.some(e => e.itemId === itemId)) return prev; // already added
-      const newLine = createOrderLine({ itemId, warehouseId, quantity: 1, unitPrice: item.price });
-      if (typeof popoverRowIndex === 'number' && popoverRowIndex >= 0 && popoverRowIndex < prev.length) {
-        const updated = [...prev];
-        updated.splice(popoverRowIndex, 0, newLine);
-        return updated;
-      }
-      return [...prev, newLine];
+      return [...prev, createOrderLine({ itemId, warehouseId, quantity: 1, unitPrice: item.price })];
     });
   };
+
 
   const validate = (): { ok: boolean; message?: string; valid: OrderItemEntry[] } => {
     if (!getShopName()) return { ok: false, message: 'Select a shop / wholesaler first.', valid: [] };
@@ -214,7 +209,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     setSkuInput('');
     setQtyInput('1');
     setShippingFee('');
-    setOpenProductPickerLineId(null);
+    setProductPickerOpen(false);
   };
 
   const handleClose = () => { resetState(); onOpenChange(false); };
@@ -276,7 +271,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
             />
           )}
 
-          {/* Quick add SKU bar */}
+          {/* Quick add SKU bar + product picker */}
           <div className="flex gap-2">
             <Input
               ref={skuRef}
@@ -297,7 +292,52 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
             <Button onClick={handleQuickAdd} type="button" size="sm" className="h-9">
               <Plus className="w-4 h-4" />
             </Button>
+            <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className="h-9">
+                  Browse products <ChevronsUpDown className="w-3.5 h-3.5 ml-1 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="p-0 w-[420px]"
+                align="end"
+                onWheel={(e) => e.stopPropagation()}
+                onTouchMove={(e) => e.stopPropagation()}
+              >
+                <Command>
+                  <CommandInput placeholder="Search product by SKU or name..." />
+                  <CommandList
+                    className="max-h-[320px] overflow-y-auto overscroll-contain"
+                    onWheel={(e) => e.stopPropagation()}
+                  >
+                    <CommandEmpty>No product found.</CommandEmpty>
+                    <CommandGroup>
+                      {filteredItems.map((item) => {
+                        const added = orderItems.some(e => e.itemId === item.id);
+                        const totalStock = item.stock.reduce((s, st) => s + st.quantity, 0);
+                        return (
+                          <CommandItem
+                            key={item.id}
+                            value={`${item.sku} ${item.name}`}
+                            disabled={totalStock === 0}
+                            onSelect={() => {
+                              if (added || totalStock === 0) return;
+                              addProductToLines(item.id);
+                            }}
+                          >
+                            <Check className={`mr-2 h-4 w-4 ${added ? 'opacity-100' : 'opacity-0'}`} />
+                            <span className="flex-1 truncate">{item.sku} – {item.name}</span>
+                            <span className="text-xs text-muted-foreground ml-2">{totalStock}</span>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
+
 
           {/* Order lines table */}
           {orderItems.length > 0 ? (
@@ -326,74 +366,20 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
                         return (
                           <tr key={entry.lineId} className="border-t">
+
                             <td className="px-1 py-1">
-                              {entry.itemId ? (
-                                <Select value={entry.itemId} onValueChange={(v) => handleItemChange(index, 'itemId', v)}>
-                                  <SelectTrigger className="h-8 border-0 shadow-none focus:ring-1">
-                                    <SelectValue placeholder="Select product" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {productList.map((item) => (
-                                      <SelectItem key={item.id} value={item.id}>{item.sku} – {item.name}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <Popover
-                                  open={openProductPickerLineId === entry.lineId}
-                                  onOpenChange={(isOpen) => setOpenProductPickerLineId(isOpen ? entry.lineId : null)}
-                                >
-                                  <PopoverTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 w-full justify-between font-normal text-muted-foreground px-2"
-                                    >
-                                      Select product(s)
-                                      <ChevronsUpDown className="w-3.5 h-3.5 opacity-50" />
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent
-                                    className="p-0 w-[420px]"
-                                    align="start"
-                                    onWheel={(e) => e.stopPropagation()}
-                                    onTouchMove={(e) => e.stopPropagation()}
-                                  >
-                                    <Command>
-                                      <CommandInput placeholder="Search product by SKU or name..." />
-                                      <CommandList
-                                        className="max-h-[320px] overflow-y-auto overscroll-contain"
-                                        onWheel={(e) => e.stopPropagation()}
-                                      >
-                                        <CommandEmpty>No product found.</CommandEmpty>
-                                        <CommandGroup>
-                                          {filteredItems.map((item) => {
-                                            const added = orderItems.some(e => e.itemId === item.id);
-                                            const totalStock = item.stock.reduce((s, st) => s + st.quantity, 0);
-                                            return (
-                                              <CommandItem
-                                                key={item.id}
-                                                value={`${item.sku} ${item.name}`}
-                                                disabled={totalStock === 0}
-                                                onSelect={() => {
-                                                  if (added || totalStock === 0) return;
-                                                  addProductToLines(item.id, index);
-                                                   setOpenProductPickerLineId(entry.lineId);
-                                                }}
-                                              >
-                                                <Check className={`mr-2 h-4 w-4 ${added ? 'opacity-100' : 'opacity-0'}`} />
-                                                <span className="flex-1 truncate">{item.sku} – {item.name}</span>
-                                                <span className="text-xs text-muted-foreground ml-2">{totalStock}</span>
-                                              </CommandItem>
-                                            );
-                                          })}
-                                        </CommandGroup>
-                                      </CommandList>
-                                    </Command>
-                                  </PopoverContent>
-                                </Popover>
-                              )}
+                              <Select value={entry.itemId} onValueChange={(v) => handleItemChange(index, 'itemId', v)}>
+                                <SelectTrigger className="h-8 border-0 shadow-none focus:ring-1">
+                                  <SelectValue placeholder="Select product" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {productList.map((item) => (
+                                    <SelectItem key={item.id} value={item.id}>{item.sku} – {item.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </td>
+
                             <td className="px-1 py-1">
                               <Select
                                 value={entry.warehouseId}
@@ -516,10 +502,10 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setOrderItems([...orderItems, createOrderLine({ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 })])}
+                onClick={() => setProductPickerOpen(true)}
                 className="w-full h-8 text-xs flex-shrink-0"
               >
-                <Plus className="w-3.5 h-3.5 mr-1" /> Add line
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add products
               </Button>
             </div>
           ) : (
@@ -527,10 +513,11 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
               Scan a SKU above or <button
                 type="button"
                 className="underline text-foreground"
-                onClick={() => setOrderItems([createOrderLine({ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 })])}
-              >add a line manually</button>
+                onClick={() => setProductPickerOpen(true)}
+              >browse products</button>
             </div>
           )}
+
         </div>
 
         <DialogFooter className="sticky bottom-0 z-10 gap-2 px-6 py-4 border-t bg-background flex-shrink-0">
