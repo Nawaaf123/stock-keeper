@@ -35,7 +35,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   const [selectedWholesaler, setSelectedWholesaler] = useState('');
   const [customShopName, setCustomShopName] = useState('');
   const [orderItems, setOrderItems] = useState<OrderItemEntry[]>([]);
-  const [openProductPickerLineId, setOpenProductPickerLineId] = useState<string | null>(null);
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [subCategoryFilter, setSubCategoryFilter] = useState<string>('all');
 
@@ -51,6 +51,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
       linesScrollRef.current.scrollTop = linesScrollRef.current.scrollHeight;
     }
   }, [orderItems.length]);
+
 
   const categories = useMemo(
     () => Array.from(new Set(items.map(i => i.category).filter(Boolean))).sort(),
