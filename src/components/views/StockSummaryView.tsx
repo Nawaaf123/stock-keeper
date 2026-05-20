@@ -159,18 +159,16 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
         ? getTotalQuantity(item)
         : (item.stock.find(s => s.warehouseId === warehouseFilter)?.quantity || 0);
 
-      // Forward-walk from opening balance (or zero) so past rows DON'T shift when new
-      // movements are added today. Drift, if any, will be visible at the end.
-      const openingTotal = filteredEntries
-        .filter(e => e.type === 'opening_balance')
-        .reduce((sum, e) => sum + e.qty, 0);
+      // Back-calculate the implied starting balance so the ledger always ends
+      // at the actual current stock. This prevents false negatives for items
+      // whose opening_balance was never recorded (sales appear before the
+      // first receive in history) — the displayed walk stays consistent with
+      // what the inventory page shows.
+      const netMovements = filteredEntries.reduce((sum, e) => sum + signed(e), 0);
+      let runningStock = currentStock - netMovements;
 
-      let runningStock = openingTotal;
-      // Skip opening_balance entries from the running walk (already counted as the starting value)
       const entriesWithRemaining: StockEntry[] = filteredEntries.map(entry => {
-        if (entry.type !== 'opening_balance') {
-          runningStock += signed(entry);
-        }
+        runningStock += signed(entry);
         return { ...entry, remainingAfter: runningStock };
       });
       entriesWithRemaining.reverse();
