@@ -209,7 +209,7 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     setSkuInput('');
     setQtyInput('1');
     setShippingFee('');
-    setOpenProductPickerLineId(null);
+    setProductPickerOpen(false);
   };
 
   const handleClose = () => { resetState(); onOpenChange(false); };
