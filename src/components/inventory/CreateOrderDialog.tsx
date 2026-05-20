@@ -502,10 +502,10 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setOrderItems([...orderItems, createOrderLine({ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 })])}
+                onClick={() => setProductPickerOpen(true)}
                 className="w-full h-8 text-xs flex-shrink-0"
               >
-                <Plus className="w-3.5 h-3.5 mr-1" /> Add line
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add products
               </Button>
             </div>
           ) : (
@@ -513,10 +513,11 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
               Scan a SKU above or <button
                 type="button"
                 className="underline text-foreground"
-                onClick={() => setOrderItems([createOrderLine({ itemId: '', warehouseId: '', quantity: 1, unitPrice: 0 })])}
-              >add a line manually</button>
+                onClick={() => setProductPickerOpen(true)}
+              >browse products</button>
             </div>
           )}
+
         </div>
 
         <DialogFooter className="sticky bottom-0 z-10 gap-2 px-6 py-4 border-t bg-background flex-shrink-0">
