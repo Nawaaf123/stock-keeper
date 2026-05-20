@@ -105,6 +105,10 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
         });
 
       orders.forEach(order => {
+        // Skip cancelled orders — their stock movement is already represented
+        // by 'order_cancelled' transactions. Counting them as sales here would
+        // double-count both Sold and Received totals.
+        if (order.status === 'cancelled') return;
         order.items.forEach(orderItem => {
           if (orderItem.itemId === item.id) {
             stockEntries.push({
