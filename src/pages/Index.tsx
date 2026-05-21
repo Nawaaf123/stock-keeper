@@ -15,6 +15,7 @@ const WholesalersView = lazy(() => import('@/components/views/WholesalersView').
 const StockSummaryView = lazy(() => import('@/components/views/StockSummaryView').then(m => ({ default: m.StockSummaryView })));
 const PaymentsView = lazy(() => import('@/components/views/PaymentsView').then(m => ({ default: m.PaymentsView })));
 const UsersView = lazy(() => import('@/components/views/UsersView').then(m => ({ default: m.UsersView })));
+const DriftMonitorView = lazy(() => import('@/components/views/DriftMonitorView').then(m => ({ default: m.DriftMonitorView })));
 
 const Index = () => {
   const [activeView, setActiveView] = useState('inventory');
@@ -109,6 +110,8 @@ const Index = () => {
         return <PaymentHistoryView orders={inventory.orders} payments={inventory.payments} onDeletePayment={inventory.deletePayment} />;
       case 'users':
         return <UsersView />;
+      case 'drift-monitor':
+        return <DriftMonitorView items={inventory.allItems} warehouses={inventory.warehouses} />;
       default:
         return null;
     }

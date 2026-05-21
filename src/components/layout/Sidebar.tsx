@@ -1,4 +1,4 @@
-import { Package, BarChart3, History, ShoppingCart, Users, ClipboardList, CreditCard, Menu, X, LogOut, UserCog, PackagePlus, Receipt } from 'lucide-react';
+import { Package, BarChart3, History, ShoppingCart, Users, ClipboardList, CreditCard, Menu, X, LogOut, UserCog, PackagePlus, Receipt, ShieldAlert } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import mrfogLogo from '@/assets/mrfog-logo.png';
@@ -19,6 +19,7 @@ const navItems = [
   { id: 'inventory-history', label: 'Inventory History', icon: History },
   { id: 'reports', label: 'Reports', icon: BarChart3 },
   { id: 'payment-history', label: 'Payment History', icon: Receipt },
+  { id: 'drift-monitor', label: 'Drift Monitor', icon: ShieldAlert },
   { id: 'users', label: 'Users', icon: UserCog },
 ];
 
