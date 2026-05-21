@@ -169,7 +169,10 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
 
       const entriesWithRemaining: StockEntry[] = filteredEntries.map(entry => {
         runningStock += signed(entry);
-        return { ...entry, remainingAfter: runningStock };
+        // Clamp at 0: never display negative remaining. Historic gaps (missing
+        // opening_balance, untracked transfers) can't push the visible balance
+        // below zero. Current stock on top is always the source of truth.
+        return { ...entry, remainingAfter: Math.max(0, runningStock) };
       });
       entriesWithRemaining.reverse();
 
