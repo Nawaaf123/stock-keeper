@@ -167,6 +167,25 @@ export function UsersView() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!resetUser} onOpenChange={(o) => { if (!o) { setResetUser(null); setResetPassword(''); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Set a new password for <span className="font-medium text-foreground">{resetUser?.email}</span>. Share it with them securely.</p>
+            <div className="space-y-2">
+              <Label htmlFor="reset-password">New password</Label>
+              <Input id="reset-password" type="text" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} placeholder="Min 6 characters" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setResetUser(null); setResetPassword(''); }}>Cancel</Button>
+            <Button onClick={onResetPassword} disabled={resetting}>{resetting ? 'Updating…' : 'Update password'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
