@@ -34,6 +34,9 @@ export function UsersView() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resetUser, setResetUser] = useState<AppUser | null>(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetting, setResetting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -75,6 +78,23 @@ export function UsersView() {
       load();
     } catch (e) {
       toast({ title: 'Delete failed', description: (e as Error).message, variant: 'destructive' });
+    }
+  };
+
+  const onResetPassword = async () => {
+    if (!resetUser || resetPassword.length < 6) {
+      toast({ title: 'Invalid input', description: 'Password must be at least 6 characters', variant: 'destructive' });
+      return;
+    }
+    setResetting(true);
+    try {
+      await call('reset_password', { id: resetUser.id, password: resetPassword });
+      toast({ title: 'Password updated', description: resetUser.email });
+      setResetUser(null); setResetPassword('');
+    } catch (e) {
+      toast({ title: 'Reset failed', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setResetting(false);
     }
   };
 
