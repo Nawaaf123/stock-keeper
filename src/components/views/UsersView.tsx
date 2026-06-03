@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Trash2, UserPlus } from 'lucide-react';
+import { KeyRound, Trash2, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface AppUser {
