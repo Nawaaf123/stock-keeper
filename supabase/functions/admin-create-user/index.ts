@@ -49,6 +49,20 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === 'reset_password') {
+      const { id, password } = body;
+      if (!id || !password || String(password).length < 6) {
+        return new Response(JSON.stringify({ error: 'id and password (min 6 chars) required' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { error } = await admin.auth.admin.updateUserById(id, { password });
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (action === 'delete') {
       const { id } = body;
       if (!id) throw new Error('id required');

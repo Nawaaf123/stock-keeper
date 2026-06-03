@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Trash2, UserPlus } from 'lucide-react';
+import { KeyRound, Trash2, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface AppUser {
@@ -34,6 +34,9 @@ export function UsersView() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resetUser, setResetUser] = useState<AppUser | null>(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetting, setResetting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -78,6 +81,23 @@ export function UsersView() {
     }
   };
 
+  const onResetPassword = async () => {
+    if (!resetUser || resetPassword.length < 6) {
+      toast({ title: 'Invalid input', description: 'Password must be at least 6 characters', variant: 'destructive' });
+      return;
+    }
+    setResetting(true);
+    try {
+      await call('reset_password', { id: resetUser.id, password: resetPassword });
+      toast({ title: 'Password updated', description: resetUser.email });
+      setResetUser(null); setResetPassword('');
+    } catch (e) {
+      toast({ title: 'Reset failed', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setResetting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -117,7 +137,7 @@ export function UsersView() {
                     <TableHead className="whitespace-nowrap">Email</TableHead>
                     <TableHead className="whitespace-nowrap">Created</TableHead>
                     <TableHead className="whitespace-nowrap">Last sign-in</TableHead>
-                    <TableHead className="w-16"></TableHead>
+                    <TableHead className="w-28"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -127,9 +147,14 @@ export function UsersView() {
                       <TableCell className="whitespace-nowrap">{new Date(u.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="whitespace-nowrap">{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString() : '—'}</TableCell>
                       <TableCell>
-                        <Button size="icon" variant="ghost" disabled={u.id === currentUser?.id} onClick={() => onDelete(u.id, u.email)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" title="Reset password" onClick={() => { setResetUser(u); setResetPassword(''); }}>
+                            <KeyRound className="w-4 h-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" title="Delete user" disabled={u.id === currentUser?.id} onClick={() => onDelete(u.id, u.email)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -142,6 +167,25 @@ export function UsersView() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!resetUser} onOpenChange={(o) => { if (!o) { setResetUser(null); setResetPassword(''); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Set a new password for <span className="font-medium text-foreground">{resetUser?.email}</span>. Share it with them securely.</p>
+            <div className="space-y-2">
+              <Label htmlFor="reset-password">New password</Label>
+              <Input id="reset-password" type="text" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} placeholder="Min 6 characters" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setResetUser(null); setResetPassword(''); }}>Cancel</Button>
+            <Button onClick={onResetPassword} disabled={resetting}>{resetting ? 'Updating…' : 'Update password'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
