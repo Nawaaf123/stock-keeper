@@ -137,7 +137,7 @@ export function UsersView() {
                     <TableHead className="whitespace-nowrap">Email</TableHead>
                     <TableHead className="whitespace-nowrap">Created</TableHead>
                     <TableHead className="whitespace-nowrap">Last sign-in</TableHead>
-                    <TableHead className="w-16"></TableHead>
+                    <TableHead className="w-28"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -147,9 +147,14 @@ export function UsersView() {
                       <TableCell className="whitespace-nowrap">{new Date(u.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="whitespace-nowrap">{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString() : '—'}</TableCell>
                       <TableCell>
-                        <Button size="icon" variant="ghost" disabled={u.id === currentUser?.id} onClick={() => onDelete(u.id, u.email)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" title="Reset password" onClick={() => { setResetUser(u); setResetPassword(''); }}>
+                            <KeyRound className="w-4 h-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" title="Delete user" disabled={u.id === currentUser?.id} onClick={() => onDelete(u.id, u.email)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
