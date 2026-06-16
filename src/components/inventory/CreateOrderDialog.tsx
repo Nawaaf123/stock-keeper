@@ -84,8 +84,12 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     if (field === 'itemId') {
       const item = items.find(i => i.id === value);
       if (item) {
+        const bensenvilleId = 'cfb94d6e-6114-45b4-b1a0-9eb3c2d926e8';
+        const bensenvilleStock = item.stock.find(s => s.warehouseId === bensenvilleId);
         const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
-        updated[index].warehouseId = best && best.quantity > 0 ? best.warehouseId : '';
+        updated[index].warehouseId = bensenvilleStock && bensenvilleStock.quantity > 0
+          ? bensenvilleId
+          : (best && best.quantity > 0 ? best.warehouseId : '');
         updated[index].unitPrice = item.price;
       }
     }
@@ -113,16 +117,21 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
 
     if (!item) { toast.error(`No product found for "${skuInput}"`); return; }
 
+    const bensenvilleId = 'cfb94d6e-6114-45b4-b1a0-9eb3c2d926e8';
+    const bensenvilleStock = item.stock.find(s => s.warehouseId === bensenvilleId);
     const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
-    if (!best || best.quantity === 0) { toast.error(`${item.name} has no stock`); return; }
+    const defaultWhId = bensenvilleStock && bensenvilleStock.quantity > 0
+      ? bensenvilleId
+      : (best && best.quantity > 0 ? best.warehouseId : '');
+    if (!defaultWhId) { toast.error(`${item.name} has no stock`); return; }
 
-    const existingIdx = orderItems.findIndex(e => e.itemId === item.id && e.warehouseId === best.warehouseId);
+    const existingIdx = orderItems.findIndex(e => e.itemId === item.id && e.warehouseId === defaultWhId);
     if (existingIdx >= 0) {
       const updated = [...orderItems];
       updated[existingIdx].quantity += qty;
       setOrderItems(updated);
     } else {
-      setOrderItems([...orderItems, createOrderLine({ itemId: item.id, warehouseId: best.warehouseId, quantity: qty, unitPrice: item.price })]);
+      setOrderItems([...orderItems, createOrderLine({ itemId: item.id, warehouseId: defaultWhId, quantity: qty, unitPrice: item.price })]);
     }
 
     setSkuInput('');
@@ -134,8 +143,12 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
   const addProductToLines = (itemId: string) => {
     const item = items.find(i => i.id === itemId);
     if (!item) return;
+    const bensenvilleId = 'cfb94d6e-6114-45b4-b1a0-9eb3c2d926e8';
+    const bensenvilleStock = item.stock.find(s => s.warehouseId === bensenvilleId);
     const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
-    const warehouseId = best && best.quantity > 0 ? best.warehouseId : '';
+    const warehouseId = bensenvilleStock && bensenvilleStock.quantity > 0
+      ? bensenvilleId
+      : (best && best.quantity > 0 ? best.warehouseId : '');
 
     setOrderItems((prev) => {
       if (prev.some(e => e.itemId === itemId)) return prev; // already added
