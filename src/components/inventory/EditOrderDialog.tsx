@@ -164,20 +164,27 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
 
     if (!item) { toast.error(`No product found for "${skuInput}"`); return; }
 
+    const bensenvilleId = 'cfb94d6e-6114-45b4-b1a0-9eb3c2d926e8';
+    const bensenvilleStock = item.stock.find(s => s.warehouseId === bensenvilleId);
     const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
+    const defaultWhId = bensenvilleStock && bensenvilleStock.quantity > 0
+      ? bensenvilleId
+      : (best?.warehouseId || '');
+
     const onLines = lines
       .filter(l => l.itemId === item.id)
-      .reduce((s, l) => s + (l.warehouseId === best?.warehouseId ? l.quantity : 0), 0);
-    const avail = (best?.quantity || 0) + (originalQty.get(`${item.id}::${best?.warehouseId}`) || 0) - onLines;
-    if (!best || avail <= 0) { toast.error(`${item.name} has no stock`); return; }
+      .reduce((s, l) => s + (l.warehouseId === defaultWhId ? l.quantity : 0), 0);
+    const avail = (item.stock.find(s => s.warehouseId === defaultWhId)?.quantity || 0)
+      + (originalQty.get(`${item.id}::${defaultWhId}`) || 0) - onLines;
+    if (!defaultWhId || avail <= 0) { toast.error(`${item.name} has no stock`); return; }
 
-    const existingIdx = lines.findIndex(e => e.itemId === item.id && e.warehouseId === best.warehouseId);
+    const existingIdx = lines.findIndex(e => e.itemId === item.id && e.warehouseId === defaultWhId);
     if (existingIdx >= 0) {
       const updated = [...lines];
       updated[existingIdx].quantity += qty;
       setLines(updated);
     } else {
-      setLines([...lines, createOrderLine({ itemId: item.id, warehouseId: best.warehouseId, quantity: qty, unitPrice: item.price })]);
+      setLines([...lines, createOrderLine({ itemId: item.id, warehouseId: defaultWhId, quantity: qty, unitPrice: item.price })]);
     }
 
     setSkuInput('');
