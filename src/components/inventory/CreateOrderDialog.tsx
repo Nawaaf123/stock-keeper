@@ -84,8 +84,12 @@ export function CreateOrderDialog({ open, onOpenChange, items, warehouses, whole
     if (field === 'itemId') {
       const item = items.find(i => i.id === value);
       if (item) {
+        const bensenvilleId = 'cfb94d6e-6114-45b4-b1a0-9eb3c2d926e8';
+        const bensenvilleStock = item.stock.find(s => s.warehouseId === bensenvilleId);
         const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
-        updated[index].warehouseId = best && best.quantity > 0 ? best.warehouseId : '';
+        updated[index].warehouseId = bensenvilleStock && bensenvilleStock.quantity > 0
+          ? bensenvilleId
+          : (best && best.quantity > 0 ? best.warehouseId : '');
         updated[index].unitPrice = item.price;
       }
     }
