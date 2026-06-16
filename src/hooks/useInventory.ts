@@ -570,15 +570,34 @@ export function useInventory() {
   const deleteOrder = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
-    if (order.status === 'cancelled') return; // already cancelled, no-op
+    if (order.status === 'cancelled') return; // already cancelled (stale local check)
 
-    // Restore stock atomically
+    // ATOMIC GUARD: flip status to 'cancelled' ONLY if it's not already cancelled.
+    // The DB is the single source of truth — this prevents a double-click or a
+    // retried request from running the restock twice (the bug from June 15).
+    const { data: flipped, error: flipErr } = await (supabase as any)
+      .from('orders')
+      .update({
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+      })
+      .eq('id', orderId)
+      .neq('status', 'cancelled')
+      .select('id');
+
+    if (flipErr) throw flipErr;
+    if (!flipped || flipped.length === 0) {
+      // Someone else (or a previous click) already cancelled it. Do NOT restock again.
+      await Promise.all([fetchOrders()]);
+      return;
+    }
+
+    // Restore stock atomically — only runs on the winning flip.
     await applyStockDeltas(order.items.map(line => ({
       itemId: line.itemId, warehouseId: line.warehouseId, delta: line.quantity,
     })));
 
     // Log reversal entries in inventory_transactions (audit trail).
-    // One row per order line so Stock Summary shows the cancellation per item/warehouse.
     if (order.items.length > 0) {
       await supabase.from('inventory_transactions').insert(
         order.items.map(line => ({
@@ -590,13 +609,6 @@ export function useInventory() {
         } as any))
       );
     }
-
-    // Soft-cancel the order: keep rows for audit, mark status='cancelled'.
-    // Do NOT delete order_items or the order itself.
-    await (supabase as any).from('orders').update({
-      status: 'cancelled',
-      cancelled_at: new Date().toISOString(),
-    }).eq('id', orderId);
 
     // Remove any payments tied to this order (cancelling means no payment due)
     await (supabase as any).from('payments').delete().eq('order_id', orderId);
