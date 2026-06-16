@@ -114,9 +114,13 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
     if (field === 'itemId') {
       const item = itemsById.get(value as string);
       if (item) {
-        next[idx].unitPrice = item.price;
+        const bensenvilleId = 'cfb94d6e-6114-45b4-b1a0-9eb3c2d926e8';
+        const bensenvilleStock = item.stock.find(s => s.warehouseId === bensenvilleId);
         const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
-        next[idx].warehouseId = best?.warehouseId || '';
+        next[idx].unitPrice = item.price;
+        next[idx].warehouseId = bensenvilleStock && bensenvilleStock.quantity > 0
+          ? bensenvilleId
+          : (best?.warehouseId || '');
       }
     }
     setLines(next);
@@ -133,8 +137,12 @@ export function EditOrderDialog({ open, onOpenChange, order, items, warehouses, 
   const addProductToLines = (itemId: string, popoverRowIndex: number) => {
     const item = items.find(i => i.id === itemId);
     if (!item) return;
+    const bensenvilleId = 'cfb94d6e-6114-45b4-b1a0-9eb3c2d926e8';
+    const bensenvilleStock = item.stock.find(s => s.warehouseId === bensenvilleId);
     const best = [...item.stock].sort((a, b) => b.quantity - a.quantity)[0];
-    const warehouseId = best && best.quantity > 0 ? best.warehouseId : '';
+    const warehouseId = bensenvilleStock && bensenvilleStock.quantity > 0
+      ? bensenvilleId
+      : (best && best.quantity > 0 ? best.warehouseId : '');
     setLines(prev => {
       if (prev.some(e => e.itemId === itemId)) return prev;
       const newLine = createOrderLine({ itemId, warehouseId, quantity: 1, unitPrice: item.price });
