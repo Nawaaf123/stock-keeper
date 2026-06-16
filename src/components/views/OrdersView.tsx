@@ -609,7 +609,7 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
         />
       )}
 
-      <AlertDialog open={deleteOrderId !== null} onOpenChange={(o) => { if (!o) setDeleteOrderId(null); }}>
+      <AlertDialog open={deleteOrderId !== null} onOpenChange={(o) => { if (!o && !isCancelling) setDeleteOrderId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
@@ -618,16 +618,25 @@ export function OrdersView({ orders, items, warehouses, wholesalers, onCreateOrd
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep order</AlertDialogCancel>
+            <AlertDialogCancel disabled={isCancelling}>Keep order</AlertDialogCancel>
             <AlertDialogAction
-              onClick={async () => {
-                if (!deleteOrderId) return;
-                await onDeleteOrder(deleteOrderId);
-                toast.success('Order cancelled and stock returned');
-                setDeleteOrderId(null);
+              disabled={isCancelling}
+              onClick={async (e) => {
+                e.preventDefault(); // keep dialog open until we finish, so it can't be re-clicked
+                if (!deleteOrderId || isCancelling) return;
+                setIsCancelling(true);
+                try {
+                  await onDeleteOrder(deleteOrderId);
+                  toast.success('Order cancelled and stock returned');
+                  setDeleteOrderId(null);
+                } catch (err: any) {
+                  toast.error(err?.message || 'Failed to cancel order');
+                } finally {
+                  setIsCancelling(false);
+                }
               }}
             >
-              Cancel order & return stock
+              {isCancelling ? 'Cancelling…' : 'Cancel order & return stock'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
