@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { format, startOfDay, startOfWeek, startOfMonth, endOfDay, eachDayOfInterval } from 'date-fns';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { CalendarIcon, Download, BarChart3, TrendingUp, Package, DollarSign, Users, Warehouse, AlertTriangle, Tags } from 'lucide-react';
 import { Order, InventoryItem, InventoryTransaction, Warehouse as WarehouseType } from '@/types/inventory';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
