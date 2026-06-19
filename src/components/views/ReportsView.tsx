@@ -213,10 +213,15 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
     pushRow(['MR FOG'], 'mrfog');
     pushRow([], 'blank');
 
-    const weekTotals: Record<string, number> = {};
-    catShorts.forEach(s => { weekTotals[s] = 0; });
-    let weekInvoice = 0;
-    let weekCases = 0;
+    const colLetter = (idx: number) => {
+      let s = ''; let n = idx;
+      while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; }
+      return s;
+    };
+    const totalColsCount = 4 + catShorts.length + 1;
+    const invoiceColIdx = totalColsCount - 1;
+    const invoiceColL = colLetter(invoiceColIdx);
+    const dayTotalRowsExcel: number[] = []; // 1-indexed Excel row numbers of each "Total Sales" row
 
     sortedDays.forEach(dayKey => {
       const dayOrders = byDay.get(dayKey)!.sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -226,9 +231,7 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
 
       pushRow(['No.', 'Day', 'Date', 'Customer', ...catShorts, 'Total invoice $'], 'header');
 
-      const dayCatTotals: Record<string, number> = {};
-      catShorts.forEach(s => { dayCatTotals[s] = 0; });
-      let dayInvoice = 0;
+      const firstDataExcelRow = aoa.length + 1; // next row to be pushed
 
       dayOrders.forEach((o, idx) => {
         const perCat: Record<string, number> = {};
@@ -240,28 +243,40 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
           invoice += l.quantity * l.unitPrice;
         });
         const row: (string | number)[] = [idx + 1, dayName, dateStr, o.shopName];
-        catShorts.forEach(s => { row.push(perCat[s] || 0); dayCatTotals[s] += perCat[s] || 0; });
+        catShorts.forEach(s => { row.push(perCat[s] || 0); });
         row.push(Number(invoice.toFixed(2)));
-        dayInvoice += invoice;
         pushRow(row, 'data');
       });
 
-      const totalRow: (string | number)[] = ['', '', '', 'Total Sales'];
-      catShorts.forEach(s => { totalRow.push(dayCatTotals[s]); weekTotals[s] += dayCatTotals[s]; });
-      totalRow.push(Number(dayInvoice.toFixed(2)));
-      pushRow(totalRow, 'daytotal');
-      pushRow([], 'blank');
+      const lastDataExcelRow = aoa.length; // after pushes, aoa.length = 1-indexed last row
 
-      weekInvoice += dayInvoice;
-      weekCases += Object.values(dayCatTotals).reduce((s, n) => s + n, 0);
+      // Day total row with live SUM formulas
+      const totalRow: (string | number)[] = ['', '', '', 'Total Sales'];
+      catShorts.forEach((_s, i) => {
+        const col = colLetter(4 + i);
+        totalRow.push(`=SUM(${col}${firstDataExcelRow}:${col}${lastDataExcelRow})` as unknown as string);
+      });
+      totalRow.push(`=SUM(${invoiceColL}${firstDataExcelRow}:${invoiceColL}${lastDataExcelRow})` as unknown as string);
+      pushRow(totalRow, 'daytotal');
+      dayTotalRowsExcel.push(aoa.length);
+      pushRow([], 'blank');
     });
 
     if (sortedDays.length > 0) {
       const endRow: (string | number)[] = ['', '', '', 'End of the week Total'];
-      catShorts.forEach(s => endRow.push(weekTotals[s]));
-      endRow.push(Number(weekInvoice.toFixed(2)));
+      catShorts.forEach((_s, i) => {
+        const col = colLetter(4 + i);
+        const refs = dayTotalRowsExcel.map(r => `${col}${r}`).join(',');
+        endRow.push(`=SUM(${refs})` as unknown as string);
+      });
+      const invRefs = dayTotalRowsExcel.map(r => `${invoiceColL}${r}`).join(',');
+      endRow.push(`=SUM(${invRefs})` as unknown as string);
       pushRow(endRow, 'weektotal');
-      pushRow(['', '', '', 'Total Cases', weekCases], 'cases');
+
+      const weekTotalExcelRow = aoa.length;
+      const firstCatCol = colLetter(4);
+      const lastCatCol = colLetter(4 + catShorts.length - 1);
+      pushRow(['', '', '', 'Total Cases', `=SUM(${firstCatCol}${weekTotalExcelRow}:${lastCatCol}${weekTotalExcelRow})` as unknown as string], 'cases');
     } else {
       pushRow(['(No sales in this range)'], 'blank');
     }
