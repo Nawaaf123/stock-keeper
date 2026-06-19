@@ -289,6 +289,17 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
       { wch: 16 },
     ];
 
+    // Convert any string cells starting with '=' into real formula cells
+    for (let r = 0; r < aoa.length; r++) {
+      for (let c = 0; c < totalCols; c++) {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        const cell = dailySheet[addr];
+        if (cell && typeof cell.v === 'string' && cell.v.startsWith('=')) {
+          dailySheet[addr] = { t: 'n', f: cell.v.substring(1) };
+        }
+      }
+    }
+
     // ----- Styling -----
     const border = { style: 'thin', color: { rgb: '7F9F7F' } } as const;
     const fullBorder = { top: border, bottom: border, left: border, right: border };
