@@ -157,6 +157,122 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
   const handleExport = () => {
     const wb = XLSX.utils.book_new();
 
+    // ===== Daily Sales sheet (MR FOG style) =====
+    // Build short-code per category to keep columns narrow
+    const shortCode = (cat: string): string => {
+      const map: Record<string, string> = {
+        'SWITCH POD': 'SWPK',
+        'NICOTINE POUCHES': 'Nic',
+        'AURA': 'Aura',
+        'NOVA': 'NV',
+        'MAX AIR-3000': 'MA3K',
+        'MAX PRO-2000': 'MP2K',
+        'MAX-1000': 'MX1K',
+        'SWITCH-5500': 'SW55',
+        'SWITCH-15000': 'SW15',
+      };
+      if (map[cat]) return map[cat];
+      // fallback: initials of words, max 4 chars
+      const words = cat.replace(/[^A-Za-z0-9 -]/g, '').split(/[\s-]+/).filter(Boolean);
+      if (words.length === 1) return words[0].slice(0, 4);
+      return words.map(w => w[0]).join('').slice(0, 4).toUpperCase();
+    };
+    const itemCategory = (itemId: string): string => items.find(i => i.id === itemId)?.category ?? 'Other';
+
+    // Collect distinct categories present in filteredOrders, preserve image-like order if known
+    const preferredOrder = ['SWITCH POD', 'MAX PRO-2000', 'AURA', 'NOVA', 'NICOTINE POUCHES', 'SWITCH-5500', 'SWITCH-15000', 'MAX AIR-3000', 'MAX-1000'];
+    const catSet = new Set<string>();
+    filteredOrders.forEach(o => o.items.forEach(l => catSet.add(itemCategory(l.itemId))));
+    const cats = Array.from(catSet).sort((a, b) => {
+      const ia = preferredOrder.indexOf(a); const ib = preferredOrder.indexOf(b);
+      if (ia === -1 && ib === -1) return a.localeCompare(b);
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+    const catShorts = cats.map(shortCode);
+
+    // Group orders by date
+    const byDay = new Map<string, Order[]>();
+    filteredOrders.forEach(o => {
+      const k = format(o.date, 'yyyy-MM-dd');
+      if (!byDay.has(k)) byDay.set(k, []);
+      byDay.get(k)!.push(o);
+    });
+    const sortedDays = Array.from(byDay.keys()).sort();
+
+    const aoa: (string | number)[][] = [];
+    const titleRange = `Sales Report / Daily Report - ${from ? format(from, 'MMMM yyyy') : ''}`;
+    aoa.push([titleRange]);
+    aoa.push(['MR FOG']);
+    aoa.push([]);
+
+    const weekTotals: Record<string, number> = {};
+    catShorts.forEach(s => { weekTotals[s] = 0; });
+    let weekInvoice = 0;
+    let weekCases = 0;
+
+    sortedDays.forEach(dayKey => {
+      const dayOrders = byDay.get(dayKey)!.sort((a, b) => a.date.getTime() - b.date.getTime());
+      const dayDate = dayOrders[0].date;
+      const dayName = format(dayDate, 'EEEE');
+      const dateStr = format(dayDate, 'M/d/yyyy');
+
+      // Header row for this day
+      aoa.push(['No.', 'Day', 'Date', 'Customer', ...catShorts, 'Total invoice $']);
+
+      const dayCatTotals: Record<string, number> = {};
+      catShorts.forEach(s => { dayCatTotals[s] = 0; });
+      let dayInvoice = 0;
+
+      dayOrders.forEach((o, idx) => {
+        const perCat: Record<string, number> = {};
+        catShorts.forEach(s => { perCat[s] = 0; });
+        let invoice = o.shippingFee || 0;
+        o.items.forEach(l => {
+          const code = shortCode(itemCategory(l.itemId));
+          perCat[code] = (perCat[code] || 0) + l.quantity;
+          invoice += l.quantity * l.unitPrice;
+        });
+        const row: (string | number)[] = [idx + 1, dayName, dateStr, o.shopName];
+        catShorts.forEach(s => { row.push(perCat[s] || 0); dayCatTotals[s] += perCat[s] || 0; });
+        row.push(Number(invoice.toFixed(2)));
+        dayInvoice += invoice;
+        aoa.push(row);
+      });
+
+      // Day totals row
+      const totalRow: (string | number)[] = ['', '', '', 'Total Sales'];
+      catShorts.forEach(s => { totalRow.push(dayCatTotals[s]); weekTotals[s] += dayCatTotals[s]; });
+      totalRow.push(Number(dayInvoice.toFixed(2)));
+      aoa.push(totalRow);
+      aoa.push([]);
+
+      weekInvoice += dayInvoice;
+      weekCases += Object.values(dayCatTotals).reduce((s, n) => s + n, 0);
+    });
+
+    // End of week totals
+    if (sortedDays.length > 0) {
+      const endRow: (string | number)[] = ['', '', '', 'End of the week Total'];
+      catShorts.forEach(s => endRow.push(weekTotals[s]));
+      endRow.push(Number(weekInvoice.toFixed(2)));
+      aoa.push(endRow);
+      aoa.push(['', '', '', 'Total Cases', weekCases]);
+    } else {
+      aoa.push(['(No sales in this range)']);
+    }
+
+    const dailySheet = XLSX.utils.aoa_to_sheet(aoa);
+    // column widths
+    dailySheet['!cols'] = [
+      { wch: 5 }, { wch: 11 }, { wch: 11 }, { wch: 24 },
+      ...catShorts.map(() => ({ wch: 6 })),
+      { wch: 16 },
+    ];
+    XLSX.utils.book_append_sheet(wb, dailySheet, 'Daily Sales');
+
+    // ===== Existing analytical sheets =====
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
       ['Sales Report'],
       ['Range', rangeLabel],
