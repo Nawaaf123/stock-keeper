@@ -204,10 +204,14 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
     const catShorts = CAT_COLUMNS.filter(c => usedSet.has(c) || c === 'E liq');
 
     const aoa: (string | number)[][] = [];
+    type RowKind = 'title' | 'mrfog' | 'blank' | 'header' | 'data' | 'daytotal' | 'weektotal' | 'cases';
+    const rowKinds: RowKind[] = [];
+    const pushRow = (row: (string | number)[], kind: RowKind) => { aoa.push(row); rowKinds.push(kind); };
+
     const titleRange = `Sales Report / Daily Report - ${from ? format(from, 'MMMM yyyy') : ''}`;
-    aoa.push([titleRange]);
-    aoa.push(['MR FOG']);
-    aoa.push([]);
+    pushRow([titleRange], 'title');
+    pushRow(['MR FOG'], 'mrfog');
+    pushRow([], 'blank');
 
     const weekTotals: Record<string, number> = {};
     catShorts.forEach(s => { weekTotals[s] = 0; });
@@ -220,8 +224,7 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
       const dayName = format(dayDate, 'EEEE');
       const dateStr = format(dayDate, 'M/d/yyyy');
 
-      // Header row for this day
-      aoa.push(['No.', 'Day', 'Date', 'Customer', ...catShorts, 'Total invoice $']);
+      pushRow(['No.', 'Day', 'Date', 'Customer', ...catShorts, 'Total invoice $'], 'header');
 
       const dayCatTotals: Record<string, number> = {};
       catShorts.forEach(s => { dayCatTotals[s] = 0; });
@@ -240,39 +243,118 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
         catShorts.forEach(s => { row.push(perCat[s] || 0); dayCatTotals[s] += perCat[s] || 0; });
         row.push(Number(invoice.toFixed(2)));
         dayInvoice += invoice;
-        aoa.push(row);
+        pushRow(row, 'data');
       });
 
-      // Day totals row
       const totalRow: (string | number)[] = ['', '', '', 'Total Sales'];
       catShorts.forEach(s => { totalRow.push(dayCatTotals[s]); weekTotals[s] += dayCatTotals[s]; });
       totalRow.push(Number(dayInvoice.toFixed(2)));
-      aoa.push(totalRow);
-      aoa.push([]);
+      pushRow(totalRow, 'daytotal');
+      pushRow([], 'blank');
 
       weekInvoice += dayInvoice;
       weekCases += Object.values(dayCatTotals).reduce((s, n) => s + n, 0);
     });
 
-    // End of week totals
     if (sortedDays.length > 0) {
       const endRow: (string | number)[] = ['', '', '', 'End of the week Total'];
       catShorts.forEach(s => endRow.push(weekTotals[s]));
       endRow.push(Number(weekInvoice.toFixed(2)));
-      aoa.push(endRow);
-      aoa.push(['', '', '', 'Total Cases', weekCases]);
+      pushRow(endRow, 'weektotal');
+      pushRow(['', '', '', 'Total Cases', weekCases], 'cases');
     } else {
-      aoa.push(['(No sales in this range)']);
+      pushRow(['(No sales in this range)'], 'blank');
     }
 
     const dailySheet = XLSX.utils.aoa_to_sheet(aoa);
-    // column widths
+    const totalCols = 4 + catShorts.length + 1; // No, Day, Date, Customer, [cats], Total
     dailySheet['!cols'] = [
       { wch: 5 }, { wch: 11 }, { wch: 11 }, { wch: 24 },
       ...catShorts.map(() => ({ wch: 7 })),
       { wch: 16 },
     ];
+
+    // ----- Styling -----
+    const border = { style: 'thin', color: { rgb: '7F9F7F' } } as const;
+    const fullBorder = { top: border, bottom: border, left: border, right: border };
+    const centered = { horizontal: 'center', vertical: 'center', wrapText: true } as const;
+    const leftAlign = { horizontal: 'left', vertical: 'center' } as const;
+    const fmtMoney = '"$"#,##0.00';
+
+    const styleCell = (r: number, c: number, s: any, v?: any) => {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      if (!dailySheet[addr]) dailySheet[addr] = { t: typeof v === 'number' ? 'n' : 's', v: v ?? '' };
+      dailySheet[addr].s = { ...(dailySheet[addr].s || {}), ...s };
+    };
+
+    rowKinds.forEach((kind, r) => {
+      if (kind === 'title') {
+        for (let c = 0; c < totalCols; c++) styleCell(r, c, {
+          font: { bold: true, italic: true, sz: 12, color: { rgb: '000000' } },
+          alignment: centered,
+          fill: { fgColor: { rgb: 'FFFFFF' } },
+        });
+        dailySheet['!merges'] = dailySheet['!merges'] || [];
+        dailySheet['!merges'].push({ s: { r, c: 0 }, e: { r, c: totalCols - 1 } });
+      } else if (kind === 'mrfog') {
+        for (let c = 0; c < totalCols; c++) styleCell(r, c, {
+          font: { bold: true, sz: 12, color: { rgb: 'C00000' } },
+          alignment: centered,
+        });
+        dailySheet['!merges'] = dailySheet['!merges'] || [];
+        dailySheet['!merges'].push({ s: { r, c: 0 }, e: { r, c: totalCols - 1 } });
+      } else if (kind === 'header') {
+        for (let c = 0; c < totalCols; c++) styleCell(r, c, {
+          font: { bold: true, color: { rgb: '000000' } },
+          alignment: centered,
+          fill: { fgColor: { rgb: 'D9EAD3' } },
+          border: fullBorder,
+        });
+      } else if (kind === 'data') {
+        for (let c = 0; c < totalCols; c++) {
+          const isCustomer = c === 3;
+          const isMoney = c === totalCols - 1;
+          styleCell(r, c, {
+            font: { color: { rgb: '000000' } },
+            alignment: isCustomer ? leftAlign : centered,
+            border: fullBorder,
+            ...(isMoney ? { numFmt: fmtMoney } : {}),
+          });
+        }
+      } else if (kind === 'daytotal') {
+        for (let c = 0; c < totalCols; c++) {
+          const isMoney = c === totalCols - 1;
+          styleCell(r, c, {
+            font: { bold: true, color: { rgb: '000000' } },
+            alignment: centered,
+            fill: { fgColor: { rgb: 'B6D7A8' } },
+            border: fullBorder,
+            ...(isMoney ? { numFmt: fmtMoney } : {}),
+          });
+        }
+      } else if (kind === 'weektotal') {
+        for (let c = 0; c < totalCols; c++) {
+          const isMoney = c === totalCols - 1;
+          styleCell(r, c, {
+            font: { bold: true, color: { rgb: 'FFFFFF' } },
+            alignment: centered,
+            fill: { fgColor: { rgb: '38761D' } },
+            border: fullBorder,
+            ...(isMoney ? { numFmt: fmtMoney } : {}),
+          });
+        }
+      } else if (kind === 'cases') {
+        for (let c = 0; c < totalCols; c++) styleCell(r, c, {
+          font: { bold: true, color: { rgb: '000000' } },
+          alignment: centered,
+          fill: { fgColor: { rgb: 'FFF2CC' } },
+          border: fullBorder,
+        });
+      }
+    });
+
     XLSX.utils.book_append_sheet(wb, dailySheet, 'Daily Sales');
+
 
 
     // ===== Existing analytical sheets =====
