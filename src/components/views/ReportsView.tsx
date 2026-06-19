@@ -158,39 +158,36 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
     const wb = XLSX.utils.book_new();
 
     // ===== Daily Sales sheet (MR FOG style) =====
-    // Build short-code per category to keep columns narrow
-    const shortCode = (cat: string): string => {
-      const map: Record<string, string> = {
-        'SWITCH POD': 'SWPK',
-        'NICOTINE POUCHES': 'Nic',
-        'AURA': 'Aura',
-        'NOVA': 'NV',
-        'MAX AIR-3000': 'MA3K',
-        'MAX PRO-2000': 'MP2K',
-        'MAX-1000': 'MX1K',
-        'SWITCH-5500': 'SW55',
-        'SWITCH-15000': 'SW15',
-      };
-      if (map[cat]) return map[cat];
-      // fallback: initials of words, max 4 chars
-      const words = cat.replace(/[^A-Za-z0-9 -]/g, '').split(/[\s-]+/).filter(Boolean);
-      if (words.length === 1) return words[0].slice(0, 4);
-      return words.map(w => w[0]).join('').slice(0, 4).toUpperCase();
-    };
-    const itemCategory = (itemId: string): string => items.find(i => i.id === itemId)?.category ?? 'Other';
+    // Fixed column order based on sub-category buckets
+    const CAT_COLUMNS = ['Swpk', 'Swpd', 'AUsp', 'Aura', 'NV(S)', 'NV', 'NVNL', 'Nic', 'SW', 'SWP', 'MP', 'E liq', 'Other'];
 
-    // Collect distinct categories present in filteredOrders, preserve image-like order if known
-    const preferredOrder = ['SWITCH POD', 'MAX PRO-2000', 'AURA', 'NOVA', 'NICOTINE POUCHES', 'SWITCH-5500', 'SWITCH-15000', 'MAX AIR-3000', 'MAX-1000'];
-    const catSet = new Set<string>();
-    filteredOrders.forEach(o => o.items.forEach(l => catSet.add(itemCategory(l.itemId))));
-    const cats = Array.from(catSet).sort((a, b) => {
-      const ia = preferredOrder.indexOf(a); const ib = preferredOrder.indexOf(b);
-      if (ia === -1 && ib === -1) return a.localeCompare(b);
-      if (ia === -1) return 1;
-      if (ib === -1) return -1;
-      return ia - ib;
-    });
-    const catShorts = cats.map(shortCode);
+    const bucketFor = (itemId: string): string => {
+      const it = items.find(i => i.id === itemId);
+      if (!it) return 'Other';
+      const cat = (it.category || '').toUpperCase();
+      const sub = (it.subCategory || '').toUpperCase();
+
+      if (cat === 'SWITCH POD') {
+        if (sub.includes('KIT')) return 'Swpk';
+        if (sub.includes('POD')) return 'Swpd';
+        return 'Swpk';
+      }
+      if (cat === 'AURA') {
+        if (sub.includes('SPLASH')) return 'AUsp';
+        return 'Aura';
+      }
+      if (cat === 'NOVA') {
+        if (sub.includes('BLUE RAZZ') || sub.includes('STEEZY')) return 'NV(S)';
+        if (sub.includes('NEW LINE')) return 'NVNL';
+        return 'NV';
+      }
+      if (cat === 'NICOTINE POUCHES') return 'Nic';
+      if (cat === 'SWITCH-5500') return 'SW';
+      if (cat === 'SWITCH-15000') return 'SWP';
+      if (cat === 'MAX PRO-2000') return 'MP';
+      if (cat.includes('E LIQ') || sub.includes('E LIQ') || sub.includes('E-LIQ')) return 'E liq';
+      return 'Other';
+    };
 
     // Group orders by date
     const byDay = new Map<string, Order[]>();
@@ -200,6 +197,11 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
       byDay.get(k)!.push(o);
     });
     const sortedDays = Array.from(byDay.keys()).sort();
+
+    // Determine which columns actually appear (drop fully-empty ones, except keep "E liq" if user expects it)
+    const usedSet = new Set<string>();
+    filteredOrders.forEach(o => o.items.forEach(l => usedSet.add(bucketFor(l.itemId))));
+    const catShorts = CAT_COLUMNS.filter(c => usedSet.has(c) || c === 'E liq');
 
     const aoa: (string | number)[][] = [];
     const titleRange = `Sales Report / Daily Report - ${from ? format(from, 'MMMM yyyy') : ''}`;
@@ -230,8 +232,8 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
         catShorts.forEach(s => { perCat[s] = 0; });
         let invoice = o.shippingFee || 0;
         o.items.forEach(l => {
-          const code = shortCode(itemCategory(l.itemId));
-          perCat[code] = (perCat[code] || 0) + l.quantity;
+          const code = bucketFor(l.itemId);
+          if (perCat[code] !== undefined) perCat[code] += l.quantity;
           invoice += l.quantity * l.unitPrice;
         });
         const row: (string | number)[] = [idx + 1, dayName, dateStr, o.shopName];
@@ -267,10 +269,11 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
     // column widths
     dailySheet['!cols'] = [
       { wch: 5 }, { wch: 11 }, { wch: 11 }, { wch: 24 },
-      ...catShorts.map(() => ({ wch: 6 })),
+      ...catShorts.map(() => ({ wch: 7 })),
       { wch: 16 },
     ];
     XLSX.utils.book_append_sheet(wb, dailySheet, 'Daily Sales');
+
 
     // ===== Existing analytical sheets =====
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
