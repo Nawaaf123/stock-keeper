@@ -45,10 +45,11 @@ export async function downloadInventorySheet(
   };
 
   // Group by sub-category (fall back to category, then Uncategorized).
-  // Include ALL items, even with 0 stock.
+  // Include ALL items, even with 0 stock. Exclude furniture.
   const bySubCategory = new Map<string, InventoryItem[]>();
   for (const it of allItems) {
     const sub = (it.subCategory?.trim() || it.category?.trim() || 'Uncategorized');
+    if (sub.toLowerCase() === 'furniture') continue;
     if (!bySubCategory.has(sub)) bySubCategory.set(sub, []);
     bySubCategory.get(sub)!.push(it);
   }
@@ -193,9 +194,12 @@ export async function downloadInventorySheet(
     }
   }
 
-  // Footer summary
-  const totalUnits = allItems.reduce((s, it) => s + totalQty(it), 0);
-  const totalLines = allItems.length;
+  // Footer summary (exclude furniture)
+  const nonFurnitureItems = allItems.filter(
+    (it) => (it.subCategory?.trim() || it.category?.trim() || 'Uncategorized').toLowerCase() !== 'furniture'
+  );
+  const totalUnits = nonFurnitureItems.reduce((s, it) => s + totalQty(it), 0);
+  const totalLines = nonFurnitureItems.length;
 
   if (y > pageHeight - 60) {
     doc.addPage();
