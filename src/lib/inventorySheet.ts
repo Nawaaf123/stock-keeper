@@ -194,9 +194,12 @@ export async function downloadInventorySheet(
     }
   }
 
-  // Footer summary
-  const totalUnits = allItems.reduce((s, it) => s + totalQty(it), 0);
-  const totalLines = allItems.length;
+  // Footer summary (exclude furniture)
+  const nonFurnitureItems = allItems.filter(
+    (it) => (it.subCategory?.trim() || it.category?.trim() || 'Uncategorized').toLowerCase() !== 'furniture'
+  );
+  const totalUnits = nonFurnitureItems.reduce((s, it) => s + totalQty(it), 0);
+  const totalLines = nonFurnitureItems.length;
 
   if (y > pageHeight - 60) {
     doc.addPage();
