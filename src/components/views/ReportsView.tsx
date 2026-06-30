@@ -473,7 +473,7 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
     const mixFlat: (string | number)[][] = [
       ['Wholesaler', 'Category', 'Subcategory', 'Cases'],
     ];
-    wholesalerMix.forEach(w => {
+    filteredMix.forEach(w => {
       w.breakdown.forEach((b, i) => {
         mixFlat.push([i === 0 ? w.shop : '', b.category, b.subCategory, b.cases]);
       });
@@ -509,10 +509,10 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
 
     // Pivot: rows = wholesalers, columns = "Category — Subcategory"
     const pivotColSet = new Set<string>();
-    wholesalerMix.forEach(w => w.breakdown.forEach(b => pivotColSet.add(`${b.category} — ${b.subCategory}`)));
+    filteredMix.forEach(w => w.breakdown.forEach(b => pivotColSet.add(`${b.category} — ${b.subCategory}`)));
     const pivotCols = Array.from(pivotColSet).sort();
     const pivotAoa: (string | number)[][] = [['Wholesaler', ...pivotCols, 'Total']];
-    wholesalerMix.forEach(w => {
+    filteredMix.forEach(w => {
       const row: (string | number)[] = [w.shop];
       pivotCols.forEach(col => {
         const [cat, sub] = col.split(' — ');
@@ -523,10 +523,10 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
       pivotAoa.push(row);
     });
     // Column totals
-    if (wholesalerMix.length > 0) {
+    if (filteredMix.length > 0) {
       const totRow: (string | number)[] = ['Total'];
       const firstDataRow = 2; // Excel 1-indexed
-      const lastDataRow = wholesalerMix.length + 1;
+      const lastDataRow = filteredMix.length + 1;
       for (let c = 1; c <= pivotCols.length + 1; c++) {
         const colL = (() => { let s = '', n = c; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; })();
         totRow.push(`=SUM(${colL}${firstDataRow}:${colL}${lastDataRow})` as unknown as string);
@@ -558,7 +558,7 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
     }
     // Total row + total col styling
     const totalRowIdx = pivotAoa.length - 1;
-    if (wholesalerMix.length > 0) {
+    if (filteredMix.length > 0) {
       for (let c = 0; c < pTotalCols; c++) {
         const addr = XLSX.utils.encode_cell({ r: totalRowIdx, c });
         if (!pivotSheet[addr]) pivotSheet[addr] = { t: 's', v: '' };
@@ -682,7 +682,7 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
               <p className="text-sm text-muted-foreground">Which wholesaler took which category/subcategory, with case counts</p>
             </CardHeader>
             <CardContent>
-              {wholesalerMix.length === 0 ? (
+              {filteredMix.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">No sales in this range</div>
               ) : (
                 <div className="overflow-x-auto">
