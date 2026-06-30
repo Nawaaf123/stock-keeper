@@ -30,6 +30,7 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
   const [range, setRange] = useState<RangeKey>('month');
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
+  const [mixSearch, setMixSearch] = useState('');
 
   const { from, to } = useMemo(() => {
     const now = new Date();
