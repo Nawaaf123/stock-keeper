@@ -417,56 +417,133 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
 
 
 
-    // ===== Existing analytical sheets =====
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['Sales Report'],
-      ['Range', rangeLabel],
-      ['Generated', format(new Date(), 'dd MMM yyyy HH:mm')],
-      [],
+    // ===== Existing analytical sheets (styled) =====
+    const thinBorder = { style: 'thin', color: { rgb: '7F9F7F' } } as const;
+    const fullBd = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+    const styledSheet = (
+      sheetTitle: string,
+      headers: string[],
+      rows: (string | number)[][],
+      opts?: { colWidths?: number[]; moneyCols?: number[]; intCols?: number[] }
+    ) => {
+      const aoa: (string | number)[][] = [
+        [sheetTitle],
+        [`Range: ${rangeLabel}`],
+        [],
+        headers,
+        ...rows,
+      ];
+      const sheet = XLSX.utils.aoa_to_sheet(aoa);
+      const nCols = headers.length;
+      sheet['!cols'] = (opts?.colWidths ?? headers.map(() => 18)).map(w => ({ wch: w }));
+      sheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: nCols - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: nCols - 1 } },
+      ];
+      // Title row
+      for (let c = 0; c < nCols; c++) {
+        const a = XLSX.utils.encode_cell({ r: 0, c });
+        if (!sheet[a]) sheet[a] = { t: 's', v: '' };
+        sheet[a].s = {
+          font: { bold: true, sz: 14, color: { rgb: 'FFFFFF' } },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          fill: { fgColor: { rgb: '38761D' } },
+        };
+      }
+      // Range subtitle row
+      for (let c = 0; c < nCols; c++) {
+        const a = XLSX.utils.encode_cell({ r: 1, c });
+        if (!sheet[a]) sheet[a] = { t: 's', v: '' };
+        sheet[a].s = {
+          font: { italic: true, sz: 10, color: { rgb: '666666' } },
+          alignment: { horizontal: 'center' },
+          fill: { fgColor: { rgb: 'F4F4F4' } },
+        };
+      }
+      // Header row (Excel row 4 = index 3)
+      for (let c = 0; c < nCols; c++) {
+        const a = XLSX.utils.encode_cell({ r: 3, c });
+        if (!sheet[a]) sheet[a] = { t: 's', v: '' };
+        sheet[a].s = {
+          font: { bold: true, color: { rgb: '000000' } },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          fill: { fgColor: { rgb: 'D9EAD3' } },
+          border: fullBd,
+        };
+      }
+      // Data rows
+      for (let r = 4; r < aoa.length; r++) {
+        for (let c = 0; c < nCols; c++) {
+          const a = XLSX.utils.encode_cell({ r, c });
+          if (!sheet[a]) sheet[a] = { t: 's', v: '' };
+          const isMoney = opts?.moneyCols?.includes(c);
+          const isInt = opts?.intCols?.includes(c);
+          sheet[a].s = {
+            font: { color: { rgb: '000000' } },
+            alignment: { horizontal: c === 0 ? 'left' : 'center', vertical: 'center' },
+            border: fullBd,
+            fill: { fgColor: { rgb: r % 2 === 0 ? 'FFFFFF' : 'F9F9F9' } },
+            ...(isMoney ? { numFmt: '"$"#,##0.00' } : isInt ? { numFmt: '#,##0' } : {}),
+          };
+        }
+      }
+      return sheet;
+    };
+
+    XLSX.utils.book_append_sheet(wb, styledSheet('Summary', ['Metric', 'Value'], [
       ['Total Orders', totals.orderCount],
       ['Total Cases Sold', totals.units],
       ['Total Revenue', totals.revenue],
       ['Distinct Products', totals.productCount],
-    ]), 'Summary');
+      ['Generated', format(new Date(), 'dd MMM yyyy HH:mm')],
+    ], { colWidths: [24, 22] }), 'Summary');
 
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    XLSX.utils.book_append_sheet(wb, styledSheet('Top Products',
       ['Rank', 'SKU', 'Product', 'Category', 'Cases Sold', 'Orders', 'Revenue'],
-      ...productStats.map((p, i) => [i + 1, p.sku, p.name, p.category, p.qty, p.orderCount, p.revenue]),
-    ]), 'Top Products');
+      productStats.map((p, i) => [i + 1, p.sku, p.name, p.category, p.qty, p.orderCount, p.revenue]),
+      { colWidths: [6, 14, 34, 18, 12, 10, 14], moneyCols: [6], intCols: [4, 5] },
+    ), 'Top Products');
 
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    XLSX.utils.book_append_sheet(wb, styledSheet('Top Wholesalers',
       ['Rank', 'Shop', 'Orders', 'Cases', 'Revenue'],
-      ...wholesalerStats.map((w, i) => [i + 1, w.shop, w.orders, w.units, w.revenue]),
-    ]), 'Top Wholesalers');
+      wholesalerStats.map((w, i) => [i + 1, w.shop, w.orders, w.units, w.revenue]),
+      { colWidths: [6, 32, 10, 10, 14], moneyCols: [4], intCols: [2, 3] },
+    ), 'Top Wholesalers');
 
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    XLSX.utils.book_append_sheet(wb, styledSheet('By Category',
       ['Category', 'Distinct Products', 'Cases', 'Revenue'],
-      ...categoryStats.map(c => [c.category, c.products, c.units, c.revenue]),
-    ]), 'By Category');
+      categoryStats.map(c => [c.category, c.products, c.units, c.revenue]),
+      { colWidths: [24, 18, 12, 14], moneyCols: [3], intCols: [1, 2] },
+    ), 'By Category');
 
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    XLSX.utils.book_append_sheet(wb, styledSheet('Daily Trend',
       ['Date', 'Orders', 'Cases', 'Revenue'],
-      ...dailyTrend.map(d => [format(d.date, 'yyyy-MM-dd'), d.orders, d.units, d.revenue]),
-    ]), 'Daily Trend');
+      dailyTrend.map(d => [format(d.date, 'yyyy-MM-dd'), d.orders, d.units, d.revenue]),
+      { colWidths: [14, 10, 10, 14], moneyCols: [3], intCols: [1, 2] },
+    ), 'Daily Trend');
 
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    XLSX.utils.book_append_sheet(wb, styledSheet('Warehouses',
       ['Warehouse', 'Received', 'Shipped', 'Net Change', 'Revenue'],
-      ...warehouseStats.map(w => [w.warehouse, w.received, w.shipped, w.net, w.revenue]),
-    ]), 'Warehouses');
+      warehouseStats.map(w => [w.warehouse, w.received, w.shipped, w.net, w.revenue]),
+      { colWidths: [20, 12, 12, 12, 14], moneyCols: [4], intCols: [1, 2, 3] },
+    ), 'Warehouses');
 
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    XLSX.utils.book_append_sheet(wb, styledSheet('Low Stock',
       ['SKU', 'Product', 'Category', 'Current Stock', 'Min Stock', 'Shortfall'],
-      ...lowStock.map(i => [i.sku, i.name, i.category, i.current, i.min, i.min - i.current]),
-    ]), 'Low Stock');
+      lowStock.map(i => [i.sku, i.name, i.category, i.current, i.min, i.min - i.current]),
+      { colWidths: [14, 34, 18, 14, 12, 12], intCols: [3, 4, 5] },
+    ), 'Low Stock');
 
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    XLSX.utils.book_append_sheet(wb, styledSheet('Orders Detail',
       ['Order ID', 'Shop', 'Date', 'SKU', 'Product', 'Warehouse', 'Quantity', 'Case Price', 'Line Total'],
-      ...filteredOrders.flatMap(o => o.items.map(line => [
+      filteredOrders.flatMap(o => o.items.map(line => [
         o.id, o.shopName, format(o.date, 'yyyy-MM-dd'),
         line.itemSku, line.itemName, line.warehouseName,
         line.quantity, line.unitPrice, line.quantity * line.unitPrice,
       ])),
-    ]), 'Orders Detail');
+      { colWidths: [12, 24, 12, 14, 30, 18, 10, 12, 14], moneyCols: [7, 8], intCols: [6] },
+    ), 'Orders Detail');
+
 
     // ===== Wholesaler × Category / Subcategory mix =====
     // Flat breakdown (one row per wholesaler+category+subcategory)
