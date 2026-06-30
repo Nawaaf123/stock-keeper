@@ -100,6 +100,29 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
       .sort((a, b) => b.revenue - a.revenue);
   }, [filteredOrders, items]);
 
+  // Wholesaler × Category/Subcategory mix
+  const wholesalerMix = useMemo(() => {
+    const map = new Map<string, Map<string, { category: string; subCategory: string; cases: number }>>();
+    filteredOrders.forEach(o => o.items.forEach(line => {
+      const item = items.find(i => i.id === line.itemId);
+      const category = item?.category ?? 'Uncategorized';
+      const subCategory = item?.subCategory ?? '-';
+      const key = `${category}|||${subCategory}`;
+      if (!map.has(o.shopName)) map.set(o.shopName, new Map());
+      const inner = map.get(o.shopName)!;
+      const existing = inner.get(key) ?? { category, subCategory, cases: 0 };
+      existing.cases += line.quantity;
+      inner.set(key, existing);
+    }));
+    return Array.from(map.entries())
+      .map(([shop, inner]) => {
+        const breakdown = Array.from(inner.values()).sort((a, b) => b.cases - a.cases);
+        const totalCases = breakdown.reduce((s, b) => s + b.cases, 0);
+        return { shop, breakdown, totalCases };
+      })
+      .sort((a, b) => b.totalCases - a.totalCases);
+  }, [filteredOrders, items]);
+
   // Daily trend
   const dailyTrend = useMemo(() => {
     if (!from || !to) return [];
@@ -434,6 +457,114 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
       ])),
     ]), 'Orders Detail');
 
+    // ===== Wholesaler × Category / Subcategory mix =====
+    // Flat breakdown (one row per wholesaler+category+subcategory)
+    const mixFlat: (string | number)[][] = [
+      ['Wholesaler', 'Category', 'Subcategory', 'Cases'],
+    ];
+    wholesalerMix.forEach(w => {
+      w.breakdown.forEach((b, i) => {
+        mixFlat.push([i === 0 ? w.shop : '', b.category, b.subCategory, b.cases]);
+      });
+      mixFlat.push(['', '', 'Total', w.totalCases]);
+      mixFlat.push([]);
+    });
+    const mixFlatSheet = XLSX.utils.aoa_to_sheet(mixFlat);
+    mixFlatSheet['!cols'] = [{ wch: 28 }, { wch: 20 }, { wch: 22 }, { wch: 10 }];
+    // Style header
+    for (let c = 0; c < 4; c++) {
+      const addr = XLSX.utils.encode_cell({ r: 0, c });
+      if (mixFlatSheet[addr]) mixFlatSheet[addr].s = {
+        font: { bold: true, color: { rgb: '000000' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        fill: { fgColor: { rgb: 'D9EAD3' } },
+        border: { top: { style: 'thin', color: { rgb: '7F9F7F' } }, bottom: { style: 'thin', color: { rgb: '7F9F7F' } }, left: { style: 'thin', color: { rgb: '7F9F7F' } }, right: { style: 'thin', color: { rgb: '7F9F7F' } } },
+      };
+    }
+    // Style "Total" rows
+    for (let r = 1; r < mixFlat.length; r++) {
+      if (mixFlat[r] && mixFlat[r][2] === 'Total') {
+        for (let c = 0; c < 4; c++) {
+          const addr = XLSX.utils.encode_cell({ r, c });
+          if (!mixFlatSheet[addr]) mixFlatSheet[addr] = { t: 's', v: '' };
+          mixFlatSheet[addr].s = {
+            font: { bold: true },
+            fill: { fgColor: { rgb: 'FFF2CC' } },
+          };
+        }
+      }
+    }
+    XLSX.utils.book_append_sheet(wb, mixFlatSheet, 'Wholesaler Mix');
+
+    // Pivot: rows = wholesalers, columns = "Category — Subcategory"
+    const pivotColSet = new Set<string>();
+    wholesalerMix.forEach(w => w.breakdown.forEach(b => pivotColSet.add(`${b.category} — ${b.subCategory}`)));
+    const pivotCols = Array.from(pivotColSet).sort();
+    const pivotAoa: (string | number)[][] = [['Wholesaler', ...pivotCols, 'Total']];
+    wholesalerMix.forEach(w => {
+      const row: (string | number)[] = [w.shop];
+      pivotCols.forEach(col => {
+        const [cat, sub] = col.split(' — ');
+        const found = w.breakdown.find(b => b.category === cat && b.subCategory === sub);
+        row.push(found ? found.cases : 0);
+      });
+      row.push(w.totalCases);
+      pivotAoa.push(row);
+    });
+    // Column totals
+    if (wholesalerMix.length > 0) {
+      const totRow: (string | number)[] = ['Total'];
+      const firstDataRow = 2; // Excel 1-indexed
+      const lastDataRow = wholesalerMix.length + 1;
+      for (let c = 1; c <= pivotCols.length + 1; c++) {
+        const colL = (() => { let s = '', n = c; while (n >= 0) { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } return s; })();
+        totRow.push(`=SUM(${colL}${firstDataRow}:${colL}${lastDataRow})` as unknown as string);
+      }
+      pivotAoa.push(totRow);
+    }
+    const pivotSheet = XLSX.utils.aoa_to_sheet(pivotAoa);
+    pivotSheet['!cols'] = [{ wch: 28 }, ...pivotCols.map(() => ({ wch: 16 })), { wch: 10 }];
+    // Convert formula strings
+    const pTotalCols = 1 + pivotCols.length + 1;
+    for (let r = 0; r < pivotAoa.length; r++) {
+      for (let c = 0; c < pTotalCols; c++) {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        const cell = pivotSheet[addr];
+        if (cell && typeof cell.v === 'string' && cell.v.startsWith('=')) {
+          pivotSheet[addr] = { t: 'n', f: cell.v.substring(1) };
+        }
+      }
+    }
+    // Header style
+    for (let c = 0; c < pTotalCols; c++) {
+      const addr = XLSX.utils.encode_cell({ r: 0, c });
+      if (pivotSheet[addr]) pivotSheet[addr].s = {
+        font: { bold: true, color: { rgb: '000000' }, sz: 10 },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        fill: { fgColor: { rgb: 'D9EAD3' } },
+        border: { top: { style: 'thin', color: { rgb: '7F9F7F' } }, bottom: { style: 'thin', color: { rgb: '7F9F7F' } }, left: { style: 'thin', color: { rgb: '7F9F7F' } }, right: { style: 'thin', color: { rgb: '7F9F7F' } } },
+      };
+    }
+    // Total row + total col styling
+    const totalRowIdx = pivotAoa.length - 1;
+    if (wholesalerMix.length > 0) {
+      for (let c = 0; c < pTotalCols; c++) {
+        const addr = XLSX.utils.encode_cell({ r: totalRowIdx, c });
+        if (!pivotSheet[addr]) pivotSheet[addr] = { t: 's', v: '' };
+        pivotSheet[addr].s = {
+          font: { bold: true, color: { rgb: 'FFFFFF' } },
+          fill: { fgColor: { rgb: '38761D' } },
+          alignment: { horizontal: 'center' },
+        };
+      }
+      for (let r = 1; r < totalRowIdx; r++) {
+        const addr = XLSX.utils.encode_cell({ r, c: pTotalCols - 1 });
+        if (!pivotSheet[addr]) pivotSheet[addr] = { t: 'n', v: 0 };
+        pivotSheet[addr].s = { font: { bold: true }, fill: { fgColor: { rgb: 'FFF2CC' } }, alignment: { horizontal: 'center' } };
+      }
+    }
+    XLSX.utils.book_append_sheet(wb, pivotSheet, 'Wholesaler Mix Pivot');
+
     XLSX.writeFile(wb, `sales-report-${format(from ?? new Date(), 'yyyyMMdd')}-${format(to ?? new Date(), 'yyyyMMdd')}.xlsx`);
   };
 
@@ -503,9 +634,10 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
       </Card>
 
       <Tabs defaultValue="products">
-        <TabsList className="grid grid-cols-3 lg:grid-cols-6 w-full">
+        <TabsList className="grid grid-cols-3 lg:grid-cols-7 w-full">
           <TabsTrigger value="products"><Package className="w-4 h-4 mr-1" />Products</TabsTrigger>
           <TabsTrigger value="wholesalers"><Users className="w-4 h-4 mr-1" />Wholesalers</TabsTrigger>
+          <TabsTrigger value="mix"><Tags className="w-4 h-4 mr-1" />Wholesaler Mix</TabsTrigger>
           <TabsTrigger value="categories"><Tags className="w-4 h-4 mr-1" />Categories</TabsTrigger>
           <TabsTrigger value="trend"><TrendingUp className="w-4 h-4 mr-1" />Daily</TabsTrigger>
           <TabsTrigger value="warehouses"><Warehouse className="w-4 h-4 mr-1" />Warehouses</TabsTrigger>
@@ -531,6 +663,50 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
             emptyText="No wholesalers with orders in this range"
           />
         </TabsContent>
+
+        <TabsContent value="mix">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle>Wholesaler Mix — Category & Subcategory</CardTitle>
+              <p className="text-sm text-muted-foreground">Which wholesaler took which category/subcategory, with case counts</p>
+            </CardHeader>
+            <CardContent>
+              {wholesalerMix.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">No sales in this range</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Wholesaler</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Subcategory</TableHead>
+                        <TableHead className="text-center">Cases</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {wholesalerMix.flatMap(w => [
+                        ...w.breakdown.map((b, i) => (
+                          <TableRow key={`${w.shop}-${b.category}-${b.subCategory}`}>
+                            <TableCell className="font-medium">{i === 0 ? w.shop : ''}</TableCell>
+                            <TableCell>{b.category}</TableCell>
+                            <TableCell className="text-muted-foreground text-sm">{b.subCategory}</TableCell>
+                            <TableCell className="text-center font-semibold">{b.cases}</TableCell>
+                          </TableRow>
+                        )),
+                        <TableRow key={`${w.shop}-total`} className="bg-muted/50">
+                          <TableCell colSpan={3} className="text-right font-semibold">Total for {w.shop}</TableCell>
+                          <TableCell className="text-center font-bold">{w.totalCases}</TableCell>
+                        </TableRow>,
+                      ])}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
 
         <TabsContent value="categories">
           <ReportTable
