@@ -681,9 +681,18 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
               <CardTitle>Wholesaler Mix — Category & Subcategory</CardTitle>
               <p className="text-sm text-muted-foreground">Which wholesaler took which category/subcategory, with case counts</p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={mixSearch}
+                  onChange={(e) => setMixSearch(e.target.value)}
+                  placeholder="Search wholesaler..."
+                  className="pl-9"
+                />
+              </div>
               {filteredMix.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">No sales in this range</div>
+                <div className="text-center py-12 text-muted-foreground">{mixSearch ? 'No wholesalers match your search' : 'No sales in this range'}</div>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
