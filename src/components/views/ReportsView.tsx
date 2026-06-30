@@ -664,6 +664,50 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
           />
         </TabsContent>
 
+        <TabsContent value="mix">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle>Wholesaler Mix — Category & Subcategory</CardTitle>
+              <p className="text-sm text-muted-foreground">Which wholesaler took which category/subcategory, with case counts</p>
+            </CardHeader>
+            <CardContent>
+              {wholesalerMix.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">No sales in this range</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Wholesaler</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Subcategory</TableHead>
+                        <TableHead className="text-center">Cases</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {wholesalerMix.flatMap(w => [
+                        ...w.breakdown.map((b, i) => (
+                          <TableRow key={`${w.shop}-${b.category}-${b.subCategory}`}>
+                            <TableCell className="font-medium">{i === 0 ? w.shop : ''}</TableCell>
+                            <TableCell>{b.category}</TableCell>
+                            <TableCell className="text-muted-foreground text-sm">{b.subCategory}</TableCell>
+                            <TableCell className="text-center font-semibold">{b.cases}</TableCell>
+                          </TableRow>
+                        )),
+                        <TableRow key={`${w.shop}-total`} className="bg-muted/50">
+                          <TableCell colSpan={3} className="text-right font-semibold">Total for {w.shop}</TableCell>
+                          <TableCell className="text-center font-bold">{w.totalCases}</TableCell>
+                        </TableRow>,
+                      ])}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+
         <TabsContent value="categories">
           <ReportTable
             title="Sales by Category"
