@@ -546,8 +546,10 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
 
 
     // ===== Wholesaler × Category / Subcategory mix =====
-    // Flat breakdown (one row per wholesaler+category+subcategory)
+    // Flat breakdown with title header
     const mixFlat: (string | number)[][] = [
+      [`Wholesaler Mix — ${rangeLabel}${mixSearch ? ` (filter: "${mixSearch}")` : ''}`],
+      [],
       ['Wholesaler', 'Category', 'Subcategory', 'Cases'],
     ];
     filteredMix.forEach(w => {
@@ -559,27 +561,44 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
     });
     const mixFlatSheet = XLSX.utils.aoa_to_sheet(mixFlat);
     mixFlatSheet['!cols'] = [{ wch: 28 }, { wch: 20 }, { wch: 22 }, { wch: 10 }];
-    // Style header
+    mixFlatSheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }];
+    // Title row
     for (let c = 0; c < 4; c++) {
-      const addr = XLSX.utils.encode_cell({ r: 0, c });
+      const a = XLSX.utils.encode_cell({ r: 0, c });
+      if (!mixFlatSheet[a]) mixFlatSheet[a] = { t: 's', v: '' };
+      mixFlatSheet[a].s = {
+        font: { bold: true, sz: 14, color: { rgb: 'FFFFFF' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        fill: { fgColor: { rgb: '38761D' } },
+      };
+    }
+    // Header row at index 2
+    for (let c = 0; c < 4; c++) {
+      const addr = XLSX.utils.encode_cell({ r: 2, c });
       if (mixFlatSheet[addr]) mixFlatSheet[addr].s = {
         font: { bold: true, color: { rgb: '000000' } },
         alignment: { horizontal: 'center', vertical: 'center' },
         fill: { fgColor: { rgb: 'D9EAD3' } },
-        border: { top: { style: 'thin', color: { rgb: '7F9F7F' } }, bottom: { style: 'thin', color: { rgb: '7F9F7F' } }, left: { style: 'thin', color: { rgb: '7F9F7F' } }, right: { style: 'thin', color: { rgb: '7F9F7F' } } },
+        border: fullBd,
       };
     }
-    // Style "Total" rows
-    for (let r = 1; r < mixFlat.length; r++) {
-      if (mixFlat[r] && mixFlat[r][2] === 'Total') {
-        for (let c = 0; c < 4; c++) {
-          const addr = XLSX.utils.encode_cell({ r, c });
-          if (!mixFlatSheet[addr]) mixFlatSheet[addr] = { t: 's', v: '' };
-          mixFlatSheet[addr].s = {
-            font: { bold: true },
-            fill: { fgColor: { rgb: 'FFF2CC' } },
-          };
-        }
+    // Data + Total rows
+    for (let r = 3; r < mixFlat.length; r++) {
+      const isTotal = mixFlat[r] && mixFlat[r][2] === 'Total';
+      const isBlank = !mixFlat[r] || mixFlat[r].length === 0;
+      if (isBlank) continue;
+      for (let c = 0; c < 4; c++) {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        if (!mixFlatSheet[addr]) mixFlatSheet[addr] = { t: 's', v: '' };
+        mixFlatSheet[addr].s = isTotal ? {
+          font: { bold: true },
+          fill: { fgColor: { rgb: 'FFF2CC' } },
+          alignment: { horizontal: c === 3 ? 'center' : 'right' },
+          border: fullBd,
+        } : {
+          alignment: { horizontal: c === 3 ? 'center' : 'left' },
+          border: fullBd,
+        };
       }
     }
     XLSX.utils.book_append_sheet(wb, mixFlatSheet, 'Wholesaler Mix');
