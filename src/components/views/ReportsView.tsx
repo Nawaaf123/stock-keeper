@@ -696,7 +696,7 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {wholesalerMix.flatMap(w => [
+                      {filteredMix.flatMap(w => [
                         ...w.breakdown.map((b, i) => (
                           <TableRow key={`${w.shop}-${b.category}-${b.subCategory}`}>
                             <TableCell className="font-medium">{i === 0 ? w.shop : ''}</TableCell>
