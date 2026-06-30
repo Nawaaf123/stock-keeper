@@ -126,6 +126,14 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
       .sort((a, b) => b.totalCases - a.totalCases);
   }, [filteredOrders, items]);
 
+  const filteredMix = useMemo(() => {
+    const q = mixSearch.trim().toLowerCase();
+    if (!q) return wholesalerMix;
+    return wholesalerMix.filter(w => w.shop.toLowerCase().includes(q));
+  }, [wholesalerMix, mixSearch]);
+
+
+
   // Daily trend
   const dailyTrend = useMemo(() => {
     if (!from || !to) return [];
