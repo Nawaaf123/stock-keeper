@@ -634,9 +634,10 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
       </Card>
 
       <Tabs defaultValue="products">
-        <TabsList className="grid grid-cols-3 lg:grid-cols-6 w-full">
+        <TabsList className="grid grid-cols-3 lg:grid-cols-7 w-full">
           <TabsTrigger value="products"><Package className="w-4 h-4 mr-1" />Products</TabsTrigger>
           <TabsTrigger value="wholesalers"><Users className="w-4 h-4 mr-1" />Wholesalers</TabsTrigger>
+          <TabsTrigger value="mix"><Tags className="w-4 h-4 mr-1" />Wholesaler Mix</TabsTrigger>
           <TabsTrigger value="categories"><Tags className="w-4 h-4 mr-1" />Categories</TabsTrigger>
           <TabsTrigger value="trend"><TrendingUp className="w-4 h-4 mr-1" />Daily</TabsTrigger>
           <TabsTrigger value="warehouses"><Warehouse className="w-4 h-4 mr-1" />Warehouses</TabsTrigger>
