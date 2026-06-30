@@ -100,6 +100,29 @@ export function ReportsView({ orders, items, transactions, warehouses }: Reports
       .sort((a, b) => b.revenue - a.revenue);
   }, [filteredOrders, items]);
 
+  // Wholesaler × Category/Subcategory mix
+  const wholesalerMix = useMemo(() => {
+    const map = new Map<string, Map<string, { category: string; subCategory: string; cases: number }>>();
+    filteredOrders.forEach(o => o.items.forEach(line => {
+      const item = items.find(i => i.id === line.itemId);
+      const category = item?.category ?? 'Uncategorized';
+      const subCategory = item?.subCategory ?? '-';
+      const key = `${category}|||${subCategory}`;
+      if (!map.has(o.shopName)) map.set(o.shopName, new Map());
+      const inner = map.get(o.shopName)!;
+      const existing = inner.get(key) ?? { category, subCategory, cases: 0 };
+      existing.cases += line.quantity;
+      inner.set(key, existing);
+    }));
+    return Array.from(map.entries())
+      .map(([shop, inner]) => {
+        const breakdown = Array.from(inner.values()).sort((a, b) => b.cases - a.cases);
+        const totalCases = breakdown.reduce((s, b) => s + b.cases, 0);
+        return { shop, breakdown, totalCases };
+      })
+      .sort((a, b) => b.totalCases - a.totalCases);
+  }, [filteredOrders, items]);
+
   // Daily trend
   const dailyTrend = useMemo(() => {
     if (!from || !to) return [];
