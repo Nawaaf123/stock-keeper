@@ -87,6 +87,10 @@ export async function downloadInventorySheet(
     ['Switch Pod Kit', 'Switch Pod Pod'],
     ['Nova Original', 'Nova Blue Razz Steezy'],
     ['Nova New'],
+  ];
+
+  // Groups pinned to the very end (after all other categories)
+  const tailGroups: string[][] = [
     ['MAX-1000'],
     ['MAX PRO-2000'],
     ['MAX AIR-3000'],
@@ -97,20 +101,39 @@ export async function downloadInventorySheet(
   const allSubs = Array.from(bySubCategory.keys());
   const usedSubs = new Set<string>();
 
+  const resolveGroups = (groups: string[][]): string[][] => {
+    const out: string[][] = [];
+    for (const grp of groups) {
+      const resolved: string[] = [];
+      for (const wanted of grp) {
+        const match = allSubs.find((s) => norm(s) === norm(wanted));
+        if (match && !usedSubs.has(match)) {
+          resolved.push(match);
+          usedSubs.add(match);
+        }
+      }
+      if (resolved.length) out.push(resolved);
+    }
+    return out;
+  };
+
   const orderedGroups: string[][] = [];
-  for (const grp of forcedGroups) {
-    const resolved: string[] = [];
+  // 1. Forced leading groups
+  orderedGroups.push(...resolveGroups(forcedGroups));
+  // 2. Reserve tail sub-categories so they are skipped from leftovers
+  const tailReserved = new Set<string>();
+  for (const grp of tailGroups) {
     for (const wanted of grp) {
       const match = allSubs.find((s) => norm(s) === norm(wanted));
-      if (match && !usedSubs.has(match)) {
-        resolved.push(match);
-        usedSubs.add(match);
-      }
+      if (match) tailReserved.add(match);
     }
-    if (resolved.length) orderedGroups.push(resolved);
   }
-  const leftovers = allSubs.filter((s) => !usedSubs.has(s)).sort();
+  // 3. Alphabetical leftovers (excluding tail-reserved)
+  const leftovers = allSubs.filter((s) => !usedSubs.has(s) && !tailReserved.has(s)).sort();
   for (const s of leftovers) orderedGroups.push([s]);
+  // 4. Tail groups render last
+  orderedGroups.push(...resolveGroups(tailGroups));
+
 
   const estimateSectionHeight = (itemCount: number) => {
     const rowCount = Math.ceil(itemCount / 2);
