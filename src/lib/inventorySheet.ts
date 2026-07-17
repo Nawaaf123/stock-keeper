@@ -229,7 +229,9 @@ export async function downloadInventorySheet(
   const nonFurnitureItems = allItems.filter(
     (it) => (it.subCategory?.trim() || it.category?.trim() || 'Uncategorized').toLowerCase() !== 'furniture'
   );
-  const totalUnits = nonFurnitureItems.reduce((s, it) => s + totalQty(it), 0);
+  const totalUnits = empty
+    ? '-'
+    : nonFurnitureItems.reduce((s, it) => s + (totalQty(it) as number), 0);
   const totalLines = nonFurnitureItems.length;
 
   if (y > pageHeight - 60) {
@@ -242,6 +244,9 @@ export async function downloadInventorySheet(
   doc.text(`Total Cases: ${totalUnits}`, margin, y + 14);
   doc.text(`Total Products: ${totalLines}`, margin + 180, y + 14);
 
-  const suffix = warehouseFilter ? `-${warehouseFilter.name.replace(/\s+/g, '_')}` : '';
+  const suffixParts: string[] = [];
+  if (warehouseFilter) suffixParts.push(warehouseFilter.name.replace(/\s+/g, '_'));
+  if (empty) suffixParts.push('empty');
+  const suffix = suffixParts.length ? `-${suffixParts.join('-')}` : '';
   doc.save(`inventory${suffix}-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 }
