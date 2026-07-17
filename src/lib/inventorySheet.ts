@@ -27,6 +27,7 @@ async function getLogoDataUrl(): Promise<string | null> {
 export async function downloadInventorySheet(
   allItems: InventoryItem[],
   warehouseFilter?: { id: string; name: string } | null,
+  empty = false,
 ) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -35,6 +36,7 @@ export async function downloadInventorySheet(
 
   // Quantity per item — either for a specific warehouse, or summed across all
   const totalQty = (item: InventoryItem) => {
+    if (empty) return '';
     const stock = item.stock ?? [];
     if (warehouseFilter) {
       return stock
