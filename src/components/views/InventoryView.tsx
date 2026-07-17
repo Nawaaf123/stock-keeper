@@ -278,6 +278,28 @@ export function InventoryView({
                   {w.name}
                 </DropdownMenuItem>
               ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                Empty copy
+              </DropdownMenuLabel>
+              {(() => {
+                const bensenville = warehouses.find((w) => w.name.toLowerCase() === 'bensenville');
+                if (!bensenville) return null;
+                return (
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      try {
+                        await downloadInventorySheet(allItems, { id: bensenville.id, name: bensenville.name }, true);
+                        toast.success(`Empty inventory PDF (${bensenville.name}) downloaded`);
+                      } catch (err: any) {
+                        toast.error(err?.message || 'Failed to generate PDF');
+                      }
+                    }}
+                  >
+                    {bensenville.name}
+                  </DropdownMenuItem>
+                );
+              })()}
             </DropdownMenuContent>
           </DropdownMenu>
           <Button variant="outline" onClick={() => setTransferDialogOpen(true)} className="gap-2 min-w-0">
