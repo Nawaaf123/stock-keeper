@@ -87,6 +87,10 @@ export async function downloadInventorySheet(
     ['Switch Pod Kit', 'Switch Pod Pod'],
     ['Nova Original', 'Nova Blue Razz Steezy'],
     ['Nova New'],
+    ['MAX-1000'],
+    ['MAX PRO-2000'],
+    ['MAX AIR-3000'],
+    ['NICOTINE POUCHES'],
   ];
 
   const norm = (s: string) => s.trim().toLowerCase();
