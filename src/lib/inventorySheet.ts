@@ -27,6 +27,7 @@ async function getLogoDataUrl(): Promise<string | null> {
 export async function downloadInventorySheet(
   allItems: InventoryItem[],
   warehouseFilter?: { id: string; name: string } | null,
+  empty = false,
 ) {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -35,6 +36,7 @@ export async function downloadInventorySheet(
 
   // Quantity per item — either for a specific warehouse, or summed across all
   const totalQty = (item: InventoryItem) => {
+    if (empty) return '';
     const stock = item.stock ?? [];
     if (warehouseFilter) {
       return stock
@@ -71,7 +73,8 @@ export async function downloadInventorySheet(
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  const title = warehouseFilter ? `Inventory Sheet — ${warehouseFilter.name}` : 'Inventory Sheet';
+  const titleBase = warehouseFilter ? `Inventory Sheet — ${warehouseFilter.name}` : 'Inventory Sheet';
+  const title = empty ? `${titleBase} (Empty Copy)` : titleBase;
   doc.text(title, margin, y);
 
   doc.setFont('helvetica', 'normal');
@@ -227,7 +230,9 @@ export async function downloadInventorySheet(
   const nonFurnitureItems = allItems.filter(
     (it) => (it.subCategory?.trim() || it.category?.trim() || 'Uncategorized').toLowerCase() !== 'furniture'
   );
-  const totalUnits = nonFurnitureItems.reduce((s, it) => s + totalQty(it), 0);
+  const totalUnits = empty
+    ? '-'
+    : nonFurnitureItems.reduce((s, it) => s + (totalQty(it) as number), 0);
   const totalLines = nonFurnitureItems.length;
 
   if (y > pageHeight - 60) {
@@ -240,6 +245,9 @@ export async function downloadInventorySheet(
   doc.text(`Total Cases: ${totalUnits}`, margin, y + 14);
   doc.text(`Total Products: ${totalLines}`, margin + 180, y + 14);
 
-  const suffix = warehouseFilter ? `-${warehouseFilter.name.replace(/\s+/g, '_')}` : '';
+  const suffixParts: string[] = [];
+  if (warehouseFilter) suffixParts.push(warehouseFilter.name.replace(/\s+/g, '_'));
+  if (empty) suffixParts.push('empty');
+  const suffix = suffixParts.length ? `-${suffixParts.join('-')}` : '';
   doc.save(`inventory${suffix}-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 }
