@@ -95,6 +95,8 @@ export async function downloadInventorySheet(
     ['MAX PRO-2000'],
     ['MAX AIR-3000'],
     ['NICOTINE POUCHES'],
+    ['POUCHES-DRY(4mg)', 'POUCHES-DRY(8mg)'],
+    ['POUCHES-MOIST(8mg)', 'POUCHES-MOIST(12mg)'],
   ];
 
   const norm = (s: string) => s.trim().toLowerCase();
