@@ -668,6 +668,16 @@ export function useInventory() {
       changes.push({ item_id: d.itemId, warehouse_id: d.warehouseId, delta: d.delta });
     }
 
+    // Older orders: allow price / shipping-only edits (no stock impact), block quantity or
+    // line changes so stock history stays accurate.
+    if (!sameDay && changes.length > 0) {
+      throw new Error(
+        'This order is from a previous day. You can still change pricing or the shipping fee, but to change quantities or products please cancel it and create a new order.'
+      );
+    }
+
+
+
     // Optimistic local update so the UI reflects new stock immediately.
     // Computed from local state for display only; the DB will use atomic deltas.
     const itemsNow = itemsRef.current;
