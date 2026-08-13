@@ -630,18 +630,15 @@ export function useInventory() {
       throw new Error('This order is cancelled and cannot be edited. Create a new order instead.');
     }
 
-    // Block edits to orders from a previous day to keep audit trail clean.
-    // Same-day edits are allowed (they mutate in place — clean Stock Summary).
+    // Quantity/line changes on orders from a previous day are blocked (checked below,
+    // once stock deltas are known). Price / shipping-only edits are allowed any day.
     const today = new Date();
     const sameDay =
       order.date.getFullYear() === today.getFullYear() &&
       order.date.getMonth() === today.getMonth() &&
       order.date.getDate() === today.getDate();
-    if (!sameDay) {
-      throw new Error(
-        'This order is from a previous day. To keep your stock history accurate, please cancel it and create a new order with the correct details.'
-      );
-    }
+
+
 
     // Compute net stock delta per (item, warehouse). Positive delta = stock should INCREASE
     // (e.g. removing/reducing an order line returns stock); negative = stock decreases.
