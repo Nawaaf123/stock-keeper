@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { ReceiveStockDialog } from '@/components/inventory/ReceiveStockDialog';
 import { EditReceivingDialog, ReceivingGroup } from '@/components/inventory/EditReceivingDialog';
 import { toast } from 'sonner';
+import { openBolDocument } from '@/lib/bolDocs';
 
 interface ReceivingsViewProps {
   transactions: InventoryTransaction[];

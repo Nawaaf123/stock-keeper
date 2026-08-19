@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { History, Package, Warehouse, FileText } from 'lucide-react';
 import { InventoryTransaction } from '@/types/inventory';
+import { openBolDocument } from '@/lib/bolDocs';
 import {
   Table,
   TableBody,
