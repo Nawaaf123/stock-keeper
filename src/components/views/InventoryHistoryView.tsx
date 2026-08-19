@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { History, Package, Warehouse, FileText } from 'lucide-react';
 import { InventoryTransaction } from '@/types/inventory';
+import { openBolDocument } from '@/lib/bolDocs';
 import {
   Table,
   TableBody,
@@ -87,15 +88,14 @@ export function InventoryHistoryView({ transactions }: InventoryHistoryViewProps
                           {bolTransactions.length} item{bolTransactions.length !== 1 ? 's' : ''}
                         </span>
                         {bolDocUrl && (
-                          <a
-                            href={bolDocUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
+                            onClick={() => openBolDocument(bolDocUrl)}
                             className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                           >
                             <FileText className="w-3 h-3" />
                             View BOL document
-                          </a>
+                          </button>
                         )}
                       </div>
                       <Table>

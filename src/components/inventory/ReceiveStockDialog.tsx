@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { InventoryItem, Warehouse } from '@/types/inventory';
 import { Package, Plus, Trash2, Upload, FileText, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { openBolDocument } from '@/lib/bolDocs';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProductEntry {
@@ -97,8 +98,7 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
         upsert: false,
       });
       if (error) throw error;
-      const { data } = supabase.storage.from('bol-documents').getPublicUrl(path);
-      setBolDocumentUrl(data.publicUrl);
+      setBolDocumentUrl(path);
       toast.success('BOL document uploaded');
     } catch (err: any) {
       toast.error(err?.message || 'Upload failed');
@@ -231,7 +231,7 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
             {bolDocumentUrl ? (
               <div className="flex items-center gap-2 px-2 py-1 border rounded-md bg-muted/30 text-xs">
                 <FileText className="w-3.5 h-3.5 text-primary" />
-                <a href={bolDocumentUrl} target="_blank" rel="noreferrer" className="underline">View BOL document</a>
+                <button type="button" onClick={() => openBolDocument(bolDocumentUrl)} className="underline">View BOL document</button>
                 <Button
                   variant="ghost"
                   size="icon"

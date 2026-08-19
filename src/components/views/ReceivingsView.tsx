@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { ReceiveStockDialog } from '@/components/inventory/ReceiveStockDialog';
 import { EditReceivingDialog, ReceivingGroup } from '@/components/inventory/EditReceivingDialog';
 import { toast } from 'sonner';
+import { openBolDocument } from '@/lib/bolDocs';
 
 interface ReceivingsViewProps {
   transactions: InventoryTransaction[];
@@ -163,11 +164,13 @@ export function ReceivingsView({
                             </div>
                             <div className="mt-3 flex justify-end gap-2">
                               {group.lines[0]?.bolDocumentUrl && (
-                                <Button size="sm" variant="outline" asChild>
-                                  <a href={group.lines[0].bolDocumentUrl} target="_blank" rel="noreferrer">
-                                    <FileText className="w-4 h-4 mr-2" />
-                                    BOL Doc
-                                  </a>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openBolDocument(group.lines[0].bolDocumentUrl)}
+                                >
+                                  <FileText className="w-4 h-4 mr-2" />
+                                  BOL Doc
                                 </Button>
                               )}
                               <Button size="sm" variant="outline" onClick={() => setEditTarget(group)}>
