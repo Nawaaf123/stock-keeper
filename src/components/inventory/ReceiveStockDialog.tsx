@@ -97,8 +97,7 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
         upsert: false,
       });
       if (error) throw error;
-      const { data } = supabase.storage.from('bol-documents').getPublicUrl(path);
-      setBolDocumentUrl(data.publicUrl);
+      setBolDocumentUrl(path);
       toast.success('BOL document uploaded');
     } catch (err: any) {
       toast.error(err?.message || 'Upload failed');
