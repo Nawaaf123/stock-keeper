@@ -215,7 +215,7 @@ export function EditReceivingDialog({ open, onOpenChange, receiving, items, ware
             {bolDocumentUrl ? (
               <div className="flex items-center gap-2 px-2 py-1 border rounded-md bg-muted/30 text-xs">
                 <FileText className="w-3.5 h-3.5 text-primary" />
-                <a href={bolDocumentUrl} target="_blank" rel="noreferrer" className="underline">View BOL document</a>
+                <button type="button" onClick={() => openBolDocument(bolDocumentUrl)} className="underline">View BOL document</button>
                 <Button
                   type="button"
                   variant="ghost"

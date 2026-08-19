@@ -230,7 +230,7 @@ export function ReceiveStockDialog({ open, onOpenChange, warehouses, item, items
             {bolDocumentUrl ? (
               <div className="flex items-center gap-2 px-2 py-1 border rounded-md bg-muted/30 text-xs">
                 <FileText className="w-3.5 h-3.5 text-primary" />
-                <a href={bolDocumentUrl} target="_blank" rel="noreferrer" className="underline">View BOL document</a>
+                <button type="button" onClick={() => openBolDocument(bolDocumentUrl)} className="underline">View BOL document</button>
                 <Button
                   variant="ghost"
                   size="icon"
