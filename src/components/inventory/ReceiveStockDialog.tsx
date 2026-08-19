@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { InventoryItem, Warehouse } from '@/types/inventory';
 import { Package, Plus, Trash2, Upload, FileText, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { openBolDocument } from '@/lib/bolDocs';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProductEntry {

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { InventoryItem, Warehouse, InventoryTransaction } from '@/types/inventory';
 import { Plus, Trash2, Pencil, Upload, FileText, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { openBolDocument } from '@/lib/bolDocs';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ReceivingLine {
