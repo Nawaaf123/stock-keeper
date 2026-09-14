@@ -26,6 +26,8 @@ interface StockEntry {
   warehouseId: string;
   warehouseName: string;
   remainingAfter: number;
+  /** True when this sale belongs to an order that was later cancelled. */
+  fromCancelledOrder?: boolean;
 }
 
 interface WarehouseBreakdown {
