@@ -26,6 +26,8 @@ interface StockEntry {
   warehouseId: string;
   warehouseName: string;
   remainingAfter: number;
+  /** True when this sale belongs to an order that was later cancelled. */
+  fromCancelledOrder?: boolean;
 }
 
 interface WarehouseBreakdown {
@@ -105,19 +107,22 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
         });
 
       orders.forEach(order => {
-        // Skip cancelled orders — their stock movement is already represented
-        // by 'order_cancelled' transactions. Counting them as sales here would
-        // double-count both Sold and Received totals.
-        if (order.status === 'cancelled') return;
+        // Cancelled orders still get their original sale line: the stock really
+        // left on the order date, and the matching 'order_cancelled' transaction
+        // puts it back on the cancellation date. Keeping both lines makes the
+        // historical running balance accurate instead of retroactively erasing
+        // the shipment.
+        const isCancelled = order.status === 'cancelled';
         order.items.forEach(orderItem => {
           if (orderItem.itemId === item.id) {
             stockEntries.push({
               type: 'sale',
-              source: order.shopName,
+              source: isCancelled ? `${order.shopName} (cancelled)` : order.shopName,
               qty: orderItem.quantity,
               date: order.date,
               warehouseId: orderItem.warehouseId,
               warehouseName: orderItem.warehouseName,
+              fromCancelledOrder: isCancelled,
             });
           }
         });
@@ -382,8 +387,13 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                             <ArrowUp className="w-3 h-3 mr-1" />Receive
                                           </Badge>
                                         ) : entry.type === 'sale' ? (
-                                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
-                                            <ArrowDown className="w-3 h-3 mr-1" />Sale
+                                          <Badge variant="outline" className={cn(
+                                            "text-xs",
+                                            entry.fromCancelledOrder
+                                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                                              : "bg-orange-50 text-orange-700 border-orange-200"
+                                          )}>
+                                            <ArrowDown className="w-3 h-3 mr-1" />{entry.fromCancelledOrder ? 'Sale (void)' : 'Sale'}
                                           </Badge>
                                         ) : entry.type === 'transfer_in' ? (
                                           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
