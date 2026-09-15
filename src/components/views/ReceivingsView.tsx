@@ -36,7 +36,8 @@ export function ReceivingsView({
     const map = new Map<string, ReceivingGroup>();
     for (const t of transactions) {
       if (t.type !== 'receive') continue;
-      const key = t.bolNumber || `(no-bol)-${t.id}`;
+      const dayKey = format(t.date, 'yyyy-MM-dd');
+      const key = t.bolNumber ? `${t.bolNumber}|${dayKey}` : `(no-bol)-${t.id}`;
       const existing = map.get(key);
       if (existing) {
         existing.lines.push(t);
