@@ -71,12 +71,19 @@ export function useInventory() {
   }, []);
 
   const fetchTransactions = useCallback(async () => {
-    const { data } = await supabase
-      .from('inventory_transactions')
-      .select('id,item_id,warehouse_id,quantity,bol_number,bol_document_url,created_at,type')
-      .order('created_at', { ascending: false })
-      .limit(500);
-    if (!data) return;
+    const pageSize = 1000;
+    const data: any[] = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data: page, error } = await supabase
+        .from('inventory_transactions')
+        .select('id,item_id,warehouse_id,quantity,bol_number,bol_document_url,created_at,type')
+        .order('created_at', { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (error || !page) break;
+      data.push(...page);
+      if (page.length < pageSize) break;
+    }
+    if (!data.length) return;
     const whName = new Map(warehousesRef.current.map(w => [w.id, w.name]));
     const itemMap = new Map(itemsRef.current.map(i => [i.id, i]));
     setTransactions(data.map(t => ({
