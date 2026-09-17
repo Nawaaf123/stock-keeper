@@ -521,57 +521,108 @@ export function useInventory() {
     }
   };
 
-  // ─── Receivings (grouped by BOL number) ───
-  const deleteReceiving = async (bolNumber: string) => {
-    const lines = transactions.filter(t => t.bolNumber === bolNumber);
-    if (lines.length === 0) return;
-    // Reverse stock — aggregate per (item, warehouse) to avoid duplicate/race adjustments
-    await applyStockDeltas(lines.map(l => ({ itemId: l.itemId, warehouseId: l.warehouseId, delta: -l.quantity })));
-    await supabase.from('inventory_transactions').delete().eq('bol_number', bolNumber);
+  // ─── Receivings (a receiving = an explicit set of transaction rows) ───
+  // IMPORTANT: never operate on `bol_number` alone. The same BOL number can be
+  // used on several days, and local `transactions` state can be stale/partial.
+  // We always re-read the exact rows from the DB by id (source of truth) so the
+  // stock deltas match what is really recorded.
+  const fetchReceivingRows = async (lineIds: string[]) => {
+    if (lineIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('inventory_transactions')
+      .select('id, item_id, warehouse_id, quantity, bol_number, bol_document_url, created_at, type')
+      .in('id', lineIds);
+    if (error) throw error;
+    return (data || []).filter((r: any) => r.type === 'receive');
+  };
+
+  const deleteReceiving = async (lineIds: string[]) => {
+    const rows = await fetchReceivingRows(lineIds);
+    if (rows.length === 0) return;
+
+    const changes = new Map<string, { item_id: string; warehouse_id: string; delta: number }>();
+    for (const r of rows as any[]) {
+      const k = `${r.item_id}::${r.warehouse_id}`;
+      const cur = changes.get(k);
+      if (cur) cur.delta -= r.quantity;
+      else changes.set(k, { item_id: r.item_id, warehouse_id: r.warehouse_id, delta: -r.quantity });
+    }
+
+    const { error: delErr } = await supabase
+      .from('inventory_transactions')
+      .delete()
+      .in('id', rows.map((r: any) => r.id));
+    if (delErr) throw delErr;
+
+    const list = Array.from(changes.values()).filter(c => c.delta !== 0);
+    if (list.length > 0) {
+      const { error: rpcErr } = await (supabase as any).rpc('apply_stock_deltas', { _changes: list });
+      if (rpcErr) throw rpcErr;
+    }
+
+    await Promise.all([fetchItems(), fetchTransactions()]);
   };
 
   const updateReceiving = async (
-    bolNumber: string,
+    lineIds: string[],
     newBolNumber: string,
     newLines: { itemId: string; warehouseId: string; quantity: number }[],
     newBolDocumentUrl?: string | null,
   ) => {
-    const oldLines = transactions.filter(t => t.bolNumber === bolNumber);
+    const oldRows = (await fetchReceivingRows(lineIds)) as any[];
+
     const bolDocumentUrl = newBolDocumentUrl !== undefined
       ? newBolDocumentUrl
-      : (oldLines[0]?.bolDocumentUrl ?? null);
+      : (oldRows[0]?.bol_document_url ?? null);
+    const bol = newBolNumber.trim() || oldRows[0]?.bol_number || '';
 
-    const key = (i: string, w: string) => `${i}::${w}`;
-    const deltas = new Map<string, { itemId: string; warehouseId: string; delta: number }>();
-    for (const old of oldLines) {
-      const k = key(old.itemId, old.warehouseId);
-      const cur = deltas.get(k);
-      if (cur) cur.delta -= old.quantity;
-      else deltas.set(k, { itemId: old.itemId, warehouseId: old.warehouseId, delta: -old.quantity });
+    // Keep the receiving on its original date so editing never moves history to today.
+    const originalDate = oldRows.length > 0
+      ? oldRows.map(r => r.created_at).sort()[0]
+      : new Date().toISOString();
+
+    // Net stock change = (new quantities) − (quantities really recorded in the DB)
+    const changes = new Map<string, { item_id: string; warehouse_id: string; delta: number }>();
+    const bump = (item_id: string, warehouse_id: string, delta: number) => {
+      const k = `${item_id}::${warehouse_id}`;
+      const cur = changes.get(k);
+      if (cur) cur.delta += delta;
+      else changes.set(k, { item_id, warehouse_id, delta });
+    };
+    for (const r of oldRows) bump(r.item_id, r.warehouse_id, -r.quantity);
+    for (const n of newLines) bump(n.itemId, n.warehouseId, n.quantity);
+
+    // Replace only THIS receiving's rows (by id), then apply the net stock change.
+    if (oldRows.length > 0) {
+      const { error: delErr } = await supabase
+        .from('inventory_transactions')
+        .delete()
+        .in('id', oldRows.map(r => r.id));
+      if (delErr) throw delErr;
     }
-    for (const ni of newLines) {
-      const k = key(ni.itemId, ni.warehouseId);
-      const cur = deltas.get(k);
-      if (cur) cur.delta += ni.quantity;
-      else deltas.set(k, { itemId: ni.itemId, warehouseId: ni.warehouseId, delta: ni.quantity });
-    }
 
-    await applyStockDeltas(Array.from(deltas.values()));
-
-    // Replace transaction rows for this BOL
-    await supabase.from('inventory_transactions').delete().eq('bol_number', bolNumber);
     if (newLines.length > 0) {
-      await supabase.from('inventory_transactions').insert(
-        newLines.map(ni => ({
-          item_id: ni.itemId,
-          warehouse_id: ni.warehouseId,
-          quantity: ni.quantity,
-          bol_number: newBolNumber.trim() || bolNumber,
+      const { error: insErr } = await supabase.from('inventory_transactions').insert(
+        newLines.map(n => ({
+          item_id: n.itemId,
+          warehouse_id: n.warehouseId,
+          quantity: n.quantity,
+          bol_number: bol,
           bol_document_url: bolDocumentUrl,
           type: 'receive',
+          created_at: originalDate,
         } as any))
       );
+      if (insErr) throw insErr;
     }
+
+    const list = Array.from(changes.values()).filter(c => c.delta !== 0);
+    if (list.length > 0) {
+      const { error: rpcErr } = await (supabase as any).rpc('apply_stock_deltas', { _changes: list });
+      if (rpcErr) throw rpcErr;
+    }
+
+    await Promise.all([fetchItems(), fetchTransactions()]);
   };
 
   const deleteOrder = async (orderId: string) => {

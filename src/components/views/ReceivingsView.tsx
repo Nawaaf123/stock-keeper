@@ -20,8 +20,8 @@ interface ReceivingsViewProps {
   items: InventoryItem[];
   warehouses: Warehouse[];
   onReceiveStock: (itemId: string, warehouseId: string, quantity: number, bolNumber: string, bolDocumentUrl?: string | null) => void;
-  onUpdateReceiving: (bolNumber: string, newBolNumber: string, lines: { itemId: string; warehouseId: string; quantity: number }[], bolDocumentUrl?: string | null) => Promise<void> | void;
-  onDeleteReceiving: (bolNumber: string) => Promise<void> | void;
+  onUpdateReceiving: (lineIds: string[], newBolNumber: string, lines: { itemId: string; warehouseId: string; quantity: number }[], bolDocumentUrl?: string | null) => Promise<void> | void;
+  onDeleteReceiving: (lineIds: string[]) => Promise<void> | void;
 }
 
 export function ReceivingsView({
@@ -29,7 +29,7 @@ export function ReceivingsView({
 }: ReceivingsViewProps) {
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ReceivingGroup | null>(null);
-  const [deleteBol, setDeleteBol] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ReceivingGroup | null>(null);
 
   // Group transactions by BOL number (only "receive" type)
   const groups = useMemo<ReceivingGroup[]>(() => {
@@ -67,10 +67,10 @@ export function ReceivingsView({
   };
 
   const handleConfirmDelete = async () => {
-    if (!deleteBol) return;
-    await onDeleteReceiving(deleteBol);
+    if (!deleteTarget) return;
+    await onDeleteReceiving(deleteTarget.lines.map(l => l.id));
     toast.success('Receiving deleted and inventory adjusted');
-    setDeleteBol(null);
+    setDeleteTarget(null);
   };
 
   return (
@@ -178,7 +178,7 @@ export function ReceivingsView({
                                 <Pencil className="w-4 h-4 mr-2" />
                                 Edit
                               </Button>
-                              <Button size="sm" variant="destructive" onClick={() => setDeleteBol(group.bolNumber)}>
+                              <Button size="sm" variant="destructive" onClick={() => setDeleteTarget(group)}>
                                 <Trash2 className="w-4 h-4 mr-2" />
                                 Delete
                               </Button>
@@ -213,12 +213,13 @@ export function ReceivingsView({
         onUpdate={onUpdateReceiving}
       />
 
-      <AlertDialog open={!!deleteBol} onOpenChange={(o) => { if (!o) setDeleteBol(null); }}>
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this receiving?</AlertDialogTitle>
             <AlertDialogDescription>
-              All lines under BOL #{deleteBol} will be removed and the corresponding stock will be subtracted from each warehouse.
+              The {deleteTarget?.lines.length ?? 0} line{(deleteTarget?.lines.length ?? 0) !== 1 ? 's' : ''} in this receiving (BOL #{deleteTarget?.bolNumber}
+              {deleteTarget ? ` · ${format(deleteTarget.date, 'MMM d, yyyy')}` : ''}) will be removed and the corresponding stock will be subtracted from each warehouse. Other receivings that share this BOL number are not affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
