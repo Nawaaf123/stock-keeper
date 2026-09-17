@@ -218,7 +218,8 @@ export function ReceivingsView({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this receiving?</AlertDialogTitle>
             <AlertDialogDescription>
-              All lines under BOL #{deleteBol} will be removed and the corresponding stock will be subtracted from each warehouse.
+              The {deleteTarget?.lines.length ?? 0} line{(deleteTarget?.lines.length ?? 0) !== 1 ? 's' : ''} in this receiving (BOL #{deleteTarget?.bolNumber}
+              {deleteTarget ? ` · ${format(deleteTarget.date, 'MMM d, yyyy')}` : ''}) will be removed and the corresponding stock will be subtracted from each warehouse. Other receivings that share this BOL number are not affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
