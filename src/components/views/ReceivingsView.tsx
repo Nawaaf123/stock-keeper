@@ -29,7 +29,7 @@ export function ReceivingsView({
 }: ReceivingsViewProps) {
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ReceivingGroup | null>(null);
-  const [deleteBol, setDeleteBol] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ReceivingGroup | null>(null);
 
   // Group transactions by BOL number (only "receive" type)
   const groups = useMemo<ReceivingGroup[]>(() => {
