@@ -67,10 +67,10 @@ export function ReceivingsView({
   };
 
   const handleConfirmDelete = async () => {
-    if (!deleteBol) return;
-    await onDeleteReceiving(deleteBol);
+    if (!deleteTarget) return;
+    await onDeleteReceiving(deleteTarget.lines.map(l => l.id));
     toast.success('Receiving deleted and inventory adjusted');
-    setDeleteBol(null);
+    setDeleteTarget(null);
   };
 
   return (
