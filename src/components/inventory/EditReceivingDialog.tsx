@@ -28,7 +28,7 @@ interface EditReceivingDialogProps {
   items: InventoryItem[];
   warehouses: Warehouse[];
   onUpdate: (
-    bolNumber: string,
+    lineIds: string[],
     newBolNumber: string,
     lines: ReceivingLine[],
     bolDocumentUrl?: string | null,
