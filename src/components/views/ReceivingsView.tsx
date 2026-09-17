@@ -20,8 +20,8 @@ interface ReceivingsViewProps {
   items: InventoryItem[];
   warehouses: Warehouse[];
   onReceiveStock: (itemId: string, warehouseId: string, quantity: number, bolNumber: string, bolDocumentUrl?: string | null) => void;
-  onUpdateReceiving: (bolNumber: string, newBolNumber: string, lines: { itemId: string; warehouseId: string; quantity: number }[], bolDocumentUrl?: string | null) => Promise<void> | void;
-  onDeleteReceiving: (bolNumber: string) => Promise<void> | void;
+  onUpdateReceiving: (lineIds: string[], newBolNumber: string, lines: { itemId: string; warehouseId: string; quantity: number }[], bolDocumentUrl?: string | null) => Promise<void> | void;
+  onDeleteReceiving: (lineIds: string[]) => Promise<void> | void;
 }
 
 export function ReceivingsView({
