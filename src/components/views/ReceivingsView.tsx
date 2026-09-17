@@ -213,7 +213,7 @@ export function ReceivingsView({
         onUpdate={onUpdateReceiving}
       />
 
-      <AlertDialog open={!!deleteBol} onOpenChange={(o) => { if (!o) setDeleteBol(null); }}>
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this receiving?</AlertDialogTitle>
