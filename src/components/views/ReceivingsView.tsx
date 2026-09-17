@@ -178,7 +178,7 @@ export function ReceivingsView({
                                 <Pencil className="w-4 h-4 mr-2" />
                                 Edit
                               </Button>
-                              <Button size="sm" variant="destructive" onClick={() => setDeleteBol(group.bolNumber)}>
+                              <Button size="sm" variant="destructive" onClick={() => setDeleteTarget(group)}>
                                 <Trash2 className="w-4 h-4 mr-2" />
                                 Delete
                               </Button>
