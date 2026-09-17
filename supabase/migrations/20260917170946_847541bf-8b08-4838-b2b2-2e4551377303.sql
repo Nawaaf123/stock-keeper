@@ -1,0 +1,1 @@
+UPDATE public.warehouse_stock SET quantity = quantity + 60, updated_at = now() WHERE id = '459e3a26-8fff-40ea-b764-4ed7647cfdb3';
