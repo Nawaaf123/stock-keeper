@@ -288,7 +288,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
         warehouseBreakdown,
       };
     }).sort((a, b) => b.totalSold - a.totalSold);
-  }, [items, orders, transactions, warehouses, warehouseFilter]);
+  }, [items, orders, transactions, warehouses, warehouseFilter, dailyDeltas]);
 
   const filteredSummaryData = useMemo(() => {
     if (!searchQuery.trim()) return summaryData;
