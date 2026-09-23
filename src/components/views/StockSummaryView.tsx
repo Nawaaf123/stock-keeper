@@ -52,6 +52,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [warehouseFilter, setWarehouseFilter] = useState<string>('all');
   const [dailyDeltas, setDailyDeltas] = useState<DailyDelta[] | null>(null);
+  const [changeNotes, setChangeNotes] = useState<ChangeNote[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,7 +64,15 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
         all.push(...((data || []) as DailyDelta[]));
         if (!data || data.length < 1000) break;
       }
-      if (!cancelled) setDailyDeltas(all);
+      const notes: ChangeNote[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await (supabase as any).from('stock_change_notes')
+          .select('item_id,warehouse_id,delta,label,original_date,created_at').range(from, from + 999);
+        if (error) { console.error(error); break; }
+        notes.push(...((data || []) as ChangeNote[]));
+        if (!data || data.length < 1000) break;
+      }
+      if (!cancelled) { setChangeNotes(notes); setDailyDeltas(all); }
     })();
     return () => { cancelled = true; };
   }, [transactions, orders, items]);
@@ -189,6 +198,33 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
           if (r.item_id !== item.id || r.day < AUDIT_START_DAY) return;
           realSums.set(`${r.warehouse_id}|${r.day}`, Number(r.delta));
         });
+        // Named lines from deleted/edited receivings: shown on the day it
+        // happened, plus a matching line on the receiving's original day.
+        const whName = (id: string) => warehouses.find(w => w.id === id)?.name || '';
+        (changeNotes || []).forEach(n => {
+          if (n.item_id !== item.id) return;
+          const madeDay = chicagoDay(new Date(n.created_at));
+          const origDay = chicagoDay(new Date(n.original_date));
+          if (madeDay === origDay) return; // same-day change: nothing to explain
+          const madeKey = `${n.warehouse_id}|${madeDay}`;
+          const origKey = `${n.warehouse_id}|${origDay}`;
+          if (madeDay >= AUDIT_START_DAY) {
+            stockEntries.push({
+              type: 'correction', source: n.label, qty: n.delta,
+              date: new Date(n.created_at), warehouseId: n.warehouse_id, warehouseName: whName(n.warehouse_id),
+            });
+            lineSums.set(madeKey, (lineSums.get(madeKey) || 0) + n.delta);
+          }
+          if (origDay >= AUDIT_START_DAY) {
+            stockEntries.push({
+              type: 'correction',
+              source: `${n.label} (on ${format(new Date(n.created_at), 'MMM d')})`,
+              qty: -n.delta,
+              date: endOfChicagoDay(origDay), warehouseId: n.warehouse_id, warehouseName: whName(n.warehouse_id),
+            });
+            lineSums.set(origKey, (lineSums.get(origKey) || 0) - n.delta);
+          }
+        });
         const keys = new Set([...lineSums.keys(), ...realSums.keys()]);
         keys.forEach(k => {
           const [whId, day] = k.split('|');
@@ -203,7 +239,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
             qty: diff,
             date: isToday ? new Date() : endOfChicagoDay(day),
             warehouseId: whId,
-            warehouseName: warehouses.find(w => w.id === whId)?.name || '',
+            warehouseName: whName(whId),
           });
         });
       }
