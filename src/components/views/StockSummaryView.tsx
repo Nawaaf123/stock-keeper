@@ -477,7 +477,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                         ) : (
                                           <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
                                             {entry.qty >= 0 ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
-                                            Manual
+                                            {entry.type === 'correction' ? 'Adjustment' : 'Manual'}
                                           </Badge>
                                         )}
                                       </TableCell>
