@@ -358,18 +358,12 @@ export function useInventory() {
       type: 'receive',
     } as any);
 
-    const { data: existing } = await supabase
-      .from('warehouse_stock')
-      .select('id, quantity')
-      .eq('item_id', itemId)
-      .eq('warehouse_id', warehouseId)
-      .maybeSingle();
-
-    if (existing) {
-      await supabase.from('warehouse_stock').update({ quantity: existing.quantity + quantity }).eq('id', existing.id);
-    } else {
-      await supabase.from('warehouse_stock').insert({ item_id: itemId, warehouse_id: warehouseId, quantity });
-    }
+    // Atomic increment in the database — safe when several lines of the same
+    // flavor are saved at the same moment (no read-then-write race).
+    const { error: rpcErr } = await (supabase as any).rpc('apply_stock_deltas', {
+      _changes: [{ item_id: itemId, warehouse_id: warehouseId, delta: quantity }],
+    });
+    if (rpcErr) throw rpcErr;
   };
 
   const updateStock = async (itemId: string, warehouseId: string, newQuantity: number) => {
