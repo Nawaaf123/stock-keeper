@@ -1,0 +1,1 @@
+UPDATE public.warehouse_stock SET quantity = 239 WHERE item_id = '7b3b7e23-9af1-4ea7-9c57-758c001d9de5' AND warehouse_id = (SELECT id FROM public.warehouses WHERE name = 'Bensenville');
