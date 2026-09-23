@@ -46,6 +46,7 @@ const chicagoDay = (d: Date) => chicagoFmt.format(d);
 const endOfChicagoDay = (day: string) => new Date(`${day}T23:59:00-05:00`);
 
 type DailyDelta = { item_id: string; warehouse_id: string; day: string; delta: number };
+type ChangeNote = { item_id: string; warehouse_id: string; delta: number; label: string; original_date: string; created_at: string };
 
 export function StockSummaryView({ items, orders, transactions, warehouses = [] }: StockSummaryViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -324,7 +325,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
         warehouseBreakdown,
       };
     }).sort((a, b) => b.totalSold - a.totalSold);
-  }, [items, orders, transactions, warehouses, warehouseFilter, dailyDeltas]);
+  }, [items, orders, transactions, warehouses, warehouseFilter, dailyDeltas, changeNotes]);
 
   const filteredSummaryData = useMemo(() => {
     if (!searchQuery.trim()) return summaryData;
