@@ -398,6 +398,15 @@ export type Database = {
     }
     Functions: {
       apply_stock_deltas: { Args: { _changes: Json }; Returns: undefined }
+      stock_daily_deltas: {
+        Args: never
+        Returns: {
+          day: string
+          delta: number
+          item_id: string
+          warehouse_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
