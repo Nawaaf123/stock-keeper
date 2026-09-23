@@ -552,6 +552,12 @@ export function useInventory() {
     if (list.length > 0) {
       const { error: rpcErr } = await (supabase as any).rpc('apply_stock_deltas', { _changes: list });
       if (rpcErr) throw rpcErr;
+      const bol = (rows as any[])[0]?.bol_number || '';
+      const originalDate = (rows as any[]).map(r => r.created_at).sort()[0];
+      await (supabase as any).from('stock_change_notes').insert(list.map(c => ({
+        item_id: c.item_id, warehouse_id: c.warehouse_id, delta: c.delta,
+        label: `Receiving deleted — BOL: ${bol}`, original_date: originalDate,
+      })));
     }
 
     await Promise.all([fetchItems(), fetchTransactions()]);
@@ -614,6 +620,10 @@ export function useInventory() {
     if (list.length > 0) {
       const { error: rpcErr } = await (supabase as any).rpc('apply_stock_deltas', { _changes: list });
       if (rpcErr) throw rpcErr;
+      await (supabase as any).from('stock_change_notes').insert(list.map(c => ({
+        item_id: c.item_id, warehouse_id: c.warehouse_id, delta: c.delta,
+        label: `Receiving edited — BOL: ${bol}`, original_date: originalDate,
+      })));
     }
 
     await Promise.all([fetchItems(), fetchTransactions()]);
