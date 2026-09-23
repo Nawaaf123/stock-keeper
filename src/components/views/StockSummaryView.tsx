@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { InventoryItem, Order, InventoryTransaction, Warehouse } from '@/types/inventory';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,7 +20,7 @@ interface StockSummaryViewProps {
 }
 
 interface StockEntry {
-  type: 'receive' | 'sale' | 'transfer_in' | 'transfer_out' | 'opening_balance' | 'manual_adjust' | 'order_cancelled';
+  type: 'receive' | 'sale' | 'transfer_in' | 'transfer_out' | 'opening_balance' | 'manual_adjust' | 'order_cancelled' | 'correction';
   source: string;
   qty: number;
   date: Date;
@@ -38,10 +39,34 @@ interface WarehouseBreakdown {
   remaining: number;
 }
 
+// First full day covered by the permanent stock change log.
+const AUDIT_START_DAY = '2026-05-22';
+const chicagoFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' });
+const chicagoDay = (d: Date) => chicagoFmt.format(d);
+const endOfChicagoDay = (day: string) => new Date(`${day}T23:59:00-05:00`);
+
+type DailyDelta = { item_id: string; warehouse_id: string; day: string; delta: number };
+
 export function StockSummaryView({ items, orders, transactions, warehouses = [] }: StockSummaryViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [warehouseFilter, setWarehouseFilter] = useState<string>('all');
+  const [dailyDeltas, setDailyDeltas] = useState<DailyDelta[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const all: DailyDelta[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await supabase.rpc('stock_daily_deltas').range(from, from + 999);
+        if (error) { console.error(error); return; }
+        all.push(...((data || []) as DailyDelta[]));
+        if (!data || data.length < 1000) break;
+      }
+      if (!cancelled) setDailyDeltas(all);
+    })();
+    return () => { cancelled = true; };
+  }, [transactions, orders, items]);
 
   const toggle = (id: string) => {
     setExpanded(prev => {
@@ -128,13 +153,6 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
         });
       });
 
-      // Apply warehouse filter to entries
-      const filteredEntries = warehouseFilter === 'all'
-        ? stockEntries
-        : stockEntries.filter(e => e.warehouseId === warehouseFilter);
-
-      filteredEntries.sort((a, b) => a.date.getTime() - b.date.getTime());
-
       // Signed contribution: receives/transfer_in add, sales/transfer_out subtract,
       // opening_balance and manual_adjust use the raw signed quantity.
       const signed = (e: { type: StockEntry['type']; qty: number }) => {
@@ -148,9 +166,54 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
             return -e.qty;
           case 'opening_balance':
           case 'manual_adjust':
+          case 'correction':
             return e.qty;
         }
       };
+
+      // Lock past days to the permanent stock change log: for each day, if
+      // the visible lines don't add up to what really changed that day (a
+      // record was later deleted/edited, or a manual fix), add a
+      // reconciliation line so closing balances never shift.
+      if (dailyDeltas) {
+        const todayKey = chicagoDay(new Date());
+        const lineSums = new Map<string, number>();
+        stockEntries.forEach(e => {
+          const d = chicagoDay(e.date);
+          if (d < AUDIT_START_DAY) return;
+          const k = `${e.warehouseId}|${d}`;
+          lineSums.set(k, (lineSums.get(k) || 0) + signed(e));
+        });
+        const realSums = new Map<string, number>();
+        dailyDeltas.forEach(r => {
+          if (r.item_id !== item.id || r.day < AUDIT_START_DAY) return;
+          realSums.set(`${r.warehouse_id}|${r.day}`, Number(r.delta));
+        });
+        const keys = new Set([...lineSums.keys(), ...realSums.keys()]);
+        keys.forEach(k => {
+          const [whId, day] = k.split('|');
+          const diff = (realSums.get(k) || 0) - (lineSums.get(k) || 0);
+          if (diff === 0) return;
+          const isToday = day === todayKey;
+          stockEntries.push({
+            type: 'correction',
+            source: isToday
+              ? 'Deleted / edited record or manual fix (today)'
+              : 'Record later deleted / edited, or manual fix',
+            qty: diff,
+            date: isToday ? new Date() : endOfChicagoDay(day),
+            warehouseId: whId,
+            warehouseName: warehouses.find(w => w.id === whId)?.name || '',
+          });
+        });
+      }
+
+      // Apply warehouse filter to entries
+      const filteredEntries = warehouseFilter === 'all'
+        ? stockEntries
+        : stockEntries.filter(e => e.warehouseId === warehouseFilter);
+
+      filteredEntries.sort((a, b) => a.date.getTime() - b.date.getTime());
 
       const totalReceived = filteredEntries
         .filter(e => e.type === 'receive' || e.type === 'transfer_in' || e.type === 'order_cancelled' || (e.type === 'manual_adjust' && e.qty > 0))
@@ -225,7 +288,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
         warehouseBreakdown,
       };
     }).sort((a, b) => b.totalSold - a.totalSold);
-  }, [items, orders, transactions, warehouses, warehouseFilter]);
+  }, [items, orders, transactions, warehouses, warehouseFilter, dailyDeltas]);
 
   const filteredSummaryData = useMemo(() => {
     if (!searchQuery.trim()) return summaryData;
@@ -414,7 +477,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                         ) : (
                                           <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
                                             {entry.qty >= 0 ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
-                                            Manual
+                                            {entry.type === 'correction' ? 'Adjustment' : 'Manual'}
                                           </Badge>
                                         )}
                                       </TableCell>
@@ -433,7 +496,7 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
                                           else if (entry.type === 'transfer_out') { sign = '-'; colorClass = 'text-blue-600'; }
                                           else if (entry.type === 'opening_balance') { sign = ''; colorClass = 'text-slate-600'; }
                                           else if (entry.type === 'order_cancelled') { sign = '+'; colorClass = 'text-amber-600'; }
-                                          else if (entry.type === 'manual_adjust') {
+                                          else if (entry.type === 'manual_adjust' || entry.type === 'correction') {
                                             sign = entry.qty >= 0 ? '+' : '-';
                                             displayQty = Math.abs(entry.qty);
                                             colorClass = 'text-purple-600';
