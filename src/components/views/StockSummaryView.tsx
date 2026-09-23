@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { InventoryItem, Order, InventoryTransaction, Warehouse } from '@/types/inventory';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,7 +20,7 @@ interface StockSummaryViewProps {
 }
 
 interface StockEntry {
-  type: 'receive' | 'sale' | 'transfer_in' | 'transfer_out' | 'opening_balance' | 'manual_adjust' | 'order_cancelled';
+  type: 'receive' | 'sale' | 'transfer_in' | 'transfer_out' | 'opening_balance' | 'manual_adjust' | 'order_cancelled' | 'correction';
   source: string;
   qty: number;
   date: Date;
@@ -38,10 +39,34 @@ interface WarehouseBreakdown {
   remaining: number;
 }
 
+// First full day covered by the permanent stock change log.
+const AUDIT_START_DAY = '2026-05-22';
+const chicagoFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' });
+const chicagoDay = (d: Date) => chicagoFmt.format(d);
+const endOfChicagoDay = (day: string) => new Date(`${day}T23:59:00-05:00`);
+
+type DailyDelta = { item_id: string; warehouse_id: string; day: string; delta: number };
+
 export function StockSummaryView({ items, orders, transactions, warehouses = [] }: StockSummaryViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [warehouseFilter, setWarehouseFilter] = useState<string>('all');
+  const [dailyDeltas, setDailyDeltas] = useState<DailyDelta[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const all: DailyDelta[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await supabase.rpc('stock_daily_deltas').range(from, from + 999);
+        if (error) { console.error(error); return; }
+        all.push(...((data || []) as DailyDelta[]));
+        if (!data || data.length < 1000) break;
+      }
+      if (!cancelled) setDailyDeltas(all);
+    })();
+    return () => { cancelled = true; };
+  }, [transactions, orders, items]);
 
   const toggle = (id: string) => {
     setExpanded(prev => {
