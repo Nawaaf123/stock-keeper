@@ -261,6 +261,36 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_change_notes: {
+        Row: {
+          created_at: string
+          delta: number
+          id: string
+          item_id: string
+          label: string
+          original_date: string
+          warehouse_id: string
+        }
+        Insert: {
+          created_at?: string
+          delta: number
+          id?: string
+          item_id: string
+          label: string
+          original_date: string
+          warehouse_id: string
+        }
+        Update: {
+          created_at?: string
+          delta?: number
+          id?: string
+          item_id?: string
+          label?: string
+          original_date?: string
+          warehouse_id?: string
+        }
+        Relationships: []
+      }
       sub_categories: {
         Row: {
           category_id: string
