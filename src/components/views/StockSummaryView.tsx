@@ -128,13 +128,6 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
         });
       });
 
-      // Apply warehouse filter to entries
-      const filteredEntries = warehouseFilter === 'all'
-        ? stockEntries
-        : stockEntries.filter(e => e.warehouseId === warehouseFilter);
-
-      filteredEntries.sort((a, b) => a.date.getTime() - b.date.getTime());
-
       // Signed contribution: receives/transfer_in add, sales/transfer_out subtract,
       // opening_balance and manual_adjust use the raw signed quantity.
       const signed = (e: { type: StockEntry['type']; qty: number }) => {
@@ -148,9 +141,54 @@ export function StockSummaryView({ items, orders, transactions, warehouses = [] 
             return -e.qty;
           case 'opening_balance':
           case 'manual_adjust':
+          case 'correction':
             return e.qty;
         }
       };
+
+      // Lock past days to the permanent stock change log: for each day, if
+      // the visible lines don't add up to what really changed that day (a
+      // record was later deleted/edited, or a manual fix), add a
+      // reconciliation line so closing balances never shift.
+      if (dailyDeltas) {
+        const todayKey = chicagoDay(new Date());
+        const lineSums = new Map<string, number>();
+        stockEntries.forEach(e => {
+          const d = chicagoDay(e.date);
+          if (d < AUDIT_START_DAY) return;
+          const k = `${e.warehouseId}|${d}`;
+          lineSums.set(k, (lineSums.get(k) || 0) + signed(e));
+        });
+        const realSums = new Map<string, number>();
+        dailyDeltas.forEach(r => {
+          if (r.item_id !== item.id || r.day < AUDIT_START_DAY) return;
+          realSums.set(`${r.warehouse_id}|${r.day}`, Number(r.delta));
+        });
+        const keys = new Set([...lineSums.keys(), ...realSums.keys()]);
+        keys.forEach(k => {
+          const [whId, day] = k.split('|');
+          const diff = (realSums.get(k) || 0) - (lineSums.get(k) || 0);
+          if (diff === 0) return;
+          const isToday = day === todayKey;
+          stockEntries.push({
+            type: 'correction',
+            source: isToday
+              ? 'Deleted / edited record or manual fix (today)'
+              : 'Record later deleted / edited, or manual fix',
+            qty: diff,
+            date: isToday ? new Date() : endOfChicagoDay(day),
+            warehouseId: whId,
+            warehouseName: warehouses.find(w => w.id === whId)?.name || '',
+          });
+        });
+      }
+
+      // Apply warehouse filter to entries
+      const filteredEntries = warehouseFilter === 'all'
+        ? stockEntries
+        : stockEntries.filter(e => e.warehouseId === warehouseFilter);
+
+      filteredEntries.sort((a, b) => a.date.getTime() - b.date.getTime());
 
       const totalReceived = filteredEntries
         .filter(e => e.type === 'receive' || e.type === 'transfer_in' || e.type === 'order_cancelled' || (e.type === 'manual_adjust' && e.qty > 0))
