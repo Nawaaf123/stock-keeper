@@ -206,12 +206,17 @@ async function buildPickSheetDoc(order: Order, allItems: InventoryItem[] = []) {
     for (let i = 0; i < half; i++) {
       const left = list[i];
       const right = list[i + half];
+      const withWh = (it: InventoryItem | undefined) => {
+        if (!it) return '';
+        const initial = whInitial.get(it.id);
+        return initial ? `${it.name} (${initial})` : it.name;
+      };
       rows.push([
         left?.sku ?? '',
-        left?.name ?? '',
+        withWh(left),
         left ? (qtyMap.get(left.id) ? String(qtyMap.get(left.id)) : '') : '',
         right?.sku ?? '',
-        right?.name ?? '',
+        withWh(right),
         right ? (qtyMap.get(right.id) ? String(qtyMap.get(right.id)) : '') : '',
       ]);
     }
