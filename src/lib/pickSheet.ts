@@ -48,6 +48,14 @@ async function buildPickSheetDoc(order: Order, allItems: InventoryItem[] = []) {
     qtyMap.set(it.itemId, (qtyMap.get(it.itemId) ?? 0) + it.quantity);
   }
 
+  // Warehouse initial per item (e.g. Bensenville -> B, York -> Y)
+  const whInitial = new Map<string, string>();
+  for (const it of order.items) {
+    if (!whInitial.has(it.itemId) && it.warehouseName) {
+      whInitial.set(it.itemId, it.warehouseName.trim().charAt(0).toUpperCase());
+    }
+  }
+
   // Only print items that are actually in the order.
   // When full inventory metadata exists, use it to recover the real category/sub-category.
   const inventoryById = new Map(allItems.map((item) => [item.id, item]));
