@@ -48,6 +48,14 @@ async function buildPickSheetDoc(order: Order, allItems: InventoryItem[] = []) {
     qtyMap.set(it.itemId, (qtyMap.get(it.itemId) ?? 0) + it.quantity);
   }
 
+  // Warehouse initial per item (e.g. Bensenville -> B, York -> Y)
+  const whInitial = new Map<string, string>();
+  for (const it of order.items) {
+    if (!whInitial.has(it.itemId) && it.warehouseName) {
+      whInitial.set(it.itemId, it.warehouseName.trim().charAt(0).toUpperCase());
+    }
+  }
+
   // Only print items that are actually in the order.
   // When full inventory metadata exists, use it to recover the real category/sub-category.
   const inventoryById = new Map(allItems.map((item) => [item.id, item]));
@@ -198,12 +206,17 @@ async function buildPickSheetDoc(order: Order, allItems: InventoryItem[] = []) {
     for (let i = 0; i < half; i++) {
       const left = list[i];
       const right = list[i + half];
+      const withWh = (it: InventoryItem | undefined) => {
+        if (!it) return '';
+        const initial = whInitial.get(it.id);
+        return initial ? `${it.name} (${initial})` : it.name;
+      };
       rows.push([
         left?.sku ?? '',
-        left?.name ?? '',
+        withWh(left),
         left ? (qtyMap.get(left.id) ? String(qtyMap.get(left.id)) : '') : '',
         right?.sku ?? '',
-        right?.name ?? '',
+        withWh(right),
         right ? (qtyMap.get(right.id) ? String(qtyMap.get(right.id)) : '') : '',
       ]);
     }
